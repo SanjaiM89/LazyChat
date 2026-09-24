@@ -143,15 +143,195 @@ async function pageText(p, max = 6000) {
   return (await p.evaluate(() => document.body?.innerText || "")).slice(0, max);
 }
 
+function cleanResultUrl(href, base) {
+  try {
+    let raw = String(href || "");
+    if (raw.startsWith("//")) raw = "https:" + raw;
+    const u = new URL(raw, base);
+    if (u.hostname.includes("google.")) {
+      const target = u.searchParams.get("q") || u.searchParams.get("url");
+      if (target && /^https?:\/\//i.test(target)) return target;
+      return "";
+    }
+    if (u.hostname.includes("bing.com") && u.pathname.includes("/ck/")) {
+      const enc = (u.searchParams.get("u") || "").replace(/^a1/, "");
+      if (!enc) return "";
+      const b64 = enc.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+      const out = Buffer.from(padded, "base64").toString("utf8");
+      return /^https?:\/\//i.test(out) ? out : "";
+    }
+    if (u.hostname.includes("duckduckgo.com") && (u.pathname === "/l/" || u.pathname.endsWith("/l/"))) {
+      const target = u.searchParams.get("uddg");
+      if (target) return decodeURIComponent(target);
+    }
+    return /^https?:\/\//i.test(u.href) ? u.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function isEngineHost(u) {
+  try {
+    const h = new URL(u).hostname;
+    return h.includes("google.") || h.includes("bing.com") || h.includes("duckduckgo.") || h.includes("brave.com");
+  } catch {
+    return true;
+  }
+}
+
+function finalizeResults(raw, base, max) {
+  const out = [];
+  const seen = new Set();
+  for (const r of raw) {
+    const url = cleanResultUrl(r.url, base);
+    if (!url || seen.has(url) || isEngineHost(url)) continue;
+    seen.add(url);
+    let hostname = "";
+    try {
+      hostname = new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+    }
+    out.push({
+      title: String(r.title || "").slice(0, 160),
+      url,
+      hostname,
+      position: out.length + 1,
+      description: "",
+    });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+async function serpType(boxSel, query) {
+  const p = await ensurePage();
+  const box = p.locator(boxSel).first();
+  await box.waitFor({ timeout: 12_000 });
+  await box.click();
+  await box.fill("");
+  await box.pressSequentially(query, { delay: 25 });
+  await p.waitForTimeout(400);
+  await box.press("Enter");
+  await p.waitForTimeout(2200);
+  const shot = await screenshotDataUrl(p);
+  report({ type: "screenshot", image: shot });
+}
+
+async function browserGoogleSearch(query, max) {
+  const p = await ensurePage();
+  await p.goto("https://www.google.com/?hl=en", { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => {});
+  await p.waitForTimeout(900);
+  await serpType('textarea[name="q"], input[name="q"]', query);
+  if (p.url().includes("/sorry/") || p.url().includes("captcha")) throw new Error("google blocked");
+  const raw = await p.evaluate((limit) => {
+    const out = [];
+    const seen = new Set();
+    const push = (a) => {
+      const text = (a.innerText || "").trim();
+      const href = a.getAttribute("href") || "";
+      if (!text || text.length < 8 || text.length > 220) return;
+      if (!href || seen.has(href)) return;
+      seen.add(href);
+      out.push({ title: text.slice(0, 160), url: href });
+    };
+    document.querySelectorAll("div#search a h3").forEach((h) => {
+      const a = h.closest("a");
+      if (a) push(a);
+    });
+    if (out.length < limit) {
+      document.querySelectorAll("a h3").forEach((h) => {
+        const a = h.closest("a");
+        if (a) push(a);
+      });
+    }
+    return out.slice(0, limit);
+  }, max);
+  const results = finalizeResults(raw, p.url(), max);
+  if (!results.length) throw new Error("google empty");
+  return results;
+}
+
+async function browserBingSearch(query, max) {
+  const p = await ensurePage();
+  await p.goto(`https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  }).catch(() => {});
+  await p.waitForTimeout(2200);
+  const shot = await screenshotDataUrl(p);
+  report({ type: "screenshot", image: shot });
+  const raw = await p.evaluate((limit) => {
+    const out = [];
+    const seen = new Set();
+    document.querySelectorAll("li.b_algo h2 a, #b_results h2 a").forEach((a) => {
+      const title = (a.innerText || "").trim();
+      const href = a.getAttribute("href") || "";
+      if (!title || !href || seen.has(href)) return;
+      seen.add(href);
+      out.push({ title: title.slice(0, 160), url: href });
+    });
+    return out.slice(0, limit);
+  }, max);
+  const results = finalizeResults(raw, p.url(), max);
+  if (!results.length) throw new Error("bing empty");
+  return results;
+}
+
+async function browserBraveSearch(query, max) {
+  const p = await ensurePage();
+  await p.goto(`https://search.brave.com/search?q=${encodeURIComponent(query)}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  }).catch(() => {});
+  await p.waitForTimeout(2500);
+  const shot = await screenshotDataUrl(p);
+  report({ type: "screenshot", image: shot });
+  const raw = await p.evaluate((limit) => {
+    const out = [];
+    const seen = new Set();
+    document.querySelectorAll("div.snippet a[href^='http'], a.l1[href^='http']").forEach((a) => {
+      const text = (a.innerText || "").trim();
+      const href = a.getAttribute("href") || "";
+      if (!text || text.length < 12 || text.length > 240 || seen.has(href)) return;
+      seen.add(href);
+      out.push({ title: text.slice(0, 160), url: href });
+    });
+    return out.slice(0, limit);
+  }, max);
+  const results = finalizeResults(raw, p.url(), max);
+  if (!results.length) throw new Error("brave empty");
+  return results;
+}
+
 const tools = {
   web_search: tool({
-    description: "Search the web with DuckDuckGo. Use for current events, recent information, research, anything not in your training data. Returns ranked results with titles, snippets and URLs.",
+    description: "Search the web (Google via the live browser in research mode, DuckDuckGo HTML fallback). Use for current events, recent information, research, anything not in your training data. Returns ranked results with titles, snippets and URLs — open several from DIFFERENT domains, never just the first.",
     inputSchema: z.object({
       query: z.string().describe("concise, specific search query"),
       maxResults: z.number().min(1).max(15).default(8),
     }),
     execute: async ({ query, maxResults }) => {
-      const results = await searchWeb(query, maxResults || 8);
+      let results = [];
+      let engine = "";
+      if (RESEARCH) {
+        for (const [name, fn] of [
+          ["google", browserGoogleSearch],
+          ["bing", browserBingSearch],
+          ["brave", browserBraveSearch],
+        ]) {
+          try {
+            results = await fn(query, maxResults || 8);
+            engine = name;
+            break;
+          } catch (e) {
+          }
+        }
+      }
+      if (!results.length) {
+        results = await searchWeb(query, maxResults || 8);
+        engine = "duckduckgo";
+      }
       let opened = null;
       if (RESEARCH && results.length) {
         try {
@@ -163,15 +343,15 @@ const tools = {
             url: p.url(),
             title: pageTitle || top.title,
             pageText: text,
-            note: "The top result was opened in the live browser. Read its content above, then use browser_navigate on the other promising results.",
+            note: "The top result was opened. Read it, then browser_navigate OTHER results from different domains (aim for 4–6 domains) before concluding.",
           };
         } catch (e) {
         }
       }
       noteSearch(query, results, opened);
       return opened
-        ? { query, count: results.length, results, opened }
-        : { query, count: results.length, results };
+        ? { query, engine, count: results.length, results, opened }
+        : { query, engine, count: results.length, results };
     },
   }),
 
@@ -384,18 +564,20 @@ Working style:
 
 const RESEARCH_SYSTEM = `You are Omnia Research — a deep-web-research agent with a live Chromium browser inside an isolated Docker sandbox.
 
-This task is RESEARCH. Answering from search snippets is NOT acceptable — you must actually open and read web pages in the browser.
+This task is RESEARCH. Answering from search snippets or from memory is NOT acceptable — you must actually open and read multiple web pages in the browser, like a careful human would.
 
 Your job is to GATHER EVIDENCE (a separate step will write the final briefing file, so do not worry about saving it yourself):
 
-1. Use web_search to discover candidate sources (the top result is auto-opened for you — read its content).
-2. Then use browser_navigate to open the OTHER most promising result URLs and read them. Visit at least 2–4 different domains/pages. Prefer current, primary sources (articles, official pages) over generic summaries.
-3. Extract concrete facts, figures, dates and quotes from the pages you actually opened. Keep notes as you go — every tool result is recorded.
-4. When you have read enough (or run out of useful sources), finish with a short plain-text summary of your findings. Do NOT attempt to save files — the briefing is assembled automatically from everything you read.
+1. Use web_search to discover candidate sources (the top result is auto-opened — read its content). Run 2–3 DIFFERENT queries (rephrase, add year, add synonyms) until you have plenty of candidates.
+2. Open the most promising URLs with browser_navigate and actually READ them (browser_extract_text, scroll for more). Visit pages on at least 4–6 different domains; prefer primary/current sources (official docs, papers, reputable outlets) over SEO aggregators.
+3. Cross-check every important fact across at least 2–3 sources. Note where sources disagree. If coverage is thin, run another query rather than settling.
+4. Extract concrete facts, figures, dates and quotes from the pages you actually opened. Keep notes as you go — every tool result is recorded.
+5. When you have read enough (or run out of useful sources), finish with a short plain-text summary of your findings that CONSOLIDATES everything (themes, agreements, disagreements). Do NOT attempt to save files — the briefing is assembled automatically from everything you read.
 
 Rules:
 - Never claim you read a page you did not open. If a page fails to load, say so and move to another source.
-- Keep going until you have opened pages on at least 3 different domains, or there is genuinely nothing more to find.
+- Never answer from one website — breadth and cross-checking matter more than speed.
+- Keep going until you have opened pages on at least 4 different domains across at least 2 searches, or there is genuinely nothing more to find.
 
 Task: ${TASK}`;
 

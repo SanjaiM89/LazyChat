@@ -169,7 +169,13 @@ function buildRunAgentTaskTool(opts: {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 
-const COMPUTER_SYSTEM_NOTE = `You drive a REAL Chromium browser (1280×800) shared with the user — they watch every step live in the Chromium panel. Act like PCLLM: observe (read/screenshot), then emit ONE precise action at a time (click(x,y) coordinates, type, hotkeys like Control+l). Never claim you opened a page you didn't navigate to. If a tool says the user has control, stop using the computer and explain you're waiting for them to hand it back.`;
+const COMPUTER_SYSTEM_NOTE = `You drive a REAL Chromium browser (1280×800) shared with the user — they watch every step live in the Chromium panel. Act like PCLLM: observe (read/screenshot), then emit ONE precise action at a time (click(x,y) coordinates, type, hotkeys like Control+l). Never claim you opened a page you didn't navigate to. If a tool says the user has control, stop using the computer and explain you're waiting for them to hand it back.
+
+Browsing like a human researcher (mandatory for factual/current/research questions):
+1. START with computer_search (real Google SERP) — never jump straight to a URL from memory.
+2. Pick 3–5 results from DIFFERENT domains (skip ads/aggregators), open each with computer_navigate, read with computer_read, scroll for more.
+3. Cross-check the same fact across at least 2–3 sources; note disagreements; run a second computer_search with a rephrased query if coverage is thin.
+4. Only then consolidate everything into one clear answer, citing sources as markdown links [title](url). Never answer from a single website.`;
 
 async function computerGuard() {
   if ((await getControl()) === "user") {
@@ -194,6 +200,39 @@ function compactResult(r: { url: string; title: string; text?: string }) {
 
 function buildComputerTools() {
   return {
+    computer_search: tool({
+      description: `Search Google the way a human does — types the query into google.com, submits, and returns the real organic results (title, url, hostname, position). ALWAYS begin any web research with this instead of guessing URLs. Then open several results from DIFFERENT domains, read them, cross-check, and consolidate. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({
+        query: z.string().describe("Concise, specific search query"),
+        max: z.number().min(3).max(15).default(8).describe("How many organic results to return"),
+      }),
+      execute: async ({ query, max }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const { chromiumSearch } = await import("@/lib/chromium");
+          const r = await chromiumSearch("model", query, max);
+          if (!r.results.length) {
+            return {
+              engine: r.engine,
+              query,
+              url: r.url,
+              results: [],
+              note: "No organic results parsed from this SERP. Refine the query, or computer_navigate to https://www.google.com and search manually.",
+            };
+          }
+          return {
+            engine: r.engine,
+            query,
+            url: r.url,
+            results: r.results,
+            note: "Open 3–5 results from DIFFERENT domains with computer_navigate, read each, cross-check facts, then consolidate citing sources as markdown links.",
+          };
+        } catch (e: any) {
+          return { error: e.message || "search failed" };
+        }
+      },
+    }),
     computer_navigate: tool({
       description: `Open a URL in the shared Chromium browser. Use whenever you need to READ a website (docs, articles, dashboards) or the user asks you to go somewhere. The page screenshot is recorded. ${COMPUTER_SYSTEM_NOTE}`,
       inputSchema: z.object({ url: z.string().describe("Full http(s) URL to open") }),
