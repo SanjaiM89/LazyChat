@@ -1,0 +1,17 @@
+{
+  "name": "omnia-sandbox",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ai": "^7.0.90",
+    "zod": "^4.5.4",
+    "@ai-sdk/anthropic": "^4.0.48",
+    "@ai-sdk/openai": "^4.0.56",
+    "@ai-sdk/google": "^4.0.62",
+    "@ai-sdk/openai-compatible": "^3.0.43",
+    "playwright": "^1.53.0",
+    "pdfkit": "^0.15.2",
+    "exceljs": "^4.4.0",
+    "docx": "^9.5.1"
+  }
+}
