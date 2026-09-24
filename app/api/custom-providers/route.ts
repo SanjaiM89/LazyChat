@@ -44,12 +44,10 @@ function normalizeBaseUrl(u: string): string | null {
   return s.replace(/\/+$/, "");
 }
 
-/** GET /api/custom-providers → client-safe list (keys stripped). */
 export async function GET() {
   return Response.json(await listPublicCustomProviders());
 }
 
-/** POST /api/custom-providers → create or update; DELETE ?id= → remove. */
 export async function POST(req: NextRequest) {
   let body: any;
   try {

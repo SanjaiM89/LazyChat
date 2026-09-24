@@ -4,12 +4,6 @@ import { readJSON, writeJSON } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
 import type { BuiltinProviderId } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Built-in provider API keys entered in the app UI                     */
-/*  Stored server-side in data/provider-keys.json (gitignored, never    */
-/*  sent to the client). Resolution order everywhere: explicit override */
-/*  → stored key → env var.                                             */
-/* ------------------------------------------------------------------ */
 
 const FILE = "provider-keys.json";
 
@@ -25,14 +19,12 @@ async function readMap(): Promise<KeyMap> {
   return out;
 }
 
-/** Raw stored key for a provider id (undefined when none saved). */
 export async function getStoredProviderKey(
   provider: string,
 ): Promise<string | undefined> {
   return (await readMap())[provider];
 }
 
-/** Effective key: stored UI key first, then the provider's env var. */
 export async function resolveBuiltinKey(
   provider: BuiltinProviderId,
 ): Promise<string | undefined> {
@@ -42,7 +34,6 @@ export async function resolveBuiltinKey(
   return (keyEnv && process.env[keyEnv]) || undefined;
 }
 
-/** Where the effective key comes from (for status indicators). */
 export async function builtinKeySource(
   provider: BuiltinProviderId,
 ): Promise<"stored" | "env" | "none"> {

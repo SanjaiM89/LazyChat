@@ -27,67 +27,50 @@ import { buildSystemPrompt } from "@/lib/system";
 import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
 import { getConversation, saveConversation } from "@/lib/store";
 
-/* ------------------------------------------------------------------ */
-/*  Chat run orchestrator                                              */
-/*                                                                     */
-/*  A "run" is one assistant reply that lives on the SERVER, not in    */
-/*  the HTTP response that started it. Closing the tab therefore does   */
-/*  not stop generation: the run keeps consuming the model stream,      */
-/*  checkpoints the conversation to disk, and any client that shows up  */
-/*  later attaches over SSE (full replay + live tail) to watch it.      */
-/*                                                                     */
-/*  Same shape as lib/agents.ts: in-memory registry + listeners + SSE.  */
-/* ------------------------------------------------------------------ */
 
 export interface ChatRunRecord {
   id: string;
   conversationId?: string;
   status: ChatRunStatus;
-  /** human readable "what is it doing right now" */
   activity: string;
-  /** completed model steps */
   step: number;
-  /** assistant message id this run writes into (matches the client's) */
   messageId: string;
-  /** messages exactly as the client sent them (used for the model call) */
   requestMessages: UIMessage[];
-  /** snapshot/persistence base — drops the assistant message on regenerate */
   history: UIMessage[];
   settings: ChatSettings;
-  /** pre-built language model (so config errors surface before the run starts) */
   model?: LanguageModel;
-  /** every UIMessageChunk emitted so far — replayable by late subscribers */
   chunks: UIMessageChunk[];
-  /** toolCallId → tool name, for "what is it doing" labels */
   toolNames: Map<string, string>;
   listeners: Set<() => void>;
   abort: AbortController;
-  /** resolves when the run reaches a terminal status */
   done: Promise<void>;
   startedAt: number;
   updatedAt: number;
   error?: string;
-  /** true when the provider stream was aborted by the user */
   aborted?: boolean;
   lastCheckpoint: number;
-  /** serializes checkpoints so overlapping writes can't clobber each other */
   writeChain: Promise<void>;
-  /** false when the chunk log can no longer be replayed from 0 */
   replayable: boolean;
 }
 
 const runs = new Map<string, ChatRunRecord>();
 
-/** How long a finished run stays queryable (so a returning client can see it). */
 const KEEP_FINISHED_MS = 10 * 60 * 1000;
 
-/** Checkpoints are throttled; the final write always happens. */
 const CHECKPOINT_MS = 4000;
 
 const TOOL_ACTIVITY: Record<string, string> = {
   webSearch: "Searching the web…",
   createArtifact: "Creating an artifact…",
   runAgentTask: "Running a sandbox agent…",
+  computer_navigate: "Using the computer…",
+  computer_click: "Using the computer…",
+  computer_type: "Using the computer…",
+  computer_press: "Using the computer…",
+  computer_scroll: "Using the computer…",
+  computer_read: "Reading the browser…",
+  computer_screenshot: "Looking at the browser…",
+  computer_nav: "Using the computer…",
 };
 
 function isTerminal(status: ChatRunStatus): boolean {
@@ -117,7 +100,6 @@ function emit(r: ChatRunRecord) {
     try {
       fn();
     } catch {
-      /* ignore */
     }
   }
 }
@@ -134,7 +116,6 @@ export function listChatRuns(conversationId?: string): ChatRunSummary[] {
     .sort((a, b) => b.startedAt - a.startedAt);
 }
 
-/** Currently running (not yet finished) runs, newest first. */
 export function activeChatRuns(conversationId?: string): ChatRunSummary[] {
   return listChatRuns(conversationId).filter((r) => r.status === "running");
 }
@@ -146,8 +127,6 @@ export function subscribeChatRun(id: string, fn: () => void): () => void {
   return () => r.listeners.delete(fn);
 }
 
-/** Drop finished runs once they're old — they stay queryable for a while so a
- *  client that comes back right after the end still sees what happened. */
 export function cleanupChatRuns(maxAgeMs = KEEP_FINISHED_MS): number {
   let removed = 0;
   for (const [id, r] of runs) {
@@ -159,25 +138,15 @@ export function cleanupChatRuns(maxAgeMs = KEEP_FINISHED_MS): number {
   return removed;
 }
 
-/* --------------------------- create + run --------------------------- */
 
 export interface CreateChatRunInput {
   messages: UIMessage[];
   settings?: Partial<ChatSettings>;
-  /** built by prepareChatRun() — keeps provider errors out of the background */
   model?: LanguageModel;
   conversationId?: string;
   trigger?: "submit-message" | "regenerate-message";
 }
 
-/**
- * Merge settings and build the language model *before* a run exists.
- *
- * Without this, an unconfigured provider (missing API key, unknown custom
- * provider) would fail inside the detached run and the user would just see the
- * reply never arrive. Building it here lets the route answer with the error, so
- * the chat shows it exactly like it did before runs became background work.
- */
 export async function prepareChatRun(
   settings?: Partial<ChatSettings>,
 ): Promise<{ settings: ChatSettings; model: LanguageModel }> {
@@ -189,7 +158,6 @@ export async function prepareChatRun(
   return { settings: merged, model };
 }
 
-/** Thrown when the conversation already has a live run (multi-tab / races). */
 export class ChatRunConflictError extends Error {
   readonly activeRunId: string;
   constructor(activeRunId: string) {
@@ -198,10 +166,6 @@ export class ChatRunConflictError extends Error {
   }
 }
 
-/**
- * Register a run and start generating immediately — the caller only has to
- * return a 202, so the reply is not tied to that response's lifetime.
- */
 export function createChatRun(input: CreateChatRunInput): ChatRunRecord {
   const settings: ChatSettings = { ...DEFAULT_SETTINGS, ...(input.settings || {}) };
   const requestMessages = input.messages || [];
@@ -213,8 +177,6 @@ export function createChatRun(input: CreateChatRunInput): ChatRunRecord {
     if (live) throw new ChatRunConflictError(live.id);
   }
 
-  // Mirror the AI SDK's id resolution (getResponseUIMessageId): regenerating
-  // reuses the assistant message being replaced, a new turn gets a fresh id.
   const last = requestMessages[requestMessages.length - 1];
   const isContinuation = last?.role === "assistant";
   const messageId = isContinuation ? last.id : nanoid(12);
@@ -243,15 +205,12 @@ export function createChatRun(input: CreateChatRunInput): ChatRunRecord {
   };
   runs.set(run.id, run);
 
-  // Persist the transcript (user message included) before generation starts, so
-  // the conversation exists in the sidebar even if the process dies mid-reply.
   void checkpoint(run, true);
 
   run.done = pump(run);
   return run;
 }
 
-/** Abort a live run. Returns false when the run doesn't exist. */
 export async function stopChatRun(id: string): Promise<boolean> {
   const run = runs.get(id);
   if (!run) return false;
@@ -262,10 +221,7 @@ export async function stopChatRun(id: string): Promise<boolean> {
   try {
     run.abort.abort();
   } catch {
-    /* ignore */
   }
-  // Safety net: if the provider ignores the abort signal, finalize anyway so
-  // the UI never sticks on a phantom "generating" state.
   const watchdog = setTimeout(() => {
     if (run.status === "running") void finishRun(run, "stopped", undefined);
   }, 5000);
@@ -274,9 +230,6 @@ export async function stopChatRun(id: string): Promise<boolean> {
 }
 
 
-/* ------------------------------- pump ------------------------------- */
-
-/** Consume the model stream server-side — no client required. */
 async function pump(run: ChatRunRecord) {
   const { settings } = run;
   try {
@@ -307,9 +260,6 @@ async function pump(run: ChatRunRecord) {
       settings.model,
       useThinking,
     );
-    // Some reasoning configurations disallow custom temperature (Anthropic
-    // requires temperature=1 when thinking is enabled — including Claude
-    // models served through OpenCode Zen's Messages endpoint).
     const anthropicThinking =
       settings.provider === "anthropic" ||
       (settings.provider === "opencode" &&
@@ -338,9 +288,6 @@ async function pump(run: ChatRunRecord) {
       sendReasoning: true,
       sendSources: true,
       sendStart: true,
-      // `originalMessages` + a stable message id: the client replaces the right
-      // bubble on regenerate, and a client that attaches mid-run gets a snapshot
-      // whose partial assistant message carries the same id as the replay.
       originalMessages: run.requestMessages,
       generateMessageId: () => run.messageId,
       onError: describeStreamError,
@@ -357,7 +304,6 @@ async function pump(run: ChatRunRecord) {
       try {
         reader.releaseLock();
       } catch {
-        /* ignore */
       }
     }
 
@@ -394,8 +340,6 @@ function pushChunk(run: ChatRunRecord, chunk: UIMessageChunk) {
   const next = activityFor(run, chunk);
   if (next) run.activity = next;
 
-  // Keep the on-disk transcript close to the live one without writing on every
-  // token.
   if (Date.now() - run.lastCheckpoint > CHECKPOINT_MS) void checkpoint(run, true);
 
   emit(run);
@@ -447,8 +391,6 @@ function labelForTool(
 }
 
 
-/* --------------------------- finish + persist --------------------------- */
-
 async function finishRun(
   run: ChatRunRecord,
   status: ChatRunStatus,
@@ -461,15 +403,10 @@ async function finishRun(
     status === "failed" ? error || run.error || "Generation failed." : undefined;
   run.activity =
     status === "done" ? "Finished" : status === "stopped" ? "Stopped" : "Failed";
-  // Final flush so subscribers close their streams with the complete reply.
   await checkpoint(run, true);
   emit(run);
 }
 
-/**
- * Queue a transcript write. Writes are chained per run so a slow checkpoint can
- * never land after (and clobber) the final one.
- */
 function checkpoint(run: ChatRunRecord, track: boolean): Promise<void> {
   run.lastCheckpoint = Date.now();
   run.writeChain = run.writeChain
@@ -480,7 +417,6 @@ function checkpoint(run: ChatRunRecord, track: boolean): Promise<void> {
   return track ? run.writeChain : Promise.resolve();
 }
 
-/** Write the run's transcript to data/conversations.json. */
 async function persistRun(run: ChatRunRecord) {
   if (!run.conversationId) return;
   const existing = await getConversation(run.conversationId);
@@ -497,9 +433,10 @@ async function persistRun(run: ChatRunRecord) {
   });
 }
 
-/** First user text, capped — the same rule the client used to apply. */
 function deriveTitle(messages: UIMessage[]): string {
-  const firstUser = messages.find((m) => m.role === "user");
+  const firstUser = messages.find(
+    (m) => m.role === "user" && !(m as any)?.metadata?.["subchat-context"],
+  );
   if (!firstUser) return "New chat";
   const text = (firstUser.parts || [])
     .filter((p: any) => p.type === "text")
@@ -509,7 +446,6 @@ function deriveTitle(messages: UIMessage[]): string {
   return text.slice(0, 80) || "New chat";
 }
 
-/** Rebuild the streaming assistant message from the recorded chunks. */
 async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {
   if (!run.chunks.length) return null;
   const recorded = run.chunks.slice();
@@ -526,15 +462,12 @@ async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {
   return message;
 }
 
-/* ------------------------- attach (SSE replay) ------------------------- */
 
 export interface ChatRunSnapshot {
   run: ChatRunSummary;
-  /** transcript + the partial assistant message the run is writing */
   messages: UIMessage[];
 }
 
-/** Everything a client needs to render a run it was not streaming. */
 export async function getChatRunSnapshot(
   id: string,
 ): Promise<ChatRunSnapshot | null> {
@@ -547,12 +480,6 @@ export async function getChatRunSnapshot(
   };
 }
 
-/**
- * SSE view of a run: replays every recorded chunk (so a fresh client can build
- * the whole message) and then follows it live. Framing matches what
- * DefaultChatTransport/resumeStream parse: `data: <UIMessageChunk>` frames,
- * `: keepalive` comments, terminated by `data: [DONE]`.
- */
 export function chatRunStream(
   id: string,
   opts: { cursor?: number; keepAliveMs?: number } = {},
@@ -598,7 +525,6 @@ export function chatRunStream(
         try {
           controller.close();
         } catch {
-          /* already closed */
         }
       };
 
@@ -624,17 +550,11 @@ export function chatRunStream(
 }
 
 
-/* --------------------------- model plumbing --------------------------- */
-
-/** Attachments larger than this are summarized, not inlined. */
 const MAX_INLINE_BYTES = 6 * 1024 * 1024;
 
-/** Max extracted text sent to the model per attachment (~30k tokens). */
 const MAX_ATTACHMENT_CHARS = 120_000;
-/** Don't spend forever parsing gigantic PDFs server-side. */
 const MAX_PDF_PAGES = 200;
 
-/** MIME types that are cheaper + more reliable as text than as data URLs. */
 function isTextLike(metaMime: string, type?: string): boolean {
   if (/^(text\/|application\/(json|.*\+xml))/i.test(metaMime)) return true;
   if (/xml|csv|markdown|json/i.test(metaMime)) return true;
@@ -643,12 +563,6 @@ function isTextLike(metaMime: string, type?: string): boolean {
   );
 }
 
-/**
- * Pull readable text out of a PDF buffer with pdfjs-dist (already a
- * dependency for the client-side viewer). Binary PDFs are the reason uploads
- * currently fail: a 4 MB PDF becomes a ~5.5 MB base64 data URL, which most
- * providers reject outright. Extracted text always reaches the model.
- */
 async function extractPdfText(buf: Buffer): Promise<string> {
   const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
@@ -674,7 +588,6 @@ async function extractPdfText(buf: Buffer): Promise<string> {
       try {
         (page as any)?.cleanup?.();
       } catch {
-        /* ignore */
       }
     }
     return out.join("\n\n").slice(0, MAX_ATTACHMENT_CHARS);
@@ -682,7 +595,6 @@ async function extractPdfText(buf: Buffer): Promise<string> {
     try {
       await (doc as any)?.destroy?.();
     } catch {
-      /* ignore */
     }
   }
 }
@@ -692,19 +604,6 @@ function truncateAttachmentText(text: string): { text: string; truncated: boolea
   return { text: text.slice(0, MAX_ATTACHMENT_CHARS), truncated: true };
 }
 
-/**
- * Rewrite local attachment URLs (/api/files/…) so the model can read them.
- *
- * The AI SDK's convertToModelMessages does `new URL(part.url)` with no base,
- * so a relative attachment URL throws "Invalid URL" and kills the whole chat
- * request. Inlining from disk also fixes the deeper problem: providers can't
- * fetch localhost URLs anyway, so without this attachments never reach the
- * model at all.
- *
- * PDFs and text-like files are sent as extracted TEXT (not base64 data URLs):
- * a multi-MB PDF as a data URL is rejected by most providers, while text
- * always works regardless of the provider's file support.
- */
 async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[]> {
   let changed = false;
   const out = await Promise.all(
@@ -722,7 +621,6 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
           continue;
         }
         const seg = p.url.split("?")[0].split("/").filter(Boolean);
-        // /api/files/<artifactId>/<filename> (filename may be URL-encoded)
         const decoded = seg.map((s: string) => {
           try {
             return decodeURIComponent(s);
@@ -731,9 +629,6 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
           }
         });
         if (decoded[0] !== "api" || decoded[1] !== "files" || decoded.length < 4) {
-          // Not a resolvable local file — a relative URL would crash
-          // convertToModelMessages ("Invalid URL") and take down the whole
-          // request, so degrade to a note instead.
           partsChanged = true;
           parts.push({
             type: "text",
@@ -743,8 +638,6 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
         }
         const meta = getArtifact(decoded[2]);
         const requestedName = decoded.slice(3).join("/");
-        // Accept legacy exact matches plus encoded variants, so uploads from
-        // before the filename fix (random `<id>.pdf` names) still resolve.
         if (!meta || requestedName !== meta.filename) {
           partsChanged = true;
           parts.push({
@@ -766,7 +659,6 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
         const mime = p.mediaType || meta.mime || "application/octet-stream";
         partsChanged = true;
 
-        // --- PDFs: extract text, never send multi-MB base64 to the provider.
         const isPdf =
           meta.type === "pdf" || /\/pdf\b/i.test(mime) || /\.pdf$/i.test(meta.filename);
         if (isPdf) {
@@ -785,11 +677,8 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
           } catch (e) {
             console.error("[chat] pdf text extract failed:", (e as any)?.message || e);
           }
-          // Scanned/image-only PDF or extraction failed → fall back to the
-          // binary below (if small enough) so vision-capable models can try.
         }
 
-        // --- Text-like files: send content as text, not data URLs.
         if (!isPdf && isTextLike(mime, meta.type)) {
           try {
             const raw = buf.toString("utf8");
@@ -804,7 +693,6 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
               continue;
             }
           } catch {
-            /* fall through to data URL */
           }
         }
 
@@ -824,10 +712,7 @@ async function inlineLocalAttachments(messages: UIMessage[]): Promise<UIMessage[
   return (changed ? out : messages) as UIMessage[];
 }
 
-/** Build a short, human-readable message from a streamed model error. */
 function describeStreamError(error: unknown): string {
-  // Always keep the full upstream error server-side (the terminal running
-  // `next dev`) — the client only gets the short summary below.
   try {
     console.error("[chat] stream error:", {
       name: (error as any)?.name,
@@ -836,9 +721,7 @@ function describeStreamError(error: unknown): string {
       body: String((error as any)?.responseBody ?? "").slice(0, 500),
     });
   } catch {
-    /* logging must never break the stream */
   }
-  // Provider/transport errors carry an HTTP status + response body.
   if (error instanceof APICallError) {
     const status =
       typeof error.statusCode === "number" ? ` (HTTP ${error.statusCode})` : "";
@@ -855,7 +738,6 @@ function describeStreamError(error: unknown): string {
           (typeof body === "string" ? body : undefined);
       }
     } catch {
-      /* fall through */
     }
     const text =
       typeof detail === "string" && detail.trim()
@@ -864,8 +746,6 @@ function describeStreamError(error: unknown): string {
           ? error.message
           : undefined;
     const base = `The provider returned an error${status}.${text ? ` ${text}` : ""}`;
-    // Retired / unknown model ids come back as 404s — point at the fix
-    // instead of leaving the user with a raw upstream message.
     if (
       error.statusCode === 404 &&
       /model|not.?found|no longer available|does not exist/i.test(`${text} ${error.message}`)
@@ -879,4 +759,3 @@ function describeStreamError(error: unknown): string {
   }
   return "An error occurred.";
 }
-

@@ -9,9 +9,6 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { ApiKeysDialog } from "@/components/ApiKeysDialog";
 import { DisplaySettingsDialog } from "@/components/DisplaySettingsDialog";
 
-/* ------------------------------------------------------------------ */
-/*  Top bar: sidebar toggle, title, model picker, panel switches       */
-/* ------------------------------------------------------------------ */
 
 function useTitle(chat: ChatController): string {
   const conversations = useAppStore((s) => s.conversations);
@@ -19,8 +16,9 @@ function useTitle(chat: ChatController): string {
   const active = conversations.find((c) => c.id === activeId);
 
   if (active) return active.title;
-  // derive from the current transcript
-  const firstUser = chat.messages.find((m) => m.role === "user");
+  const firstUser = chat.messages.find(
+    (m) => m.role === "user" && !(m as any)?.metadata?.["subchat-context"],
+  );
   if (!firstUser) return "New chat";
   const text = firstUser.parts
     .filter((p) => p.type === "text")

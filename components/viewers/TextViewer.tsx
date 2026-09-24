@@ -5,9 +5,6 @@ import { useEffect, useState } from "react";
 import { Check, Copy, Download, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 
-/* ------------------------------------------------------------------ */
-/*  Text-based viewers: markdown, code, plain text, csv tables         */
-/* ------------------------------------------------------------------ */
 
 export function MarkdownViewer({ url }: { url: string }) {
   return <TextViewer url={url} renderAs="markdown" />;
@@ -77,7 +74,6 @@ function TextViewer({
   );
 }
 
-/* ------------------- Markdown + copy/download/fullscreen ------------------- */
 
 function MarkdownWithToolbar({
   content,
@@ -91,7 +87,6 @@ function MarkdownWithToolbar({
   const [fullscreen, setFullscreen] = useState(false);
   const bodyRef = React.useRef<HTMLDivElement>(null);
 
-  // Close fullscreen on Escape.
   useEffect(() => {
     if (!fullscreen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -111,9 +106,6 @@ function MarkdownWithToolbar({
     }
   };
 
-  /** Copy the rendered document as rich text (HTML + plain-text fallback) so
-   *  pasting into OneNote/Word keeps headings, bold, bullets and tables
-   *  instead of raw markdown syntax (`#`, `*`, …). */
   const copyRich = async () => {
     const el = bodyRef.current;
     const plain = el?.innerText || el?.textContent || content;
@@ -133,18 +125,15 @@ function MarkdownWithToolbar({
         await navigator.clipboard.writeText(plain);
         flash("rich");
       } catch {
-        /* clipboard unavailable */
       }
     }
   };
 
-  /** Copy the raw markdown source (keeps `#`, `*`, code fences, …). */
   const copyMarkdown = async () => {
     try {
       await navigator.clipboard.writeText(content);
       flash("md");
     } catch {
-      /* clipboard unavailable */
     }
   };
 
@@ -259,7 +248,6 @@ export function HtmlViewer({ url }: { url: string }) {
 export function ImageViewer({ url, label }: { url: string; label?: string }) {
   return (
     <div className="flex h-full items-start justify-center overflow-auto bg-[radial-gradient(circle,#2a2a28_1px,transparent_1px)] bg-[length:16px_16px] bg-bg-subtle/60 p-6">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
         alt={label || "image"}
@@ -269,7 +257,6 @@ export function ImageViewer({ url, label }: { url: string; label?: string }) {
   );
 }
 
-/* ------------------------- CSV / table viewer ------------------------- */
 
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];

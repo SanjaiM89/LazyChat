@@ -1,13 +1,6 @@
-/* ------------------------------------------------------------------ */
-/*  Reading display options — pure data, safe for client bundles.       */
-/*  Fonts are system stacks (always available, incl. Times New Roman)   */
-/*  plus a few Google Fonts loaded via <link> in app/layout.tsx.        */
-/* ------------------------------------------------------------------ */
-
 export interface DisplayFont {
   id: string;
   name: string;
-  /** CSS font-family stack */
   stack: string;
 }
 
@@ -57,11 +50,8 @@ export const DISPLAY_FONTS: DisplayFont[] = [
 ];
 
 export interface DisplaySettings {
-  /** DISPLAY_FONTS id */
   font: string;
-  /** chat reading font size, px */
   fontSize: number;
-  /** chat column width, px */
   contentWidth: number;
 }
 
@@ -92,4 +82,13 @@ export function clampDisplay(d: Partial<DisplaySettings>): DisplaySettings {
       Math.max(MIN_WIDTH, Math.round(d.contentWidth ?? DEFAULT_DISPLAY.contentWidth)),
     ),
   };
+}
+
+export const DEFAULT_SUBCHAT_WIDTH = 400;
+export const MIN_SUBCHAT_WIDTH = 280;
+export const MAX_SUBCHAT_WIDTH = 720;
+
+export function clampSubchatWidth(w: number): number {
+  if (!Number.isFinite(w)) return DEFAULT_SUBCHAT_WIDTH;
+  return Math.min(MAX_SUBCHAT_WIDTH, Math.max(MIN_SUBCHAT_WIDTH, Math.round(w)));
 }

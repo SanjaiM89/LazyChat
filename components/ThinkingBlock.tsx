@@ -4,15 +4,6 @@ import * as React from "react";
 import { ChevronDown, ChevronUp, Brain } from "lucide-react";
 import { cn } from "@/components/ui";
 
-/* ------------------------------------------------------------------ */
-/*  Compact "thinking" row for reasoning parts.                        */
-/*  - While the model is actively reasoning it shows an animated       */
-/*    "Thinking" label + bar.                                          */
-/*  - Once reasoning ends it collapses to a small "Thinking · Ns" row  */
-/*    so it never stays expanded dominating the message while the      */
-/*    model searches / creates artifacts / writes the answer.          */
-/*  - Click the row to read (or hide) the reasoning text.              */
-/* ------------------------------------------------------------------ */
 
 export function ThinkingBlock({
   text,

@@ -4,10 +4,6 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { Loader2, FileWarning } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  XLSX viewer via SheetJS — each sheet rendered as a read-only grid. */
-/*  (SheetJS is used client-side only to view self-generated files.)   */
-/* ------------------------------------------------------------------ */
 
 export function XlsxViewer({ url }: { url: string }) {
   const [sheets, setSheets] = useState<

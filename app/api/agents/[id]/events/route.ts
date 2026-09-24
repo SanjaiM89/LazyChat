@@ -4,7 +4,6 @@ import { getAgent, subscribeAgent } from "@/lib/agents";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** SSE stream of an agent's live state (logs, progress, status, files). */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -22,11 +21,9 @@ export async function GET(
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         } catch {
-          /* stream closed */
         }
       };
 
-      // send snapshot immediately, then live patches
       send({ type: "snapshot", agent });
       const unsub = subscribeAgent(id, (a) => send({ type: "patch", agent: a }));
 
@@ -40,20 +37,17 @@ export async function GET(
 
       const current = getAgent(id);
       if (current && ["done", "failed", "stopped"].includes(current.status)) {
-        // terminal states close the stream shortly after a final flush
         setTimeout(() => {
           clearInterval(keepAlive);
           try {
             controller.close();
           } catch {
-            /* ignore */
           }
           unsub();
         }, 2500);
         return;
       }
 
-      // when the agent terminates, close the stream
       const poll = setInterval(() => {
         const a = getAgent(id);
         if (a && ["done", "failed", "stopped"].includes(a.status)) {
@@ -64,13 +58,11 @@ export async function GET(
             try {
               controller.close();
             } catch {
-              /* ignore */
             }
             unsub();
           }, 500);
         }
       }, 2000);
-      // cleanup poll if the request is cancelled
       return () => {
         clearInterval(poll);
         clearInterval(keepAlive);
@@ -78,7 +70,6 @@ export async function GET(
       };
     },
     cancel() {
-      /* client disconnected */
     },
   });
 

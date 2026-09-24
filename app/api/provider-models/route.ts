@@ -16,7 +16,6 @@ function bad(message: string) {
   return Response.json({ error: message }, { status: 400 });
 }
 
-/** GET /api/provider-models?provider=google → effective model list for the picker/keys dialog. */
 export async function GET(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get("provider") || "";
   if (provider) {
@@ -40,7 +39,6 @@ export async function GET(req: NextRequest) {
   return Response.json(out);
 }
 
-/** POST { provider, id, name?, supportsThinking? } → add (or override) a model id. */
 export async function POST(req: NextRequest) {
   let body: any;
   try {
@@ -60,7 +58,6 @@ export async function POST(req: NextRequest) {
   return Response.json({ provider, effective: await getEffectiveBuiltinModels(provider) });
 }
 
-/** PUT { provider, oldId, id, name?, supportsThinking? } → rename a model id. */
 export async function PUT(req: NextRequest) {
   let body: any;
   try {
@@ -81,7 +78,6 @@ export async function PUT(req: NextRequest) {
   return Response.json({ provider, effective: await getEffectiveBuiltinModels(provider) });
 }
 
-/** DELETE /api/provider-models?provider=google&id=xyz[&unhide=1] */
 export async function DELETE(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get("provider") || "";
   const id = req.nextUrl.searchParams.get("id") || "";

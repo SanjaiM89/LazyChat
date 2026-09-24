@@ -20,18 +20,16 @@ import { getDefaultModel } from "@/lib/models";
 import {
   DEFAULT_DISPLAY,
   clampDisplay,
+  clampSubchatWidth,
+  DEFAULT_SUBCHAT_WIDTH,
   type DisplaySettings,
 } from "@/lib/display";
 
-/* ------------------------------------------------------------------ */
-/*  Global client store                                                */
-/* ------------------------------------------------------------------ */
 
 export type PanelTab = "artifacts" | "sandbox" | "agents" | null;
 export type ThemeMode = "system" | "light" | "dark";
 
 interface AppStore {
-  /* theme + layout */
   theme: ThemeMode;
   setTheme: (t: ThemeMode) => void;
   panel: PanelTab;
@@ -39,12 +37,10 @@ interface AppStore {
   sidebarOpen: boolean;
   setSidebarOpen: (b: boolean) => void;
 
-  /* chat settings */
   settings: ChatSettings;
   setSettings: (p: Partial<ChatSettings>) => void;
   toggleTool: (name: string) => void;
 
-  /* conversations */
   conversations: ConversationMeta[];
   activeConversationId: string | null;
   loadConversations: () => Promise<void>;
@@ -52,14 +48,12 @@ interface AppStore {
   setActiveConversation: (id: string | null) => void;
   deleteConversation: (id: string) => Promise<void>;
 
-  /* artifacts */
   artifacts: ArtifactMeta[];
   openArtifactId: string | null;
   loadArtifacts: (conversationId?: string) => Promise<void>;
   openArtifact: (id: string) => void;
   closeArtifact: () => void;
 
-  /* sandbox */
   sandboxStatus: "unknown" | "ok" | "down";
   setSandboxStatus: (s: "unknown" | "ok" | "down") => void;
   sandboxes: SandboxMeta[];
@@ -70,26 +64,22 @@ interface AppStore {
   removeSandbox: (id: string) => void;
   setActiveSandbox: (id: string | null) => void;
 
-  /* agents */
   agents: AgentMeta[];
   setAgents: (a: AgentMeta[]) => void;
   upsertAgent: (a: AgentMeta) => void;
   removeAgent: (id: string) => void;
 
-  /* chat runs (background generation) */
   runs: ChatRunSummary[];
   setRuns: (r: ChatRunSummary[]) => void;
 
-  /* skills + mcp */
   skills: SkillDef[];
   setSkills: (s: SkillDef[]) => void;
   mcpServers: MCPServerDef[];
   mcpTools: MCPToolInfo[];
   setMCP: (servers: MCPServerDef[], tools: MCPToolInfo[]) => void;
 
-  /* custom providers */
   customProviders: PublicCustomProvider[];
-  loadCustomProviders: () => Promise<void>;  /** create or update (edit when the def has an id); returns the saved provider */
+  loadCustomProviders: () => Promise<void>;
   saveCustomProvider: (
     def: {
       id?: string;
@@ -104,21 +94,25 @@ interface AppStore {
   ) => Promise<PublicCustomProvider>;
   removeCustomProvider: (id: string) => Promise<void>;
 
-  /* built-in provider API keys (OpenCode Zen, Anthropic, …) */
   apiKeysOpen: boolean;
   setApiKeysOpen: (b: boolean) => void;
-  /** configured/source per keyed builtin — loaded from /api/provider-keys */
   providerKeyStatus: Record<string, { configured: boolean; source: string }>;
   loadProviderKeys: () => Promise<void>;
 
-  /* reading display (font / size / width) */
   display: DisplaySettings;
   setDisplay: (p: Partial<DisplaySettings>) => void;
   resetDisplay: () => void;
 
-  /* display settings dialog */
   displayOpen: boolean;
   setDisplayOpen: (b: boolean) => void;
+
+  subchatOpen: boolean;
+  setSubchatOpen: (b: boolean) => void;
+  subchatSeed: string | null;
+  setSubchatSeed: (s: string | null) => void;
+  subchatWidth: number;
+  setSubchatWidth: (w: number) => void;
+  resetSubchatWidth: () => void;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -149,7 +143,6 @@ export const useAppStore = create<AppStore>()(
           const data = await res.json();
           set({ conversations: data });
         } catch {
-          /* ignore */
         }
       },
       newConversation: () => set({ activeConversationId: null, openArtifactId: null }),
@@ -171,7 +164,6 @@ export const useAppStore = create<AppStore>()(
           const res = await fetch(`/api/artifacts${q}`, { cache: "no-store" });
           set({ artifacts: await res.json() });
         } catch {
-          /* ignore */
         }
       },
       openArtifact: (id) => set({ openArtifactId: id, panel: "artifacts" }),
@@ -183,9 +175,6 @@ export const useAppStore = create<AppStore>()(
       activeSandboxId: null,
       registerSandbox: (s) => {
         const prev = get().sandboxes.find((x) => x.id === s.id);
-        // The /list snapshot carries no screenshot — preserve the live one set
-        // by the screenshot poller, otherwise the panel flips back to the
-        // console on every registry poll (browser "flashes" then disappears).
         const merged =
           prev && s.lastScreenshot == null
             ? { ...s, lastScreenshot: prev.lastScreenshot }
@@ -248,7 +237,6 @@ export const useAppStore = create<AppStore>()(
           const list = (await res.json()) as PublicCustomProvider[];
           if (Array.isArray(list)) applyCustomList(list);
         } catch {
-          /* ignore */
         }
       },
       saveCustomProvider: async (def) => {
@@ -286,7 +274,6 @@ export const useAppStore = create<AppStore>()(
           const data = await res.json();
           if (data && typeof data === "object") set({ providerKeyStatus: data });
         } catch {
-          /* ignore */
         }
       },
 
@@ -297,6 +284,14 @@ export const useAppStore = create<AppStore>()(
 
       displayOpen: false,
       setDisplayOpen: (b) => set({ displayOpen: b }),
+
+      subchatOpen: false,
+      setSubchatOpen: (b) => set({ subchatOpen: b }),
+      subchatSeed: null,
+      setSubchatSeed: (s) => set({ subchatSeed: s }),
+      subchatWidth: DEFAULT_SUBCHAT_WIDTH,
+      setSubchatWidth: (w) => set({ subchatWidth: clampSubchatWidth(w) }),
+      resetSubchatWidth: () => set({ subchatWidth: DEFAULT_SUBCHAT_WIDTH }),
     }),
     {
       name: "omnia-store",
@@ -305,14 +300,13 @@ export const useAppStore = create<AppStore>()(
         settings: s.settings,
         activeConversationId: s.activeConversationId,
         display: s.display,
+        subchatWidth: s.subchatWidth,
       }),
     },
   ),
 );
 
-/* ----------------------- derived helpers ----------------------- */
 
-/** The live background run for a conversation, if any. */
 export function activeRunFor(
   runs: ChatRunSummary[],
   conversationId: string | null | undefined,
@@ -326,9 +320,6 @@ export function activeRunFor(
 }
 
 
-// Module-level cache of custom providers (id → def) so non-reactive helper
-// call sites (sidebar history, agent cards) can still resolve friendly
-// names/glyphs for user-defined providers after loadCustomProviders() runs.
 let customCache: Record<string, PublicCustomProvider> = {};
 
 function applyCustomList(list: PublicCustomProvider[]) {
@@ -354,7 +345,6 @@ export function modelLabel(provider: ProviderId, model: string): string {
     "qwen3:8b": "Qwen3 8B",
     "deepseek-r1:14b": "DeepSeek R1",
     "local-model": "Loaded model",
-    // OpenCode Zen
     "muse-spark-1.3-contributor-free": "Muse Spark 1.3 (free)",
     "gpt-5.5": "GPT-5.5",
     "gpt-5.4-mini": "GPT-5.4 Mini",

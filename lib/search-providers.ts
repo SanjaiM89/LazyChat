@@ -3,11 +3,6 @@ import "server-only";
 import { nanoid } from "nanoid";
 import { readJSON, writeJSON } from "@/lib/store";
 
-/* ------------------------------------------------------------------ */
-/*  Custom search providers — user-added web search backends            */
-/*  Stored server-side in data/search-providers.json. Keys never reach  */
-/*  the client; the UI only sees hasApiKey + config.                    */
-/* ------------------------------------------------------------------ */
 
 export type SearchProviderKind =
   | "tavily"
@@ -20,11 +15,8 @@ export interface SearchProviderDef {
   id: string;
   name: string;
   kind: SearchProviderKind;
-  /** API key stored server-side (tavily / brave / serper) */
   apiKey?: string;
-  /** …or server env var holding the key */
   apiKeyEnv?: string;
-  /** base URL for searxng instances (e.g. https://search.example.com) */
   baseUrl?: string;
   maxResults?: number;
   enabled: boolean;

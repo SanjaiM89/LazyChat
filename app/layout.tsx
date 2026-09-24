@@ -1,10 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-// The web manifest comes from app/manifest.ts (served at
-// /manifest.webmanifest); Next injects the <link rel="manifest"> tag for it,
-// so don't also set `manifest` here — that pointed at a file that never
-// existed and produced a 404 on every page load.
 export const metadata: Metadata = {
   title: "Omnia — AI Workspace",
   description:

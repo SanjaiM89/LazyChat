@@ -6,12 +6,6 @@ import { Modal, Button, IconButton, Spinner } from "@/components/ui";
 import { PROVIDER_LIST } from "@/lib/models";
 import { useAppStore } from "@/lib/app-store";
 
-/* ------------------------------------------------------------------ */
-/*  API keys dialog — paste keys for built-in providers (OpenCode Zen, */
-/*  Anthropic, …). Saved server-side in data/provider-keys.json and    */
-/*  used with priority over env vars. The raw key never leaves the      */
-/*  server; the client only sees configured/source status.              */
-/* ------------------------------------------------------------------ */
 
 const HELP_LINKS: Record<string, { label: string; href: string }> = {
   opencode: { label: "Get a key at opencode.ai/auth", href: "https://opencode.ai/auth" },
@@ -41,7 +35,6 @@ export function ApiKeysDialog() {
       }
       setModels(out);
     } catch {
-      /* ignore */
     }
   }, []);
 
@@ -267,7 +260,6 @@ export function ApiKeysDialog() {
                 )}
               </div>
 
-              {/* Models: rename / add / remove ids (e.g. retired Gemini ids) */}
               <div className="mt-2.5 rounded-lg border border-border/70 bg-bg-elevated/60 px-2.5 py-2">
                 <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-fg-muted">
                   Models — rename or add ids

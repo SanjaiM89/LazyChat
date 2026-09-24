@@ -1,9 +1,5 @@
 import "server-only";
 
-/* ------------------------------------------------------------------ */
-/*  HTTP client for the Docker sandbox service                         */
-/*  (sandbox/server.mjs — runs containers, browsers, agent runners)    */
-/* ------------------------------------------------------------------ */
 
 const SANDBOX_URL = process.env.SANDBOX_URL || "http://127.0.0.1:8787";
 export const SANDBOX_BROWSER_WS = `${SANDBOX_URL.replace(/^http/, "ws")}/browser`;
@@ -53,9 +49,7 @@ export interface CreateSandboxOptions {
   image?: string;
   label?: string;
   env?: Record<string, string>;
-  /** workdir mounted/created inside the container */
   workspace?: string;
-  /** agent runner to launch on start */
   runner?: { task: string; provider: string; model: string; engine: string; config?: any };
 }
 
@@ -77,7 +71,6 @@ export async function killSandbox(id: string) {
   return request<any>("POST", `/containers/${id}/kill`);
 }
 
-/** Kill the container and drop the sandbox record entirely. */
 export async function deleteSandbox(id: string) {
   return request<any>("DELETE", `/containers/${id}`);
 }
@@ -108,7 +101,6 @@ export async function sandboxListFiles(id: string, path = "/workspace") {
   return res.files ?? [];
 }
 
-/** Download a binary file out of the container. */
 export async function sandboxDownload(id: string, path: string): Promise<Buffer> {
   const res = await fetch(
     `${SANDBOX_URL}/containers/${id}/download?path=${encodeURIComponent(path)}`,
@@ -119,7 +111,6 @@ export async function sandboxDownload(id: string, path: string): Promise<Buffer>
   return buf;
 }
 
-/** Latest browser screenshot (jpeg data-url) from the container's Chromium. */
 export async function sandboxScreenshot(id: string): Promise<string | null> {
   try {
     const res = await request<any>("GET", `/containers/${id}/screenshot`);
@@ -133,7 +124,6 @@ export function sandboxBrowserWsUrl(id: string): string {
   return `${SANDBOX_BROWSER_WS}/${id}`;
 }
 
-/** Build the list of files produced by an agent run (in /workspace/out). */
 export async function sandboxResultFiles(id: string, outDir = "/workspace/out") {
   const files = await sandboxListFiles(id, outDir).catch(() => []);
   return files.filter((f: any) => f.type === "file");

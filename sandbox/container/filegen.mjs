@@ -1,7 +1,3 @@
-/**
- * File generation helpers for the sandbox agent: PDF, XLSX, DOCX, CSV.
- * All write into a target path (deliverables should live in /workspace/out).
- */
 import fs from "node:fs";
 import path from "node:path";
 
@@ -9,7 +5,6 @@ function ensureDir(p) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
 }
 
-/* ------------------------------ PDF ------------------------------ */
 
 export async function makePdf({ title, subtitle, sections }, outPath) {
   const PDFDocument = (await import("pdfkit")).default;
@@ -61,7 +56,6 @@ export async function makePdf({ title, subtitle, sections }, outPath) {
   return outPath;
 }
 
-/* ------------------------------ XLSX ------------------------------ */
 
 export async function makeXlsx(sheets, outPath) {
   const ExcelJS = await import("exceljs");
@@ -83,7 +77,6 @@ export async function makeXlsx(sheets, outPath) {
   return outPath;
 }
 
-/* ------------------------------ DOCX ------------------------------ */
 
 export async function makeDocx({ title, paragraphs }, outPath) {
   const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import("docx");
@@ -111,7 +104,6 @@ export async function makeDocx({ title, paragraphs }, outPath) {
   return outPath;
 }
 
-/* ------------------------------ CSV ------------------------------ */
 
 export function makeCsv(rows, outPath) {
   const esc = (v) => {

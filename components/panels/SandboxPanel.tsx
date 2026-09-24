@@ -15,9 +15,6 @@ import { cn, Button, IconButton, Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { SandboxMeta } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Sandbox side panel: the "computer" — live screen, terminal, files  */
-/* ------------------------------------------------------------------ */
 
 export function SandboxPanel() {
   const sandboxStatus = useAppStore((s) => s.sandboxStatus);
@@ -27,7 +24,6 @@ export function SandboxPanel() {
   const setActiveSandbox = useAppStore((s) => s.setActiveSandbox);
   const setPanel = useAppStore((s) => s.setPanel);
 
-  // health check on mount
   useEffect(() => {
     (async () => {
       try {
@@ -71,7 +67,6 @@ export function SandboxPanel() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
-          {/* sandbox tabs */}
           {sandboxes.length > 1 && (
             <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-border px-2 py-1.5">
               {sandboxes.map((s) => (
@@ -91,7 +86,6 @@ export function SandboxPanel() {
             </div>
           )}
 
-          {/* screen / live console */}
           <ActiveSandboxView key={active.id} active={active} />
         </div>
       )}
@@ -99,19 +93,12 @@ export function SandboxPanel() {
   );
 }
 
-/* ---------------- Active sandbox: shared live activity feed ---------------- */
 
-/**
- * Owns the runner SSE feed for the active sandbox so both the top
- * screen/console AND the Terminal below show the same live commands.
- * Keyed by sandbox id (see caller) so switching sandboxes resets the feed.
- */
 function ActiveSandboxView({ active }: { active: SandboxMeta }) {
   const lines = useSandboxActivity(active.id, active.state !== "error");
   return (
     <>
       <SandboxScreen active={active} lines={lines} />
-      {/* files + terminal */}
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
         <SandboxFiles id={active.id} />
         <SandboxTerminal id={active.id} feed={lines} />
@@ -120,7 +107,6 @@ function ActiveSandboxView({ active }: { active: SandboxMeta }) {
   );
 }
 
-/* --------------------- Screen / live agent console --------------------- */
 
 type ActivityKind =
   | "cmd"
@@ -138,7 +124,6 @@ interface ActivityLine {
   text: string;
 }
 
-/** Turn a runner tool event into a readable line (`$ cmd` for exec_command). */
 function formatToolEvent(msg: string): { kind: ActivityKind; text: string } {
   const m = /^→\s*([a-z_]+)\s*([\s\S]*)$/.exec(msg || "");
   if (!m) return { kind: "tool", text: msg || "" };
@@ -150,20 +135,12 @@ function formatToolEvent(msg: string): { kind: ActivityKind; text: string } {
       const parsed = JSON.parse(rest);
       if (typeof parsed?.command === "string") cmd = parsed.command;
     } catch {
-      /* truncated JSON — keep raw */
     }
     return { kind: "cmd", text: cmd };
   }
   return { kind: "tool", text: `→ ${name}${rest ? ` ${rest}` : ""}` };
 }
 
-/**
- * Live view of what an agent is doing inside this sandbox: opens the runner's
- * SSE stream (proxied via /api/sandbox/<id>/events) and keeps the most recent
- * lines. Reconnects on a dropped connection, and stops once the sandbox is
- * gone (the events endpoint 404s after an agent finishes and is disposed).
- */
-/** One raw event pushed by the in-container runner over SSE. */
 interface RunnerEvent {
   type?: string;
   message?: unknown;
@@ -226,7 +203,7 @@ function useSandboxActivity(id: string, enabled: boolean): ActivityLine[] {
           text = "📷 browser screenshot captured";
           break;
         case "progress":
-          return; // avoid spamming the feed
+          return;
         default:
           return;
       }
@@ -249,7 +226,7 @@ function useSandboxActivity(id: string, enabled: boolean): ActivityLine[] {
         if (!cancelled) reconnect = setTimeout(connect, 1200);
         return;
       }
-      if (!res.ok || !res.body) return; // sandbox removed → stop reconnecting
+      if (!res.ok || !res.body) return;
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -272,25 +249,18 @@ function useSandboxActivity(id: string, enabled: boolean): ActivityLine[] {
               push(JSON.parse(trimmed.slice(5).trim()) as RunnerEvent);
               gotData = true;
             } catch {
-              /* skip malformed */
             }
           }
         }
       } catch {
-        /* stream dropped */
       }
       if (!cancelled) {
-        // Only reconnect while the sandbox is actually producing events. A
-        // sandbox that was disposed responds but streams nothing — stop after
-        // a few of those so we don't poll the service forever.
         if (gotData) emptyReconnects = 0;
         else if (++emptyReconnects >= 6) return;
         reconnect = setTimeout(connect, 1200);
       }
     };
 
-    // (No reset here: ActiveSandboxView is keyed by sandbox id, so switching
-    // sandboxes remounts this hook with fresh, empty state.)
     connect();
     return () => {
       cancelled = true;
@@ -307,8 +277,6 @@ function SandboxScreen({ active, lines }: { active: SandboxMeta; lines: Activity
   const [view, setView] = useState<"auto" | "screen" | "console">("auto");
 
   const hasShot = !!active.lastScreenshot;
-  // Browser agents show their screen by default; headless agents (files, shell)
-  // get the live console so commands are visible instead of "screen idle".
   const showScreen =
     view === "screen" || (view === "auto" && hasShot && !!active.hasBrowser);
   const showConsole = !showScreen;
@@ -379,7 +347,6 @@ function SandboxScreen({ active, lines }: { active: SandboxMeta; lines: Activity
 
         {showScreen ? (
           <div className="relative flex h-64 items-center justify-center bg-[#0d0d0c]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={active.lastScreenshot}
               alt="sandbox screen"
@@ -446,7 +413,6 @@ function ConsoleLine({ line }: { line: ActivityLine }) {
   );
 }
 
-/* ------------------------------ Down state ------------------------------ */
 
 function SandboxDown({ onRetry }: { onRetry: () => void }) {
   return (
@@ -465,7 +431,6 @@ function SandboxDown({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/* ----------------------------- File browser ----------------------------- */
 
 function SandboxFiles({ id }: { id: string }) {
   const [files, setFiles] = useState<any[] | null>(null);
@@ -520,7 +485,6 @@ function SandboxFiles({ id }: { id: string }) {
   );
 }
 
-/* ------------------------------ Terminal ------------------------------ */
 
 function SandboxTerminal({ id, feed }: { id: string; feed: ActivityLine[] }) {
   const [cmd, setCmd] = useState("");
@@ -563,7 +527,6 @@ function SandboxTerminal({ id, feed }: { id: string; feed: ActivityLine[] }) {
         <span className="text-[12px] font-medium text-fg-secondary">Terminal</span>
       </div>
       <div ref={outRef} className="h-40 overflow-auto p-2.5 font-mono text-[11.5px] leading-relaxed text-fg-secondary">
-        {/* live commands the agent runs inside this sandbox */}
         {feed.length > 0 && (
           <div className="mb-1.5 border-b border-white/10 pb-1.5">
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-fg-muted/60">

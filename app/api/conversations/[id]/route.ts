@@ -19,8 +19,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  // A live background run would re-create the conversation on its next
-  // checkpoint, so stop it before deleting.
   for (const run of activeChatRuns(id)) {
     await stopChatRun(run.id);
   }

@@ -14,9 +14,6 @@ import { PROVIDER_LIST } from "@/lib/models";
 import { useAppStore, modelLabel, providerGlyph } from "@/lib/app-store";
 import type { ProviderId, ProviderProtocol, PublicCustomProvider } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Provider + model picker (user-added custom providers only)          */
-/* ------------------------------------------------------------------ */
 
 interface PickModel {
   id: string;
@@ -24,7 +21,6 @@ interface PickModel {
   supportsThinking: boolean;
 }
 
-/** Copy per API dialect, shared by the dropdown subtitle and the add form. */
 const PROTOCOL_META: Record<
   ProviderProtocol,
   { short: string; blurb: string; baseUrlPlaceholder: string; error: string }
@@ -98,8 +94,6 @@ export function ModelPicker() {
     [customProviders],
   );
 
-  // Selected label/glyph: built-ins via the shared maps, custom via the
-  // loaded registry (so we can show a friendly model name + glyph).
   const selectedCustom = customById.get(settings.provider);
   const glyph = selectedCustom
     ? selectedCustom.glyph || "◆"
@@ -291,9 +285,6 @@ export function ModelPicker() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Custom provider manager dialog (add / edit / delete)               */
-/* ------------------------------------------------------------------ */
 
 const inputCls =
   "w-full rounded-lg border border-border bg-bg-subtle px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50";
@@ -406,7 +397,6 @@ function CustomProviderDialog({ open, onClose }: { open: boolean; onClose: () =>
         models,
       });
       if (!editingId) {
-        // brand-new provider → jump straight to its first model
         const first = saved.models[0];
         setSettings({
           provider: saved.id as ProviderId,

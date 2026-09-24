@@ -3,9 +3,6 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 
-/* ------------------------------------------------------------------ */
-/*  Tiny file-backed JSON store for conversations, skills, MCP servers */
-/* ------------------------------------------------------------------ */
 
 export const DATA_DIR = path.join(process.cwd(), "data");
 
@@ -36,7 +33,6 @@ export async function writeJSON<T>(name: string, data: T): Promise<void> {
   fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf8");
 }
 
-/* ------------------------- conversations ------------------------- */
 
 export interface StoredConversation {
   id: string;
@@ -63,7 +59,6 @@ export async function saveConversation(conv: StoredConversation): Promise<void> 
   const idx = all.findIndex((c) => c.id === conv.id);
   if (idx >= 0) all[idx] = conv;
   else all.unshift(conv);
-  // cap stored conversations to keep the file light
   const trimmed = all.slice(0, 200);
   await writeJSON("conversations.json", trimmed);
 }

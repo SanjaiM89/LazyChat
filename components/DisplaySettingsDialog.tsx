@@ -14,9 +14,6 @@ import {
   fontStack,
 } from "@/lib/display";
 
-/* ------------------------------------------------------------------ */
-/*  Display settings — font family, font size, text width + reset       */
-/* ------------------------------------------------------------------ */
 
 export function DisplaySettingsDialog() {
   const open = useAppStore((s) => s.displayOpen);
@@ -39,7 +36,6 @@ export function DisplaySettingsDialog() {
       width="max-w-md"
     >
       <div className="flex flex-col gap-5">
-        {/* Font */}
         <div>
           <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-fg-muted">
             <Type size={13} /> Font
@@ -72,7 +68,6 @@ export function DisplaySettingsDialog() {
           </div>
         </div>
 
-        {/* Font size */}
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <label className="text-[12px] font-semibold uppercase tracking-wide text-fg-muted">
@@ -107,7 +102,6 @@ export function DisplaySettingsDialog() {
           </p>
         </div>
 
-        {/* Text width */}
         <div>
           <div className="mb-1.5 flex items-center justify-between">
             <label className="text-[12px] font-semibold uppercase tracking-wide text-fg-muted">
@@ -137,7 +131,6 @@ export function DisplaySettingsDialog() {
           </div>
         </div>
 
-        {/* Reset */}
         <div className="flex items-center justify-between border-t border-border pt-4">
           <p className="text-[12px] text-fg-muted">
             {isDefault ? "Using defaults" : "Customized — reset anytime"}

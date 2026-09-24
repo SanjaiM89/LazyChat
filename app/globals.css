@@ -3,9 +3,6 @@
 @import "katex/dist/katex.min.css";
 @import "highlight.js/styles/github-dark.css";
 
-/* ------------------------------------------------------------------ */
-/*  Design tokens — Claude-like warm neutral palette                   */
-/* ------------------------------------------------------------------ */
 :root {
   --bg: #f9f7f4;
   --bg-subtle: #f0ede8;
@@ -21,7 +18,7 @@
   --text-muted: #9a938a;
   --text-inverse: #f7f5f2;
 
-  --accent: #b06a3c;           /* Claude-ish terracotta */
+  --accent: #b06a3c;
   --accent-strong: #9a5a31;
   --accent-contrast: #ffffff;
   --accent-soft: rgba(176, 106, 60, 0.12);
@@ -35,14 +32,13 @@
   --warning: #b7791f;
   --warning-soft: rgba(183, 121, 31, 0.12);
 
-  --sandbox-window: #202124;   /* dark "monitor" bezel */
+  --sandbox-window: #202124;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo,
     Consolas, monospace;
 
-  /* reading display (overridden at runtime from Display settings) */
   --reading-font: var(--font-sans);
   --reading-size: 15px;
 
@@ -153,9 +149,6 @@
   --radius-xl: var(--radius-xl);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Base                                                               */
-/* ------------------------------------------------------------------ */
 * {
   border-color: var(--border);
 }
@@ -179,7 +172,6 @@ body {
   background: var(--accent-soft);
 }
 
-/* Slim scrollbars */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -196,9 +188,6 @@ body {
   background: transparent;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Animations                                                         */
-/* ------------------------------------------------------------------ */
 @keyframes pulse-dot {
   0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
   40% { transform: scale(1); opacity: 1; }
@@ -257,7 +246,6 @@ body {
   animation: blink 1s steps(1) infinite;
 }
 
-/* Claude-style streaming "cursor" caret */
 .stream-caret::after {
   content: "▍";
   color: var(--accent);
@@ -265,22 +253,17 @@ body {
   margin-left: 1px;
 }
 
-/* subtle grid for empty states */
 .dot-grid {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 22px 22px;
 }
 
-/* shimmering skeleton for search / thinking placeholders */
 .shimmer {
   background: linear-gradient(90deg, transparent, var(--bg-hover), transparent);
   background-size: 800px 100%;
   animation: shimmer 1.6s infinite linear;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Markdown                                                           */
-/* ------------------------------------------------------------------ */
 .md {
   word-wrap: break-word;
   font-family: var(--reading-font);
@@ -372,7 +355,6 @@ body {
 .katex { font-size: 1.02em; }
 .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.4em 0; }
 
-/* Reading display: chat column follows the chosen font / size */
 .chat-reading {
   font-family: var(--reading-font);
 }

@@ -2,9 +2,6 @@ import "server-only";
 
 import { buildSkillsPrompt } from "@/lib/skills";
 
-/* ------------------------------------------------------------------ */
-/*  System prompt — shapes the model's behavior for the app            */
-/* ------------------------------------------------------------------ */
 
 export async function buildSystemPrompt(opts: {
   provider: string;

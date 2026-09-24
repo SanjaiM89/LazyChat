@@ -10,7 +10,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/* ------------------------------ Button ------------------------------ */
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 
@@ -66,7 +65,6 @@ export function IconButton({
   );
 }
 
-/* ------------------------------ Badge ------------------------------ */
 
 export function Badge({
   className,
@@ -95,7 +93,6 @@ export function Badge({
   );
 }
 
-/* ------------------------------ Spinner ------------------------------ */
 
 export function Spinner({ className, size = 16 }: { className?: string; size?: number }) {
   return (
@@ -109,7 +106,6 @@ export function Spinner({ className, size = 16 }: { className?: string; size?: n
   );
 }
 
-/* ------------------------------- Toggle ------------------------------ */
 
 export function Toggle({
   checked,
@@ -145,7 +141,6 @@ export function Toggle({
   );
 }
 
-/* ------------------------------- Modal ------------------------------ */
 
 export function Modal({
   open,
@@ -206,7 +201,6 @@ export function Modal({
   );
 }
 
-/* ------------------------------ Tooltip ------------------------------ */
 
 export function Tooltip({
   text,
@@ -232,15 +226,6 @@ export function Tooltip({
   );
 }
 
-/* ------------------------------- Dropdown ------------------------------ */
-/*
- * Viewport-aware dropdown. Renders into a portal on <body> and positions
- * itself with `position: fixed` computed from the trigger's bounding rect,
- * so it can never be clipped by an `overflow: hidden` ancestor or pushed
- * off the visible browser area. Flips upward when there isn't room below
- * and clamps to the viewport edges. Content taller than the available
- * space scrolls (give children a `flex-1 min-h-0 overflow-y-auto` region).
- */
 
 export function Dropdown({
   trigger,
@@ -281,7 +266,7 @@ export function Dropdown({
     const panel = panelRef.current;
     if (!anchor || !panel) return;
     const r = anchor.getBoundingClientRect();
-    const M = 8; // min gap to the viewport edge
+    const M = 8;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const pw = panel.offsetWidth || 220;
@@ -289,7 +274,6 @@ export function Dropdown({
 
     const spaceBelow = vh - r.bottom - M;
     const spaceAbove = r.top - M;
-    // Open upward when it doesn't fit below and there is more room above.
     const openUp = spaceBelow < ph && spaceAbove > spaceBelow;
     const maxHeight = Math.max(
       140,
@@ -309,7 +293,6 @@ export function Dropdown({
     });
   }, [align]);
 
-  // Position once open (panel is committed and measurable by then).
   React.useEffect(() => {
     if (!isOpen) {
       setPos(null);
@@ -318,8 +301,6 @@ export function Dropdown({
     place();
   }, [isOpen, place]);
 
-  // Recompute as the page scrolls / resizes so it tracks the trigger and
-  // never drifts outside the viewport.
   React.useEffect(() => {
     if (!isOpen) return;
     const onScroll = () => place();
@@ -332,8 +313,6 @@ export function Dropdown({
     };
   }, [isOpen, place]);
 
-  // Close on outside mousedown / Escape. The panel lives in a portal, so
-  // check both the anchor and the panel itself.
   React.useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;

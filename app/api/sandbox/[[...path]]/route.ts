@@ -16,7 +16,6 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** GET /api/sandbox → health check; GET /api/sandbox/list → container list */
 export async function GET(req: NextRequest) {
   const seg = req.nextUrl.pathname.split("/").filter(Boolean);
   if (!seg[2]) {
@@ -32,16 +31,12 @@ const SANDBOX_URL = process.env.SANDBOX_URL || "http://127.0.0.1:8787";
 
 async function handle(req: NextRequest) {
   const segments = req.nextUrl.pathname.split("/").filter(Boolean);
-  // segments: ['api','sandbox', id, op]
   const [, , id, op] = segments;
   const path = req.nextUrl.searchParams.get("path") || "/workspace";
 
   try {
     switch (op) {
       case "events": {
-        // Proxy the live runner event stream (SSE) to the browser so the
-        // sandbox monitor can show what the agent is actually doing. The
-        // request is aborted when the client disconnects.
         const signal = req.signal;
         const up = await fetch(`${SANDBOX_URL}/containers/${id}/events`, {
           cache: "no-store",
@@ -92,7 +87,6 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    /* empty body */
   }
 
   try {
@@ -124,7 +118,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** DELETE /api/sandbox/<id> — kill the container + drop the sandbox record. */
 export async function DELETE(req: NextRequest) {
   const segments = req.nextUrl.pathname.split("/").filter(Boolean);
   const [, , id] = segments;
