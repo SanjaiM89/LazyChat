@@ -7,11 +7,6 @@ import { jsonSchema, tool, type Schema, type ToolSet } from "ai";
 import type { MCPServerDef, MCPToolInfo } from "@/lib/types";
 import { readJSON, writeJSON } from "@/lib/store";
 
-/* ------------------------------------------------------------------ */
-/*  MCP (Model Context Protocol) connection manager                    */
-/*  Mirrors Claude's "Connections" — add a server, its tools light up  */
-/*  automatically in chat + agents.                                    */
-/* ------------------------------------------------------------------ */
 
 interface Session {
   client: Client;
@@ -23,7 +18,6 @@ const sessions = new Map<string, Session>();
 
 export async function listMCPServers(): Promise<MCPServerDef[]> {
   const data = await readJSON<MCPServerDef[]>("mcp-servers.json", []);
-  // annotate with live session status
   return data.map((d) => {
     const s = sessions.get(d.id);
     return { ...d, status: s ? "connected" : d.status || "disconnected" };
@@ -43,7 +37,6 @@ export async function connectMCPServer(def: MCPServerDef): Promise<{
   error?: string;
   tools?: MCPToolInfo[];
 }> {
-  // tear down existing session
   await disconnectMCPServer(def.id);
   try {
     const client = new Client(
@@ -76,7 +69,6 @@ export async function connectMCPServer(def: MCPServerDef): Promise<{
 
     sessions.set(def.id, { client, def: { ...def, status: "connected" }, tools });
 
-    // persist tool list
     const servers = await listMCPServers();
     const updated = servers.map((s) =>
       s.id === def.id ? { ...s, status: "connected" as const, tools: tools.map((t) => t.name) } : s,
@@ -85,7 +77,6 @@ export async function connectMCPServer(def: MCPServerDef): Promise<{
 
     return { ok: true, tools };
   } catch (e: any) {
-    // record error state
     const servers = await readJSON<MCPServerDef[]>("mcp-servers.json", []);
     const updated = servers.map((s) =>
       s.id === def.id ? { ...s, status: "error" as const, error: e.message } : s,
@@ -101,20 +92,17 @@ export async function disconnectMCPServer(id: string): Promise<void> {
     try {
       await s.client.close();
     } catch {
-      /* ignore */
     }
     sessions.delete(id);
   }
 }
 
-/** List tools from all connected servers */
 export async function allMCPTools(): Promise<MCPToolInfo[]> {
   const out: MCPToolInfo[] = [];
   for (const s of sessions.values()) out.push(...s.tools);
   return out;
 }
 
-/** Build AI SDK tool definitions for every connected MCP server. */
 export async function buildMCPToolSet(): Promise<ToolSet> {
   const set: ToolSet = {};
   for (const [serverId, s] of sessions) {

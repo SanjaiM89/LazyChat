@@ -1,9 +1,7 @@
 #!/bin/bash
-# End-to-end sandbox agent test (bypasses the Next app, drives the service directly).
 set -u
 BASE="http://127.0.0.1:8787"
 
-# Build env payload for the container from the ambient Anthropic proxy config.
 ENV_JSON=$(node -e '
   const pick = (k) => process.env[k] || undefined;
   const env = {};

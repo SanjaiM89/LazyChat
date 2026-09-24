@@ -4,8 +4,6 @@ import { listArtifacts, getArtifact, deleteArtifact } from "@/lib/artifacts";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  // ?id= → resolve a single artifact by id (used to keep an artifact open even
-  // when it isn't in the currently-loaded, conversation-scoped list yet).
   const id = req.nextUrl.searchParams.get("id");
   if (id) {
     const a = getArtifact(id);

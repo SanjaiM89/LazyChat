@@ -3,9 +3,6 @@ import "server-only";
 import type { SkillDef } from "@/lib/types";
 import { readJSON, writeJSON } from "@/lib/store";
 
-/* ------------------------------------------------------------------ */
-/*  Skills store — user-defined capabilities injected into prompts     */
-/* ------------------------------------------------------------------ */
 
 export async function listSkills(): Promise<SkillDef[]> {
   const data = await readJSON<SkillDef[]>("skills.json", []);
@@ -27,7 +24,6 @@ export async function deleteSkill(id: string): Promise<SkillDef[]> {
   return all.filter((s) => s.id !== id);
 }
 
-/** Build a system-prompt appendix from enabled skills. */
 export async function buildSkillsPrompt(): Promise<string> {
   const skills = (await listSkills()).filter((s) => s.enabled);
   if (!skills.length) return "";

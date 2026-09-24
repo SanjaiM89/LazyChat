@@ -1,22 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Sparkles,
   FileSearch,
   FileSpreadsheet,
   Code2,
   BrainCircuit,
+  MessagesSquare,
+  Copy,
 } from "lucide-react";
 import type { ChatController } from "@/lib/use-chat";
 import { MessageItem } from "@/components/MessageItem";
+import { SubchatOpenerButton } from "@/components/SubchatPanel";
 import { useAppStore } from "@/lib/app-store";
 import { DEFAULT_DISPLAY } from "@/lib/display";
 
-/* ------------------------------------------------------------------ */
-/*  Scrollable message list + Claude-like empty state                  */
-/* ------------------------------------------------------------------ */
 
 const SUGGESTIONS = [
   {
@@ -48,9 +48,6 @@ const SUGGESTIONS = [
 export function ChatView({ chat }: { chat: ChatController }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastIdRef = useRef<string>("");
-  // Whether the user is pinned to the latest content. While true, new streamed
-  // content auto-scrolls the view down; as soon as the user scrolls up to read,
-  // we stop forcing and let them stay where they are.
   const stickToBottomRef = useRef(true);
 
   const messages = chat.messages;
@@ -58,22 +55,24 @@ export function ChatView({ chat }: { chat: ChatController }) {
     chat.status === "submitted" || chat.status === "streaming";
   const contentWidth = useAppStore((s) => s.display?.contentWidth) ?? DEFAULT_DISPLAY.contentWidth;
 
+  const [menu, setMenu] = useState<{ x: number; y: number; text: string } | null>(null);
+  const subchatOpen = useAppStore((s) => s.subchatOpen);
+  const setSubchatOpen = useAppStore((s) => s.setSubchatOpen);
+  const setSubchatSeed = useAppStore((s) => s.setSubchatSeed);
+
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    // Within ~48px of the bottom counts as "at the bottom".
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
     stickToBottomRef.current = nearBottom;
   };
 
-  // Auto-scroll only while the user is still following the latest content.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const last = messages[messages.length - 1];
     if (!last) return;
     if (last.id !== lastIdRef.current) {
-      // A brand-new message arrived (e.g. the user just sent one) — jump to it.
       lastIdRef.current = last.id;
       stickToBottomRef.current = true;
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
@@ -82,9 +81,21 @@ export function ChatView({ chat }: { chat: ChatController }) {
     }
   }, [messages, streaming]);
 
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [menu]);
+
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-10">
+      <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-10">
+        <SubchatOpenerButton />
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-soft to-accent/20 text-accent mb-5 animate-fade-in-up">
           <Sparkles size={22} />
         </div>
@@ -116,8 +127,66 @@ export function ChatView({ chat }: { chat: ChatController }) {
     );
   }
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    const sel = window.getSelection();
+    const text = sel?.toString().trim() ?? "";
+    if (!text || sel?.isCollapsed) {
+      setMenu(null);
+      return;
+    }
+    e.preventDefault();
+    setMenu({
+      x: Math.min(e.clientX, window.innerWidth - 220),
+      y: Math.min(e.clientY, window.innerHeight - 80),
+      text: text.slice(0, 2000),
+    });
+  };
+
+  const openInSubchat = () => {
+    if (!menu) return;
+    if (!subchatOpen) setSubchatOpen(true);
+    setSubchatSeed(menu.text);
+    setMenu(null);
+  };
+
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className="chat-reading flex-1 overflow-y-auto">
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      onContextMenu={handleContextMenu}
+      className="relative flex-1 overflow-y-auto"
+    >
+      <SubchatOpenerButton />
+      {menu && (
+        <div
+          className="fixed z-[90] min-w-[200px] rounded-xl border border-border bg-bg-elevated p-1.5 shadow-pop animate-fade-in"
+          style={{ left: menu.x, top: menu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={openInSubchat}
+            disabled={subchatOpen}
+            title={subchatOpen ? "Only one subchat can be open at a time" : "Discuss this text in the side subchat"}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-fg transition-colors hover:bg-bg-hover disabled:opacity-45 disabled:pointer-events-none"
+          >
+            <MessagesSquare size={14} className="text-accent" />
+            {subchatOpen ? "Subchat already open" : "Open in subchat"}
+          </button>
+          <button
+            onClick={() => {
+              if (menu) void navigator.clipboard.writeText(menu.text).catch(() => {});
+              setMenu(null);
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-fg transition-colors hover:bg-bg-hover"
+          >
+            <Copy size={14} className="text-fg-muted" />
+            Copy text
+          </button>
+          <p className="max-w-[260px] truncate px-3 pb-1.5 pt-0.5 text-[11px] text-fg-muted">
+            “{menu.text}”
+          </p>
+        </div>
+      )}
       <div className="mx-auto w-full px-4 pb-4 pt-2" style={{ maxWidth: contentWidth }}>
         {messages.map((m, i) => (
           <MessageItem
@@ -140,7 +209,6 @@ export function ChatView({ chat }: { chat: ChatController }) {
           </div>
         )}
       </div>
-      {/* Spacer keeps the last message from hiding behind the composer */}
       <div className="h-8" />
     </div>
   );

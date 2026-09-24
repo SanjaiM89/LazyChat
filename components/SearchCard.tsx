@@ -4,11 +4,6 @@ import * as React from "react";
 import { Globe, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/components/ui";
 
-/* ------------------------------------------------------------------ */
-/*  Claude-style web search card                                       */
-/*  - "streaming": animated "Searching the web" bar                    */
-/*  - done: grid of results with favicons + snippets                   */
-/* ------------------------------------------------------------------ */
 
 interface SearchResult {
   n?: number;
@@ -29,7 +24,6 @@ export function SearchCard({
   query?: string;
   results?: SearchResult[] | null;
   streaming: boolean;
-  /** global citation offset when several searches share one message */
   baseIndex?: number;
   selected?: number | null;
   onSelect?: (n: number) => void;
@@ -94,9 +88,6 @@ export function SearchCard({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => {
-                // Alt/Option-click (or plain click with a handler) pins the
-                // reference: highlight every [n] pill in the answer that
-                // points here instead of just navigating away.
                 if (onSelect && (e.altKey || e.metaKey || e.shiftKey)) {
                   e.preventDefault();
                   onSelect(n);
@@ -117,7 +108,6 @@ export function SearchCard({
                 >
                   {n}
                 </span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(r.hostname || "")}&sz=32`}
                   alt=""
@@ -149,7 +139,6 @@ export function SourceLink({ url, label }: { url: string; label?: string }) {
   try {
     host = new URL(url).hostname.replace(/^www\./, "");
   } catch {
-    /* empty/relative result URL — render the raw value */
   }
   return (
     <a

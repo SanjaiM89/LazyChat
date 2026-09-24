@@ -8,14 +8,6 @@ import { modelLabel, providerGlyph } from "@/lib/app-store";
 import type { ChatRunSummary } from "@/lib/types";
 import type { ChatController } from "@/lib/use-chat";
 
-/* ------------------------------------------------------------------ */
-/*  Background-run banner                                              */
-/*                                                                     */
-/*  Shown above the composer while the server is generating a reply     */
-/*  this tab is not watching — after a reload, from another tab, or     */
-/*  after switching conversations. Says what it is doing right now and  */
-/*  lets you watch it live or stop it.                                  */
-/* ------------------------------------------------------------------ */
 
 function elapsed(from: number, now: number): string {
   const s = Math.max(0, Math.floor((now - from) / 1000));
@@ -35,7 +27,6 @@ export function BackgroundRunBar({
   const [now, setNow] = useState(() => Date.now());
   const [attaching, setAttaching] = useState(false);
 
-  // Keep the elapsed timer ticking while the run is live.
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);

@@ -4,9 +4,6 @@ import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, FileWarning } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  DOCX viewer via docx-preview (renders into a styled container)     */
-/* ------------------------------------------------------------------ */
 
 export function DocxViewer({ url }: { url: string }) {
   const hostRef = useRef<HTMLDivElement>(null);

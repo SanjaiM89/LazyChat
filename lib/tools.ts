@@ -5,11 +5,20 @@ import { z } from "zod";
 import { searchWeb, rankResults } from "@/lib/search";
 import { createArtifactFile } from "@/lib/artifacts";
 import { spawnAgent, getAgent } from "@/lib/agents";
+import {
+  chromiumClick,
+  chromiumNav,
+  chromiumNavigate,
+  chromiumPress,
+  chromiumRead,
+  chromiumScroll,
+  chromiumShot,
+  chromiumType,
+  ensureChromium,
+  getControl,
+} from "@/lib/chromium";
 import type { ArtifactType } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Chat tool definitions (used by /api/chat + the sandbox runner)     */
-/* ------------------------------------------------------------------ */
 
 const ARTIFACT_TYPES: ArtifactType[] = [
   "text",
@@ -38,7 +47,6 @@ export const webSearchTool = tool({
         message: "No results found. Try rephrasing the query or splitting it into smaller searches.",
       };
     }
-    // Numbered explicitly so the model cites [1..N] in result order.
     const numbered = ranked.map((r, i) => ({ n: i + 1, ...r }));
     return {
       query,
@@ -49,8 +57,6 @@ export const webSearchTool = tool({
   },
 });
 
-/** Create a chat artifact (bound to the active conversation so it persists
- *  in that conversation's artifact list instead of being dropped on reload). */
 function buildCreateArtifactTool(conversationId?: string) {
   return tool({
     description: `Create a rich, standalone artifact (rendered in the side panel) — code, markdown doc, HTML page, SVG diagram, mermaid diagram, or table. Use for anything that deserves its own window rather than chat text.`,
@@ -86,17 +92,6 @@ function buildCreateArtifactTool(conversationId?: string) {
   });
 }
 
-/**
- * Spawn a sandboxed agent to actually do work (docs, code, research with a
- * browser). Blocks up to `maxWaitSeconds` and returns a summary; the frontend
- * shows the live agent run in the Agents panel.
- *
- * The tool is *bound* to the conversation's own provider + model (whatever is
- * answering the chat). Agents must run on a provider the user has actually
- * configured — the built-in defaults (anthropic/openai) fail when no API key
- * is present, which is why the tool does NOT let the model pick a provider.
- * Use the Agents panel if you want an agent on a different provider.
- */
 function buildRunAgentTaskTool(opts: {
   provider: string;
   model: string;
@@ -173,14 +168,178 @@ function buildRunAgentTaskTool(opts: {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+
+const COMPUTER_SYSTEM_NOTE = `You drive a REAL Chromium browser (1280×800) shared with the user — they watch every step live in the Chromium panel. Act like PCLLM: observe (read/screenshot), then emit ONE precise action at a time (click(x,y) coordinates, type, hotkeys like Control+l). Never claim you opened a page you didn't navigate to. If a tool says the user has control, stop using the computer and explain you're waiting for them to hand it back.`;
+
+async function computerGuard() {
+  if ((await getControl()) === "user") {
+    return "The user has taken control of Chromium in the UI — do NOT use computer tools right now. Tell the user you're waiting for them to hand control back (Chromium panel → Give back to model).";
+  }
+  try {
+    await ensureChromium();
+  } catch (e: any) {
+    return `Chromium is unavailable: ${e.message || e}. Continue without the browser and say so.`;
+  }
+  return null;
+}
+
+function compactResult(r: { url: string; title: string; text?: string }) {
+  return {
+    url: r.url,
+    title: r.title,
+    text: (r.text || "").slice(0, 6000),
+    note: "A screenshot of this step was recorded to the Chromium timeline the user can scrub through.",
+  };
+}
+
+function buildComputerTools() {
+  return {
+    computer_navigate: tool({
+      description: `Open a URL in the shared Chromium browser. Use whenever you need to READ a website (docs, articles, dashboards) or the user asks you to go somewhere. The page screenshot is recorded. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({ url: z.string().describe("Full http(s) URL to open") }),
+      execute: async ({ url }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const r = await chromiumNavigate("model", url);
+          const text = (await chromiumRead().catch(() => ({ text: "" })) as any).text || "";
+          return compactResult({ ...r, text });
+        } catch (e: any) {
+          return { error: e.message || "navigate failed" };
+        }
+      },
+    }),
+    computer_click: tool({
+      description: `Click at page coordinates (viewport is 1280×800, origin top-left) or a CSS selector. Read the page first, then click precisely — buttons, links, tabs. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({
+        x: z.number().min(0).max(1280).optional().describe("X coordinate"),
+        y: z.number().min(0).max(800).optional().describe("Y coordinate"),
+        selector: z.string().optional().describe("CSS selector alternative to coordinates"),
+      }),
+      execute: async ({ x, y, selector }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const { chromiumClickSelector } = await import("@/lib/chromium");
+          const r =
+            selector && (x === undefined || y === undefined)
+              ? await chromiumClickSelector("model", selector)
+              : await chromiumClick("model", x ?? 640, y ?? 400);
+          const text = (await chromiumRead().catch(() => ({ text: "" })) as any).text || "";
+          return compactResult({ ...r, text });
+        } catch (e: any) {
+          return { error: e.message || "click failed" };
+        }
+      },
+    }),
+    computer_type: tool({
+      description: `Type into the focused element on the page (click a field first if needed). Set enter=true to submit (search boxes, logins). ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({
+        text: z.string().describe("Text to type"),
+        enter: z.boolean().default(false).describe("Press Enter after typing"),
+      }),
+      execute: async ({ text, enter }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const r = await chromiumType("model", text, enter);
+          const after = (await chromiumRead().catch(() => ({ text: "" })) as any).text || "";
+          return compactResult({ ...r, text: after });
+        } catch (e: any) {
+          return { error: e.message || "type failed" };
+        }
+      },
+    }),
+    computer_press: tool({
+      description: `Press a key or hotkey (Enter, Escape, Tab, Control+l, Control+c …). For shortcuts and dismissing dialogs. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({ key: z.string().describe("Key or hotkey, e.g. Enter, Escape, Control+l") }),
+      execute: async ({ key }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const r = await chromiumPress("model", key);
+          return compactResult(r);
+        } catch (e: any) {
+          return { error: e.message || "press failed" };
+        }
+      },
+    }),
+    computer_scroll: tool({
+      description: `Scroll the page up/down to reveal more content before reading or clicking. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({
+        direction: z.enum(["up", "down"]).default("down"),
+      }),
+      execute: async ({ direction }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const r = await chromiumScroll("model", direction);
+          return compactResult(r);
+        } catch (e: any) {
+          return { error: e.message || "scroll failed" };
+        }
+      },
+    }),
+    computer_read: tool({
+      description: `Read the current page text (no screenshot spam). Use after navigating to actually READ the website content. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const r = await chromiumRead();
+          return { url: r.url, title: r.title, text: (r.text || "").slice(0, 12000) };
+        } catch (e: any) {
+          return { error: e.message || "read failed" };
+        }
+      },
+    }),
+    computer_screenshot: tool({
+      description: `Look at the current page visually (layout, buttons, images). Records a screenshot step. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const { recordStep } = await import("@/lib/chromium");
+          const r = await chromiumShot();
+          await recordStep({
+            actor: "model",
+            action: "screenshot",
+            detail: "looked at the page",
+            url: r.url,
+            title: r.title,
+            shot: r.image,
+          });
+          return { url: r.url, title: r.title, message: "Screenshot recorded to the Chromium timeline." };
+        } catch (e: any) {
+          return { error: e.message || "screenshot failed" };
+        }
+      },
+    }),
+    computer_nav: tool({
+      description: `Browser back / forward / reload on the shared Chromium page. ${COMPUTER_SYSTEM_NOTE}`,
+      inputSchema: z.object({ op: z.enum(["back", "forward", "reload"]) }),
+      execute: async ({ op }) => {
+        const blocked = await computerGuard();
+        if (blocked) return { control: "user", message: blocked };
+        try {
+          const r = await chromiumNav("model", op);
+          return compactResult(r);
+        } catch (e: any) {
+          return { error: e.message || `${op} failed` };
+        }
+      },
+    }),
+  };
+}
+
 export interface EnabledToolsOpts {
   provider: string;
   model: string;
-  /** active conversation the tool runs in — artifacts/agents are tied to it */
   conversationId?: string;
 }
 
-/** Which tools are enabled based on user settings + provider config. */
 export function enabledTools(names: string[], opts: EnabledToolsOpts) {
   const map: Record<string, any> = {
     webSearch: webSearchTool,
@@ -189,7 +348,8 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
   };
   const out: Record<string, any> = {};
   for (const n of names) {
-    if (map[n]) out[n] = map[n];
+    if (n === "computerUse") Object.assign(out, buildComputerTools());
+    else if (map[n]) out[n] = map[n];
   }
   return out;
 }

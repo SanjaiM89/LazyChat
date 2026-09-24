@@ -1,17 +1,4 @@
 #!/usr/bin/env node
-/**
- * Omnia in-container agent runner.
- *
- * Runs inside the Docker sandbox image (sandbox/Dockerfile). Receives the
- * task + provider config via argv/env, builds a model, gives it tools
- * (web search, live Chromium browser, shell, file generation), and runs an
- * agentic loop. Every event — logs, thinking, tool calls, screenshots,
- * progress — is POSTed back to the sandbox service which relays it to the
- * Next.js app (mini-computer view + Agents panel).
- *
- * Usage:  node /app/runner.mjs <sandboxId> <provider> <model> <engine>
- *         engine ∈ tool-loop | agent-sdk
- */
 import { report, flush } from "./report.mjs";
 import { launchBrowser, screenshotDataUrl } from "./browser.mjs";
 import { makePdf, makeXlsx, makeDocx, makeCsv } from "./filegen.mjs";
@@ -20,8 +7,6 @@ import { z } from "zod";
 
 const [sandboxId = "local", provider = "anthropic", model = "claude-sonnet-5", engine = "tool-loop"] = process.argv.slice(2);
 const TASK = process.env.AGENT_TASK || "";
-// Research mode (AGENT_MODE=research) makes the agent actually browse the web
-// with the live Chromium browser instead of answering from search snippets.
 const RESEARCH = process.env.AGENT_MODE === "research";
 
 report({ type: "log", message: `Runner booting (${provider}/${model}/${engine})` });
@@ -30,9 +15,6 @@ await flush();
 const AI = await import("ai");
 const { tool, generateText, isStepCount } = AI;
 
-/* ------------------------------------------------------------------ */
-/*  Build the language model for this provider                          */
-/* ------------------------------------------------------------------ */
 
 async function buildModel() {
   switch (provider) {
@@ -68,9 +50,6 @@ async function buildModel() {
       })(model);
     }
     case "opencode": {
-      // OpenCode Zen: one API key, four endpoint dialects. The Next.js app
-      // tells us the dialect via OPENCODE_TRANSPORT (fall back to id-prefix
-      // inference so older app versions still work).
       const apiKey = process.env.OPENCODE_API_KEY;
       if (!apiKey) throw new Error("OPENCODE_API_KEY is not set for the opencode provider");
       const baseURL =
@@ -99,16 +78,10 @@ async function buildModel() {
       return createOpenAI({ apiKey, baseURL })(model);
     }
     default: {
-      // User-defined custom providers: the Next.js app hands the connection
-      // through OMNIA_CUSTOM_BASE_URL / OMNIA_CUSTOM_API_KEY, with
-      // OMNIA_CUSTOM_PROTOCOL choosing the request dialect
-      // ("openai" | "anthropic" | "gemini").
       const baseURL = process.env.OMNIA_CUSTOM_BASE_URL;
       if (!baseURL) throw new Error(`unknown provider: ${provider}`);
       const key = process.env.OMNIA_CUSTOM_API_KEY || "custom";
       if (process.env.OMNIA_CUSTOM_PROTOCOL === "gemini") {
-        // Google native Interactions API: baseURL is the /v1beta root; the
-        // SDK appends /interactions and authenticates via x-goog-api-key.
         const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
         const raw = baseURL.replace(/\/+$/, "").replace(/\/interactions$/i, "");
         return createGoogleGenerativeAI({
@@ -118,8 +91,6 @@ async function buildModel() {
         }).interactions(model);
       }
       if (process.env.OMNIA_CUSTOM_PROTOCOL === "anthropic") {
-        // Anthropic-compatible gateway: @ai-sdk/anthropic posts to
-        // `{base}/messages`, so ensure the base ends in /v1 → /v1/messages.
         const { createAnthropic } = await import("@ai-sdk/anthropic");
         const raw = baseURL.replace(/\/+$/, "");
         return createAnthropic({
@@ -138,12 +109,7 @@ async function buildModel() {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Tools                                                              */
-/* ------------------------------------------------------------------ */
 
-// Browser is started lazily, only when a browser tool is first used, so
-// agents that don't need it work even if Chromium can't launch.
 let browserPromise = null;
 let page = null;
 async function getBrowser() {
@@ -161,13 +127,11 @@ async function ensurePage() {
   return page;
 }
 
-/** Navigate a page in the live browser and stream a screenshot back. */
 async function openPage(url) {
   const p = await ensurePage();
   try {
     await p.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
   } catch (e) {
-    // pages that block navigation still load partially
   }
   await p.waitForTimeout(1200);
   const shot = await screenshotDataUrl(p);
@@ -189,9 +153,6 @@ const tools = {
     execute: async ({ query, maxResults }) => {
       const results = await searchWeb(query, maxResults || 8);
       let opened = null;
-      // In research mode, guarantee the live Chromium browser opens by loading
-      // the top hit so the user sees real pages (and we get full page text),
-      // not just search snippets.
       if (RESEARCH && results.length) {
         try {
           const top = results[0];
@@ -205,7 +166,6 @@ const tools = {
             note: "The top result was opened in the live browser. Read its content above, then use browser_navigate on the other promising results.",
           };
         } catch (e) {
-          // fall back to snippets if the browser can't open the page
         }
       }
       noteSearch(query, results, opened);
@@ -322,8 +282,6 @@ const tools = {
     }),
     execute: async ({ path: rel, content }) => {
       const { writeFileSync, mkdirSync } = await import("node:fs");
-      // Accept both "out/report.md" (relative to /workspace) and the literal
-      // "/workspace/out/report.md" the prompts tell agents to save to.
       const rel0 = (rel || "").replace(/^\/+/, "");
       const target = rel0 === "workspace" || rel0.startsWith("workspace/") ? `/${rel0}` : `/workspace/${rel0}`;
       mkdirSync(target.slice(0, target.lastIndexOf("/")) || "/", { recursive: true });
@@ -406,9 +364,6 @@ const tools = {
   }),
 };
 
-/* ------------------------------------------------------------------ */
-/*  System prompt                                                      */
-/* ------------------------------------------------------------------ */
 
 const BASE_SYSTEM = `You are Omnia Agent — an autonomous worker inside an isolated Docker sandbox on the user's machine.
 
@@ -446,14 +401,6 @@ Task: ${TASK}`;
 
 const SYSTEM = RESEARCH ? RESEARCH_SYSTEM : BASE_SYSTEM;
 
-/* ------------------------------------------------------------------ */
-/*  Evidence store (research mode)                                     */
-/*                                                                     */
-/*  The model is unreliable at saving its own deliverable (long runs   */
-/*  of pure web_search with no file at the end), so the runner records */
-/*  every search + every opened page itself and guarantees a briefing  */
-/*  file via the coverage + synthesis pipeline below.                  */
-/* ------------------------------------------------------------------ */
 
 const evidence = { searches: [], pages: [] };
 
@@ -499,9 +446,6 @@ function noteSearch(query, results, opened) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Engine 1 — tool-loop (AI SDK generateText)                         */
-/* ------------------------------------------------------------------ */
 
 async function runToolLoop(model) {
   report({ type: "status", value: "ready" });
@@ -542,19 +486,6 @@ async function runToolLoop(model) {
   return final;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Engine 1b — raw REST Gemini tool loop                              */
-/*                                                                     */
-/*  The @ai-sdk/google Gemini path intermittently drops signed         */
-/*  function calls parsed from responses (a phantom "tool-calls"       */
-/*  finish with zero tools → the agent spins in blank "thinking"       */
-/*  ticks forever and never fires web_search/browser_navigate). This   */
-/*  engine bypasses the SDK parse entirely: it drives a plain          */
-/*  non-streaming `:generateContent` loop, runs the same runner tools, */
-/*  and echoes each model functionCall part verbatim so the API's      */
-/*  thought_signature validator is satisfied. Proven against the live  */
-/*  API (2026-09-02): parallel calls and the follow-up turn both work. */
-/* ------------------------------------------------------------------ */
 
 async function postGeminiWithRetry(url, apiKey, body) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -577,10 +508,6 @@ async function postGeminiWithRetry(url, apiKey, body) {
   throw new Error("Gemini API: gave up after 4 attempts (rate limit/quota)");
 }
 
-// Convert a zod v4 inputSchema into a Gemini function-declaration
-// `parameters` object, dropping JSON-schema-only keys Gemini dislikes and
-// normalizing `"type": ["string","null",…]` arrays (zod unions) to a single
-// type + `nullable` (Gemini's proto rejects JSON-schema type arrays).
 function declParams(schema) {
   let js;
   try {
@@ -617,7 +544,6 @@ function declParams(schema) {
   return clean(js);
 }
 
-// Keep tool results under Gemini's functionResponse size limit.
 function trimResult(value) {
   let str;
   try {
@@ -670,7 +596,6 @@ async function runGeminiRawLoop() {
       throw new Error("Gemini returned no candidate: " + JSON.stringify(data?.promptFeedback || data).slice(0, 400));
     }
     const parts = cand.content?.parts || [];
-    // Surface any text/thinking the model produced alongside this turn.
     for (const p of parts) {
       if (!p.functionCall && (p.text || "").trim()) {
         if (p.thought) {
@@ -690,8 +615,6 @@ async function runGeminiRawLoop() {
       break;
     }
 
-    // Echo the model's functionCall parts verbatim (keeps the API's
-    // thought_signature chain intact), then execute each tool and answer.
     contents.push({
       role: "model",
       parts: calls.map((p) => ({
@@ -724,7 +647,7 @@ async function runGeminiRawLoop() {
     contents.push({ role: "user", parts: responses });
     report({ type: "log", message: `Round ${step + 1}: executed ${responses.length} tool call(s)` });
     console.error(`[raw] round ${step + 1}: ${responses.length} tool(s) done`);
-    await sleep(2000); // keep under free-tier per-minute quota
+    await sleep(2000);
   }
 
   return finalText;
@@ -745,9 +668,6 @@ function stepIndex() {
   return ++_step;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Engine 2 — Claude Agent SDK (per user request)                     */
-/* ------------------------------------------------------------------ */
 
 async function runAgentSdkEngine(model) {
   let queryFn;
@@ -767,7 +687,6 @@ async function runAgentSdkEngine(model) {
       model,
       maxTurns: 40,
       cwd: "/workspace",
-      // keep the SDK process lean inside the sandbox
       includePartialMessages: true,
       allowedTools: ["Bash", "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite"],
     },
@@ -803,17 +722,6 @@ async function runAgentSdkEngine(model) {
   return typeof result === "string" ? result : JSON.stringify(result).slice(0, 2000);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Research pipeline: coverage → synthesis → guaranteed briefing file */
-/*                                                                     */
-/*  Runs after the agentic loop in RESEARCH mode. The agent often       */
-/*  searches 30+ times without opening pages or saving anything, so    */
-/*  the runner itself: (1) auto-visits top result URLs in the live     */
-/*  Chromium browser until ≥6 pages are extracted, (2) synthesizes a   */
-/*  briefing from all collected evidence in one no-tools model call,   */
-/*  (3) ALWAYS writes /workspace/out/briefing.md (evidence dump as     */
-/*  fallback). A research run can no longer end with "0 file(s)".      */
-/* ------------------------------------------------------------------ */
 
 const SYNTH_SYSTEM = `You are a research editor. Write a comprehensive, beautifully structured Markdown briefing from the evidence below.
 
@@ -829,7 +737,6 @@ Rules:
 - Cite inline where each fact came from (site name in parentheses).
 - No placeholders, no "as an AI", no meta-commentary. Write the finished briefing only.`;
 
-/** Open top search-result URLs in the live browser until we have enough extracted pages. */
 async function ensureCoverage() {
   const TARGET_PAGES = 6;
   const MAX_AUTO_OPENS = 5;
@@ -846,7 +753,7 @@ async function ensureCoverage() {
       if (evidence.pages.some((p) => normUrl(p.url) === normUrl(r.url))) continue;
       if (candidates.some((c) => normUrl(c.url) === normUrl(r.url))) continue;
       const d = domainOf(r.url);
-      if ((perDomain[d] || 0) >= 2) continue; // max 2 pages per domain
+      if ((perDomain[d] || 0) >= 2) continue;
       perDomain[d] = (perDomain[d] || 0) + 1;
       candidates.push(r);
       if (evidence.pages.length + candidates.length >= TARGET_PAGES) break;
@@ -945,9 +852,6 @@ async function saveBriefing(markdown) {
   return outPath;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main                                                               */
-/* ------------------------------------------------------------------ */
 
 try {
   const gemRaw =
@@ -963,8 +867,6 @@ try {
     engineFn = runAgentSdkEngine;
     engineArg = modelObj;
   } else if (gemRaw) {
-    // Gemini custom provider: drive the raw REST tool loop to avoid the
-    // AI SDK's dropped signed-function-call bug (blank thinking forever).
     engineFn = runGeminiRawLoop;
     engineArg = null;
   } else {
@@ -973,7 +875,6 @@ try {
   }
   await engineFn(engineArg);
 
-  // Research mode: the agent gathers, the runner guarantees the deliverable.
   if (RESEARCH) {
     try {
       await ensureCoverage();
@@ -985,7 +886,6 @@ try {
       try {
         await saveBriefing("");
       } catch {
-        /* evidence dump also failed — nothing more we can do */
       }
     }
   }
@@ -1003,4 +903,3 @@ try {
   await flush();
   process.exit(1);
 }
-

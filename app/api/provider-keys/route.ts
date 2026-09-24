@@ -14,17 +14,12 @@ function bad(message: string) {
   return Response.json({ error: message }, { status: 400 });
 }
 
-/** Built-ins whose keys can be managed in the UI (keyEnv = env fallback). */
 function keyedProviders(): BuiltinProviderId[] {
   return (Object.keys(PROVIDERS) as BuiltinProviderId[]).filter(
     (id) => PROVIDERS[id].requiresKey && PROVIDERS[id].keyEnv,
   );
 }
 
-/**
- * GET /api/provider-keys → status per keyed provider (never the key itself):
- * { opencode: { configured: true, source: "stored" | "env" | "none" }, … }
- */
 export async function GET() {
   const out: Record<string, { configured: boolean; source: string }> = {};
   for (const id of keyedProviders()) {
@@ -34,7 +29,6 @@ export async function GET() {
   return Response.json(out);
 }
 
-/** POST /api/provider-keys { provider, apiKey } → save (empty key clears). */
 export async function POST(req: NextRequest) {
   let body: any;
   try {
@@ -54,7 +48,6 @@ export async function POST(req: NextRequest) {
   return Response.json({ provider, configured: source !== "none", source });
 }
 
-/** DELETE /api/provider-keys?provider=opencode → clear the stored key. */
 export async function DELETE(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get("provider") || "";
   if (!provider || !(provider in PROVIDERS)) return bad("Unknown provider.");

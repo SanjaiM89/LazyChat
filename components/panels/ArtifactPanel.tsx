@@ -8,9 +8,6 @@ import { useAppStore } from "@/lib/app-store";
 import { ArtifactViewer, artifactUrl } from "@/components/viewers/ArtifactViewer";
 import type { ArtifactMeta } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Artifact side panel: list + full viewer                            */
-/* ------------------------------------------------------------------ */
 
 const TYPE_LABEL: Record<string, string> = {
   code: "Code",
@@ -53,9 +50,6 @@ export function ArtifactPanel() {
 
   const open = artifacts.find((a) => a.id === openArtifactId) ?? null;
 
-  // Keep an artifact viewable even when the opened artifact isn't in the
-  // currently loaded (conversation-scoped) list — e.g. the model just created
-  // it and the list refresh hasn't landed yet. Resolve it by id server-side.
   const [resolved, setResolved] = useState<ArtifactMeta | null>(null);
   useEffect(() => {
     if (!openArtifactId) return;
@@ -69,15 +63,12 @@ export function ArtifactPanel() {
         if (!cancelled && meta?.id) setResolved(meta);
       })
       .catch(() => {
-        /* not found — leave the list view visible */
       });
     return () => {
       cancelled = true;
     };
   }, [openArtifactId, artifacts]);
 
-  // `resolved` may hold a stale entry from a previously opened artifact, so only
-  // honor it while it still matches the currently opened id.
   const activeArtifact =
     open ??
     (resolved && openArtifactId && resolved.id === openArtifactId ? resolved : null);

@@ -3,7 +3,6 @@ import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
 
 export const dynamic = "force-dynamic";
 
-/** Serve artifact files: /api/files/<artifactId>/<filename> */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
@@ -19,9 +18,6 @@ export async function GET(
   const buf = readArtifactBuffer(meta);
   if (!buf) return Response.json({ error: "missing file" }, { status: 404 });
 
-  // Only serve the exact file the artifact metadata points at.
-  // Next.js already URL-decodes path params, but decode defensively so
-  // filenames with spaces / unicode / % encodings still match.
   const requested = rest
     .map((s) => {
       try {

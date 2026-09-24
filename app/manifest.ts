@@ -1,10 +1,5 @@
 import type { MetadataRoute } from "next";
 
-/* ------------------------------------------------------------------ */
-/*  Web app manifest — served by Next at /manifest.webmanifest         */
-/*  (file convention: Next emits the <link rel="manifest"> tag itself, */
-/*  so app/layout.tsx must NOT also declare `metadata.manifest`.)       */
-/* ------------------------------------------------------------------ */
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

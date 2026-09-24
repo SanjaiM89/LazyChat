@@ -16,24 +16,16 @@ import { getStoredProviderKey } from "@/lib/provider-keys";
 import { getCustomProvider, resolveApiKey } from "@/lib/custom-providers";
 import type { ArtifactType } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Agent orchestrator                                                 */
-/*  Spawns N concurrent sandboxed agents (each its own Docker VM),     */
-/*  streams their progress, and harvests result files as artifacts.    */
-/* ------------------------------------------------------------------ */
 
 interface AgentRecord extends AgentMeta {
   listeners: Set<(a: AgentMeta) => void>;
   abort?: AbortController;
   image?: string;
-  /** internal: research mode — force the runner to browse with Chromium */
   research?: boolean;
 }
 
 const agents = new Map<string, AgentRecord>();
 
-/** Tasks phrased as research get forced into research (Chromium) mode even when
- *  the caller didn't pass research: true explicitly (e.g. the chat tool). */
 const RESEARCH_RE =
   /\b(research(?:ing|ed)?|investigat\w+|deep ?dive|deep ?research|current events|briefing)\b/i;
 
@@ -76,7 +68,6 @@ function emit(id: string) {
     try {
       fn(snap);
     } catch {
-      /* ignore */
     }
   }
 }
@@ -119,13 +110,10 @@ export interface SpawnAgentInput {
   label?: string;
   image?: string;
   env?: Record<string, string>;
-  /** conversation that launched this agent — produced files are tied to it */
   conversationId?: string;
-  /** force research mode (live Chromium browsing) regardless of task wording */
   research?: boolean;
 }
 
-/** Create a sandbox, start the agent runner inside it, and track it. */
 export async function spawnAgent(input: SpawnAgentInput): Promise<AgentMeta> {
   const id = nanoid(10);
   const research = !!input.research || RESEARCH_RE.test(input.task || "");
@@ -150,7 +138,6 @@ export async function spawnAgent(input: SpawnAgentInput): Promise<AgentMeta> {
   agents.set(id, record);
   emit(id);
 
-  // Start the container + runner in the background
   void runSandboxedAgent(id).catch((e) => {
     patch(id, { status: "failed", error: e.message });
     pushLog(id, { t: Date.now(), level: "error", message: e.message });
@@ -168,30 +155,21 @@ async function runSandboxedAgent(id: string) {
   try {
     const env: Record<string, string> = { ...(process.env as any) };
 
-    // Built-in keys saved in the UI aren't in process.env — forward them so
-    // sandbox agents can use them too (stored key wins, matching chat).
     if (isBuiltinProvider(r.provider)) {
       const keyEnv = PROVIDERS[r.provider as BuiltinProviderId]?.keyEnv;
       if (keyEnv) {
         const stored = await getStoredProviderKey(r.provider);
         if (stored) {
           env[keyEnv] = stored;
-          // The container runner reads GOOGLE_API_KEY for Gemini; the app's
-          // canonical var is GOOGLE_GENERATIVE_AI_API_KEY.
           if (r.provider === "google") env.GOOGLE_API_KEY = stored;
         }
       }
     }
 
-    // OpenCode Zen agents run on the host's OPENCODE_API_KEY (forwarded via
-    // env like the other built-ins); the runner only needs to know which
-    // Zen endpoint dialect this model speaks.
     if (r.provider === "opencode") {
       env.OPENCODE_TRANSPORT = getOpencodeTransport(r.model);
     }
 
-    // Custom (user-defined) providers aren't in process.env — hand the
-    // connection to the container via dedicated vars the runner reads.
     if (!isBuiltinProvider(r.provider)) {
       const custom = await getCustomProvider(r.provider);
       if (custom) {
@@ -205,8 +183,6 @@ async function runSandboxedAgent(id: string) {
       }
     }
 
-    // Research mode forces the container runner to browse with live Chromium
-    // (web_search → browser_navigate → read pages → save briefing).
     if (r.research) env.AGENT_MODE = "research";
 
     const created = await createSandbox({
@@ -225,20 +201,12 @@ async function runSandboxedAgent(id: string) {
     patch(id, { sandboxId });
     pushLog(id, { t: Date.now(), level: "info", message: `Sandbox ${sandboxId} created` });
 
-    // Stream runner events via SSE from the sandbox service
     await streamAgentEvents(id, sandboxId);
 
-    // If the user stopped the agent mid-run, stopAgent has already aborted the
-    // stream and disposed the sandbox — don't harvest or flip to "done".
     if (agents.get(id)?.abort?.signal.aborted) return;
 
-    // Harvest result files BEFORE flipping to a terminal status, so anything
-    // that polls on status === "done" (e.g. the chat runAgentTask tool) sees
-    // the files the agent actually produced — not "0 file(s) produced".
     await harvestResults(id, sandboxId);
 
-    // Don't let a clean path overwrite a failure/stop that already came over
-    // the event stream.
     const rec = agents.get(id);
     if (rec && ["failed", "stopped"].includes(rec.status)) return;
     patch(id, { status: "done", progress: 100 });
@@ -247,14 +215,10 @@ async function runSandboxedAgent(id: string) {
     patch(id, { status: "failed", error: e.message });
     pushLog(id, { t: Date.now(), level: "error", message: e.message });
   } finally {
-    // Once an agent is done/failed/stopped, it must close by itself — kill the
-    // container and drop the sandbox record so nothing lingers above the
-    // composer or holds container resources.
     if (sandboxId) {
       try {
         await deleteSandbox(sandboxId);
       } catch {
-        /* ignore */
       }
     }
   }
@@ -289,7 +253,6 @@ async function streamAgentEvents(id: string, sandboxId: string) {
           const evt = JSON.parse(t.slice(5).trim());
           handleRunnerEvent(id, evt);
         } catch {
-          /* ignore malformed */
         }
       }
     }
@@ -324,7 +287,6 @@ function handleRunnerEvent(id: string, evt: any) {
       else patch(id, { status: "running" });
       break;
     case "artifact":
-      // agent generated an in-container file; register lazily at harvest time
       break;
   }
 }
@@ -340,8 +302,6 @@ async function harvestResults(id: string, sandboxId: string) {
     const artifacts = [];
     for (const f of files.slice(0, 25)) {
       try {
-        // list returns paths relative to the listed dir; download resolves
-        // them against the workspace root, so join with the out dir prefix.
         const buf = await sandboxDownload(sandboxId, `/workspace/out/${f.path}`);
         const ext = (f.name.match(/\.[a-z0-9]+$/i) || [""])[0].toLowerCase();
         const type = EXT_TO_TYPE[ext] || "text";
@@ -376,7 +336,6 @@ export async function stopAgent(id: string): Promise<void> {
     try {
       await deleteSandbox(r.sandboxId);
     } catch {
-      /* ignore */
     }
   }
   patch(id, { status: "stopped" });

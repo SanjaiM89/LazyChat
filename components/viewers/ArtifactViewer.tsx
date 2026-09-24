@@ -13,9 +13,6 @@ import {
 } from "@/components/viewers/TextViewer";
 import type { ArtifactMeta, ArtifactType } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Dispatches an artifact to the right viewer by type.                */
-/* ------------------------------------------------------------------ */
 
 export function artifactUrl(a: ArtifactMeta): string {
   return `/api/files/${a.id}/${a.filename}`;

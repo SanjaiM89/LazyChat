@@ -4,10 +4,6 @@ import type {
   ProviderId,
 } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Provider registry — pure data, safe for client bundles.             */
-/*  Server code re-exports this from lib/providers.ts.                  */
-/* ------------------------------------------------------------------ */
 
 export const PROVIDERS: Record<BuiltinProviderId, ProviderConfig> = {
   anthropic: {
@@ -365,7 +361,6 @@ export const PROVIDERS: Record<BuiltinProviderId, ProviderConfig> = {
 
 export const PROVIDER_LIST = Object.values(PROVIDERS);
 
-/** All models across providers, for quick lookups */
 export const ALL_MODELS = PROVIDER_LIST.flatMap((p) =>
   p.models.map((m) => ({ ...m, provider: p.id })),
 );
@@ -378,7 +373,6 @@ export function findProvider(id: string): ProviderConfig | undefined {
   return PROVIDERS[id as BuiltinProviderId];
 }
 
-/** Default model id for a *built-in* provider ("" when unknown). */
 export function getDefaultModel(providerId: ProviderId): string {
   const cfg = PROVIDERS[providerId as BuiltinProviderId];
   if (!cfg?.models?.length) return "";
@@ -397,14 +391,9 @@ export function modelSupportsThinking(provider: ProviderId, model: string) {
   return findModel(provider, model)?.supportsThinking ?? true;
 }
 
-/* ------------------------------------------------------------------ */
-/*  OpenCode Zen transport — Zen serves model families over different   */
-/*  endpoints, so each model records which AI SDK client to use.        */
-/* ------------------------------------------------------------------ */
 
 export type OpencodeTransport = "responses" | "anthropic" | "chat" | "gemini";
 
-/** Which Zen endpoint dialect a model speaks (explicit config wins, then id prefix). */
 export function getOpencodeTransport(modelId: string): OpencodeTransport {
   const explicit = PROVIDERS.opencode.models.find((m) => m.id === modelId)
     ?.transport as OpencodeTransport | undefined;

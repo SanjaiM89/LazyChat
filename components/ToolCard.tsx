@@ -16,13 +16,11 @@ import {
   Presentation,
   FileCode2,
   File,
+  Monitor,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 
-/* ------------------------------------------------------------------ */
-/*  Tool invocation cards — one per tool the model called              */
-/* ------------------------------------------------------------------ */
 
 export function ToolCard({
   toolName,
@@ -70,6 +68,17 @@ export function ToolCard({
       />
     );
   }
+  if (toolName.startsWith("computer_")) {
+    return (
+      <ComputerCard
+        toolName={toolName}
+        args={args}
+        result={result}
+        streaming={streaming}
+        errorText={errorText}
+      />
+    );
+  }
   return (
     <MCPToolCard
       toolName={toolName}
@@ -96,7 +105,6 @@ function SearchCardWrapper({
   selectedCitation?: number | null;
   onSelectCitation?: (n: number) => void;
 }) {
-  // lazy import to avoid a big synchronous chunk up-front
   const { SearchCard } = require("@/components/SearchCard");
   return (
     <SearchCard
@@ -285,7 +293,6 @@ function AgentTaskCard({
   );
 }
 
-/** Pick a lucide icon + human label from an artifact type or filename. */
 function fileTypeIcon(typeOrName: string) {
   const t = String(typeOrName || "").toLowerCase();
   if (t.includes("image") || /\.(png|jpe?g|gif|webp)$/.test(t)) return FileImage;
@@ -306,6 +313,63 @@ function fileTypeLabel(typeOrName: string) {
   if (t.includes("code") || /\.(py|js|ts|json|tsx|jsx)$/.test(t)) return "Code file";
   if (t.includes("markdown") || /\.md$/.test(t)) return "Markdown";
   return "File";
+}
+
+function ComputerCard({
+  toolName,
+  args,
+  result,
+  streaming,
+  errorText,
+}: {
+  toolName: string;
+  args?: Record<string, any>;
+  result?: any;
+  streaming: boolean;
+  errorText?: string;
+}) {
+  const setPanel = useAppStore((s) => s.setPanel);
+  const action = toolName.replace(/^computer_/, "");
+  const summary = args
+    ? action === "navigate"
+      ? args.url
+      : action === "click"
+        ? args.selector || (args.x !== undefined ? `(${args.x}, ${args.y})` : "")
+        : action === "type"
+          ? `"${String(args.text || "").slice(0, 60)}"${args.enter ? " ⏎" : ""}`
+          : action === "press"
+            ? args.key
+            : action === "scroll" || action === "nav"
+              ? args.direction || args.op || ""
+              : ""
+    : "";
+  const pageTitle = result?.title || result?.url;
+
+  return (
+    <button
+      onClick={() => setPanel("sandbox")}
+      className="group flex w-full items-center gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-2.5 mb-2 text-left hover:border-accent/40 hover:bg-bg-hover transition-all animate-fade-in-up"
+      title="Open the Chromium panel to watch / take over"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info-soft text-info">
+        {streaming ? <Loader2 size={15} className="animate-spin" /> : <Monitor size={15} />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13.5px] font-medium text-fg">
+          Computer: {action}
+          {summary ? <span className="font-normal text-fg-secondary"> · {summary}</span> : ""}
+        </span>
+        <span className="block truncate text-[11.5px] text-fg-muted">
+          {streaming
+            ? "driving Chromium…"
+            : errorText || result?.error || result?.message || pageTitle || "recorded to timeline"}
+        </span>
+      </span>
+      <span className="flex items-center gap-1 text-[12px] text-accent opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        Watch <ArrowUpRight size={13} />
+      </span>
+    </button>
+  );
 }
 
 function MCPToolCard({

@@ -1,12 +1,3 @@
-/**
- * In-container event reporter.
- * Batches {type, message, ...} events and POSTs them to the sandbox service,
- * which relays them to the Next.js app over SSE. Screenshots are large so
- * they're sent immediately in their own request.
- */
-
-// Containers run with --network host, so the sandbox service is on the
-// host's own loopback.
 const HOST = process.env.SANDBOX_HOST || "http://127.0.0.1:8787";
 const ID = process.env.SANDBOX_ID || "local";
 
@@ -15,11 +6,9 @@ let timer = null;
 let bootLog = [];
 
 export function reporterBoot(...args) {
-  // no-op placeholder kept for the import symmetry in runner.mjs
   return args;
 }
 
-/** Enqueue an event (batched, async). */
 export function report(evt) {
   if (!evt || typeof evt.type !== "string") return;
   if (evt.type === "screenshot") {
@@ -30,7 +19,6 @@ export function report(evt) {
   if (!timer) timer = setTimeout(flush, 100);
 }
 
-/** Send the pending batch now. */
 export async function flush() {
   if (timer) {
     clearTimeout(timer);
@@ -46,12 +34,10 @@ export async function flush() {
       keepalive: true,
     });
   } catch {
-    // service unreachable — keep a short local tail so we can still finish
     bootLog = bootLog.concat(batch).slice(-200);
   }
 }
 
-/** Screenshots are heavy; send them straight through (throttled by caller). */
 let lastShot = 0;
 async function sendScreenshot(image) {
   const now = Date.now();
@@ -65,7 +51,6 @@ async function sendScreenshot(image) {
       keepalive: true,
     });
   } catch {
-    /* ignore */
   }
 }
 

@@ -4,12 +4,6 @@ import { readJSON, writeJSON } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
 import type { BuiltinProviderId, CustomModelDef } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Built-in provider model overrides — lets users add / rename / hide  */
-/*  model ids without forking lib/models.ts. Stored server-side in      */
-/*  data/provider-models.json. Effective list = hardcoded minus hidden  */
-/*  plus user models (same id overrides the builtin entry).             */
-/* ------------------------------------------------------------------ */
 
 const FILE = "provider-models.json";
 
@@ -72,7 +66,6 @@ export async function addProviderModel(
   const ov = map[provider] || {};
   const models = (ov.models || []).filter((m) => m.id !== clean.id);
   models.unshift(clean);
-  // If it was hidden as a builtin, unhide (the custom entry now wins anyway).
   const hideBuiltin = (ov.hideBuiltin || []).filter((id) => id !== clean.id);
   map[provider] = { models, hideBuiltin };
   await writeJSON(FILE, map);
@@ -94,11 +87,9 @@ export async function renameProviderModel(
     (PROVIDERS[provider as BuiltinProviderId]?.models || []).map((m) => m.id),
   );
   if (oldId !== clean.id) {
-    // Renaming away from a builtin id → hide the old builtin entry.
     if (builtinIds.has(oldId) && !hideBuiltin.includes(oldId)) {
       hideBuiltin = [...hideBuiltin, oldId];
     }
-    // Renaming back to a builtin id → unhide it (custom entry overrides).
     if (builtinIds.has(clean.id)) {
       hideBuiltin = hideBuiltin.filter((id) => id !== clean.id);
     }
@@ -115,8 +106,6 @@ export async function deleteProviderModel(provider: string, id: string): Promise
     (PROVIDERS[provider as BuiltinProviderId]?.models || []).map((m) => m.id),
   );
   let hideBuiltin = ov.hideBuiltin || [];
-  // Deleting a custom model that shadows a builtin → unhide the builtin.
-  // Hiding a builtin outright → record it so it disappears from the picker.
   if (builtinIds.has(id) && !models.some((m) => m.id === id)) {
     if (!hideBuiltin.includes(id)) hideBuiltin = [...hideBuiltin, id];
   }

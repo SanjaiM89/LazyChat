@@ -7,21 +7,13 @@ import {
   resolveSearchKey,
 } from "@/lib/search-providers";
 
-/* ------------------------------------------------------------------ */
-/*  DuckDuckGo web search with rate limiting + caching                 */
-/*  Primary:  duck-duck-scrape (rich, JSON)                            */
-/*  Fallback: html.duckduckgo.com scrape when the JSON endpoint        */
-/*            rate-limits (DDG "anomaly" blocks)                       */
-/* ------------------------------------------------------------------ */
 
 const cache = new Map<string, { at: number; results: SearchResult[] }>();
 const CACHE_TTL = 4 * 60 * 1000;
 
-/** simple promise chain to space requests out and survive rate limits */
 let chain: Promise<unknown> = Promise.resolve();
 function rateLimit<T>(fn: () => Promise<T>, gapMs = 1400): Promise<T> {
   const run = chain.then(() => fn());
-  // keep the chain moving even if one request fails
   chain = run.catch(() => undefined).then(() => sleep(gapMs));
   return run;
 }
@@ -36,12 +28,10 @@ function normalize(raw: any, position: number): SearchResult | null {
   try {
     hostname = new URL(url).hostname.replace(/^www\./, "");
   } catch {
-    /* ignore */
   }
   return { title, description, url, hostname, position };
 }
 
-/** scrape the plain-HTML endpoint (no JS, works when the JSON API is blocked) */
 async function scrapeHtml(query: string): Promise<SearchResult[]> {
   const url =
     "https://html.duckduckgo.com/html/?q=" +
@@ -58,7 +48,6 @@ async function scrapeHtml(query: string): Promise<SearchResult[]> {
   });
   if (!res.ok) throw new Error(`search endpoint ${res.status}`);
   const html = await res.text();
-  // Each organic result is wrapped in a <div class="result"> block.
   const blocks = html.split('<div class="result results_links');
   const out: SearchResult[] = [];
   for (let i = 1; i < blocks.length && out.length < 12; i++) {
@@ -98,7 +87,6 @@ function safeHostname(url: string): string {
   }
 }
 
-/** Full featured web search. Returns normalized results, newest allowed. */
 export async function searchWeb(
   query: string,
   maxResults = 8,
@@ -110,12 +98,10 @@ export async function searchWeb(
   }
 
   const results = await rateLimit(async () => {
-    // Prefer user-configured providers (Tavily / Brave / Serper / SearXNG)
-    // before falling back to DuckDuckGo.
     try {
       const configured = await listEnabledSearchProviders();
       for (const p of configured) {
-        if (p.kind === "duckduckgo") continue; // DDG is the built-in fallback below
+        if (p.kind === "duckduckgo") continue;
         try {
           const r = await searchViaProvider(p, query, maxResults);
           if (r.length) return r;
@@ -124,7 +110,6 @@ export async function searchWeb(
         }
       }
     } catch {
-      /* storage failure → straight to DDG */
     }
     try {
       const r = (await ddgScrapeSearch(query, {
@@ -134,7 +119,6 @@ export async function searchWeb(
       if (list.length) return list;
       return await scrapeHtml(query);
     } catch {
-      // JSON endpoint blocked or failed — fall back to HTML scrape
       return await scrapeHtml(query);
     }
   });
@@ -225,7 +209,6 @@ async function searchViaProvider(
   }
 }
 
-/** lightweight relevance + recency scoring so the model gets the good stuff first */
 export function rankResults(results: SearchResult[], query: string): SearchResult[] {
   const q = query.toLowerCase();
   const scored = results.map((r) => {
@@ -236,7 +219,7 @@ export function rankResults(results: SearchResult[], query: string): SearchResul
       if (t.includes(term)) score += 2;
       if (r.url.toLowerCase().includes(term)) score += 1;
     }
-    if (r.description.length > 200) score += 1; // richer snippets
+    if (r.description.length > 200) score += 1;
     return { r, score };
   });
   return scored.sort((a, b) => b.score - a.score).map((s) => s.r);

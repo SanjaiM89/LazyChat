@@ -7,11 +7,6 @@ import { cn } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { SandboxMeta } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Manus-style "mini computer" floating above the composer.            */
-/*  Shows the live Docker VM (browser screenshot when available);      */
-/*  clicking it opens the sandbox in the side panel.                   */
-/* ------------------------------------------------------------------ */
 
 function useSandboxScreenshots() {
   const sandboxes = useAppStore((s) => s.sandboxes);
@@ -20,7 +15,6 @@ function useSandboxScreenshots() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Poll screenshots while any sandbox is live.
     const live = sandboxes.filter((s) => s.state === "ready" || s.state === "busy");
     if (timer.current) {
       clearInterval(timer.current);
@@ -37,7 +31,6 @@ function useSandboxScreenshots() {
           const { image } = await res.json();
           if (image) setSandboxScreenshot(s.id, image);
         } catch {
-          /* sandbox service may be down */
         }
       }
     }, 1800);
@@ -57,9 +50,6 @@ export function SandboxMini() {
   const activeSandboxId = useAppStore((s) => s.activeSandboxId);
   const [hovered, setHovered] = useState<string | null>(null);
 
-  // Only live runs are shown, and only ONE — the currently-working agent —
-  // rather than a stack of every sandbox ever spawned. Finished runs are
-  // disposed server-side (the mini closes by itself once the agent is done).
   const live = sandboxes
     .filter((s) => s.state === "ready" || s.state === "busy" || s.state === "starting")
     .sort((a, b) => b.createdAt - a.createdAt);
@@ -68,8 +58,6 @@ export function SandboxMini() {
     live.find((s) => s.id === activeSandboxId) || live[0];
 
   const close = () => {
-    // DELETE kills the container AND drops the sandbox record, so it can't be
-    // re-registered by the next poll.
     void fetch(`/api/sandbox/${sb.id}`, { method: "DELETE" }).catch(() => {});
     removeSandbox(sb.id);
   };
@@ -88,7 +76,6 @@ export function SandboxMini() {
           setPanel("sandbox");
         }}
       >
-        {/* macOS-style window chrome */}
         <div className="flex items-center gap-1.5 bg-bg-inset px-2.5 py-1.5 border-b border-border">
           <span className="h-2 w-2 rounded-full bg-danger/70" />
           <span className="h-2 w-2 rounded-full bg-warning/70" />
@@ -102,10 +89,8 @@ export function SandboxMini() {
           </span>
         </div>
 
-        {/* screen */}
         <div className="relative flex h-[68px] w-[120px] items-center justify-center bg-[#0d0d0c]">
           {sb.lastScreenshot ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={sb.lastScreenshot}
               alt="sandbox screen"
@@ -117,8 +102,6 @@ export function SandboxMini() {
               <span className="text-[9.5px]">booting…</span>
             </div>
           ) : (
-            // A running headless agent has no screenshot — show that it's alive
-            // rather than a permanent "booting…" spinner.
             <div className="flex items-center gap-1.5 text-fg-muted">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
@@ -130,7 +113,6 @@ export function SandboxMini() {
             </div>
           )}
 
-          {/* hover overlay */}
           <div
             className={cn(
               "absolute inset-0 flex items-center justify-center bg-black/55 transition-opacity",
@@ -141,7 +123,6 @@ export function SandboxMini() {
           </div>
         </div>
 
-        {/* close */}
         {hovered === sb.id && (
           <button
             onClick={(e) => {

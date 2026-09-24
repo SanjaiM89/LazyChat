@@ -13,15 +13,9 @@ import type {
 import { readJSON, writeJSON } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
 
-/* ------------------------------------------------------------------ */
-/*  Custom provider registry — user-defined OpenAI-compatible endpoints */
-/*  persisted to data/custom-providers.json. The raw apiKey is kept     */
-/*  server-side; the client only ever sees PublicCustomProvider.        */
-/* ------------------------------------------------------------------ */
 
 const FILE = "custom-providers.json";
 
-/** Canonicalize a stored protocol value (old records default to "openai"). */
 function normProtocol(p: unknown): ProviderProtocol {
   return p === "anthropic" || p === "gemini" ? p : "openai";
 }
@@ -89,14 +83,12 @@ export function uniqueProviderId(desired?: string): string {
   return base.length > 40 ? base.slice(0, 40) : base;
 }
 
-/** The stored API key, or the value of the referenced server env var. */
 export function resolveApiKey(def: CustomProviderDef): string | undefined {
   if (def.apiKey) return def.apiKey;
   if (def.apiKeyEnv) return process.env[def.apiKeyEnv] || undefined;
   return undefined;
 }
 
-/** Client-safe projection: never includes the raw apiKey. */
 export function toPublic(def: CustomProviderDef): PublicCustomProvider {
   const { apiKey: _apiKey, ...rest } = def;
   return { ...rest, hasApiKey: Boolean(resolveApiKey(def)) };
@@ -106,7 +98,6 @@ export async function listPublicCustomProviders(): Promise<PublicCustomProvider[
   return (await listCustomProviders()).map(toPublic);
 }
 
-/** Convert a custom def into the shared ProviderConfig shape. */
 export function toProviderConfig(def: CustomProviderDef): ProviderConfig {
   const models: CustomModelDef[] = def.models.length
     ? def.models
@@ -129,13 +120,10 @@ export function toProviderConfig(def: CustomProviderDef): ProviderConfig {
     glyph: def.glyph || "◆",
     requiresKey: true,
     models: configModels,
-    // Provider options are namespaced under this key at the AI SDK layer
-    // (google for the Interactions client, google.* for generateContent).
     providerOptionsKey: protocol === "gemini" ? "google" : "openai-compatible",
   };
 }
 
-/** Short human label for a protocol, used in the picker + config tagline. */
 export function protocolTagline(p: ProviderProtocol): string {
   switch (p) {
     case "anthropic":
@@ -147,7 +135,6 @@ export function protocolTagline(p: ProviderProtocol): string {
   }
 }
 
-/** Default model id for any provider id — built-in or custom ("" if none). */
 export async function defaultModelForProvider(provider: string): Promise<string> {
   const builtin = PROVIDERS[provider as BuiltinProviderId];
   if (builtin?.models?.length) {

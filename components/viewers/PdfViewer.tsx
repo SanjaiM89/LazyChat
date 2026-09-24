@@ -12,11 +12,7 @@ import {
 } from "lucide-react";
 import { cn, IconButton, Tooltip } from "@/components/ui";
 
-/* ------------------------------------------------------------------ */
-/*  PDF viewer built on pdfjs-dist (worker bundled via ?url)           */
-/* ------------------------------------------------------------------ */
 
-// eslint-disable-next-line @next/next/no-assign-module-variable
 let pdfjs: typeof import("pdfjs-dist") | null = null;
 
 async function loadPdfjs() {
@@ -42,7 +38,6 @@ export function PdfViewer({ url }: { url: string }) {
   const [rendered, setRendered] = useState<Record<number, boolean>>({});
   const renderQ = useRef<number>(0);
 
-  // Load the document once.
   useEffect(() => {
     let cancelled = false;
     let docRef: any = null;
@@ -68,12 +63,10 @@ export function PdfViewer({ url }: { url: string }) {
       try {
         docRef?.destroy();
       } catch {
-        /* ignore */
       }
     };
   }, [url]);
 
-  // Render a page into its canvas (queued so fast scrolls don't thrash).
   const renderPage = useCallback(
     async (num: number, scale: number) => {
       if (!doc) return;
@@ -95,7 +88,6 @@ export function PdfViewer({ url }: { url: string }) {
     [doc],
   );
 
-  // Re-render all pages when zoom changes; render missing pages on mount.
   useEffect(() => {
     if (!doc) return;
     pages.forEach((p) => void renderPage(p, zoom));
@@ -105,7 +97,6 @@ export function PdfViewer({ url }: { url: string }) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* toolbar */}
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
         <span className="text-[12px] text-fg-muted">
           {total > 0 ? `Page ${page} of ${total}` : "PDF"}
@@ -149,12 +140,10 @@ export function PdfViewer({ url }: { url: string }) {
         </div>
       </div>
 
-      {/* pages */}
       <div
         ref={containerRef}
         className="flex-1 overflow-auto bg-bg-subtle/50 p-4"
         onScroll={(e) => {
-          // track current page from scroll position
           const el = e.currentTarget;
           const canvases = Array.from(el.querySelectorAll("canvas")) as HTMLCanvasElement[];
           let cur = 1;

@@ -1,8 +1,3 @@
-/**
- * Minimal dependency-free DuckDuckGo search for the sandbox agent
- * (scrapes html.duckduckgo.com — no JS, no extra packages).
- */
-
 function stripHtml(s) {
   return s
     .replace(/<[^>]+>/g, "")
@@ -43,13 +38,11 @@ export async function searchWeb(query, maxResults = 8) {
     try {
       link = decodeURIComponent(link);
     } catch {
-      /* keep as-is */
     }
     let hostname = "";
     try {
       hostname = new URL(link).hostname.replace(/^www\./, "");
     } catch {
-      /* ignore */
     }
     out.push({
       title,

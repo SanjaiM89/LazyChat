@@ -21,9 +21,6 @@ import {
 } from "@/lib/app-store";
 import type { ChatController } from "@/lib/use-chat";
 
-/* ------------------------------------------------------------------ */
-/*  Left sidebar: new chat, conversation history, skills & connections */
-/* ------------------------------------------------------------------ */
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -66,7 +63,6 @@ export function Sidebar({
 
   return (
     <>
-      {/* mobile backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/30 lg:hidden"
@@ -82,7 +78,6 @@ export function Sidebar({
       >
         {sidebarOpen && (
           <div className="flex w-[272px] flex-col h-full">
-            {/* brand */}
             <div className="flex items-center justify-between px-4 pt-4 pb-3">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-strong text-white shadow-sm">
@@ -112,7 +107,6 @@ export function Sidebar({
               </Tooltip>
             </div>
 
-            {/* new chat */}
             <div className="px-3 pb-2">
               <button
                 onClick={() => chat.startNew()}
@@ -123,7 +117,6 @@ export function Sidebar({
               </button>
             </div>
 
-            {/* conversation list */}
             <div className="flex-1 overflow-y-auto px-2 py-1">
               {conversations.length === 0 && (
                 <p className="px-3 pt-4 text-[12px] text-fg-muted">
@@ -132,8 +125,6 @@ export function Sidebar({
               )}
               {conversations.map((c) => {
                 const active = c.id === activeConversationId;
-                // A background reply is generating for this conversation — show
-                // what it is doing instead of the timestamp.
                 const live = activeRunFor(runs, c.id);
                 return (
                   <div
@@ -191,7 +182,6 @@ export function Sidebar({
               })}
             </div>
 
-            {/* footer: skills + connections */}
             <div className="border-t border-border p-2.5 space-y-0.5">
               <button
                 onClick={onOpenSkills}

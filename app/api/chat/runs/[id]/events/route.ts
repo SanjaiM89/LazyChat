@@ -3,14 +3,6 @@ import { chatRunStream, getChatRun } from "@/lib/chat-runs";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/**
- * GET /api/chat/runs/:id/events?cursor=N → live SSE view of a run.
- *
- * Replays the run's chunks (so a client joining mid-generation can rebuild the
- * whole assistant message) and then follows it. The framing is the same
- * UIMessageChunk SSE format the AI SDK parses, so `DefaultChatTransport`'s
- * reconnectToStream (useChat's resumeStream) consumes it directly.
- */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },

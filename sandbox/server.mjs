@@ -1,17 +1,4 @@
 #!/usr/bin/env node
-/**
- * Omnia sandbox service.
- *
- * Host-side HTTP service that provisions Docker containers ("sandboxes"),
- * streams their live screens + agent events to the Next.js app, and proxies
- * file/terminal access. The in-container runner (sandbox/container/runner.mjs)
- * POSTs agent events + screenshots back to us via http://host.docker.internal.
- *
- * Run:   node sandbox/server.mjs          (listens on 0.0.0.0:8787)
- * Env:   SANDBOX_PORT (default 8787), DATA_DIR (default ./data)
- *
- * Zero runtime deps — Node built-ins only.
- */
 import http from "node:http";
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -25,11 +12,8 @@ const IMAGE_DEFAULT = process.env.SANDBOX_IMAGE || "omnia-sandbox:latest";
 const SANDBOX_DIR = path.join(DATA_DIR, "sandboxes");
 fs.mkdirSync(SANDBOX_DIR, { recursive: true });
 
-/* ------------------------------------------------------------------ */
-/*  Registry                                                           */
-/* ------------------------------------------------------------------ */
 
-const sandboxes = new Map(); // id -> Sandbox
+const sandboxes = new Map();
 
 function makeSandbox(id) {
   return {
@@ -42,7 +26,7 @@ function makeSandbox(id) {
     error: null,
     createdAt: Date.now(),
     workspaceDir: path.join(SANDBOX_DIR, id, "workspace"),
-    events: new Set(), // SSE response writers
+    events: new Set(),
     lastScreenshot: null,
     env: {},
   };
@@ -72,9 +56,6 @@ function snapshot(s) {
   };
 }
 
-/* ------------------------------------------------------------------ */
-/*  Docker helpers                                                     */
-/* ------------------------------------------------------------------ */
 
 function docker(args, opts = {}) {
   return spawnSync("docker", args, { encoding: "utf8", ...opts });
@@ -91,13 +72,11 @@ function runningImages() {
   return r.stdout.split("\n").map((l) => l.trim()).filter(Boolean);
 }
 
-/** True when the image exists locally (no pull attempted). */
 function imageExists(image) {
   const r = docker(["image", "inspect", image], { timeout: 15_000 });
   return r.status === 0;
 }
 
-/** Strip docker's generic trailing hint so the real cause stays visible. */
 function cleanDockerError(stderr, stdout) {
   const raw = (stderr || stdout || "").trim();
   if (!raw) return "unknown docker error";
@@ -114,19 +93,10 @@ function activeContainers() {
   return r.status === 0 ? (r.stdout || "").split("\n").filter(Boolean).length : 0;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Env passthrough for the container                                  */
-/* ------------------------------------------------------------------ */
 
 const ENV_RE =
   /^(AGENT|OMNIA|ANTHROPIC|OPENAI|GOOGLE|GEMINI|OLLAMA|LMSTUDIO|DEEPSEEK|GROQ|XAI|MISTRAL|OPENROUTER|AZURE|GITHUB|FIREWORKS|TOGETHER|NVIDIA|AWS|SANDBOX|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)_|_API_KEY$|_BASE_URL$|_API_KEY_ID$|_SECRET$|_TOKEN$/i;
 
-/**
- * Build the container environment from the env the Next.js app passed us
- * (body.env), filtered to provider-relevant vars. Containers run with
- * --network host, so "localhost" inside the container IS the host — local
- * providers (Ollama, LM Studio) are reached directly, no gateway rewrite.
- */
 function envForContainer(bodyEnv = {}, extra = {}) {
   const source = typeof bodyEnv === "object" && bodyEnv ? bodyEnv : process.env;
   const env = {};
@@ -138,12 +108,7 @@ function envForContainer(bodyEnv = {}, extra = {}) {
   return env;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Container create / lifecycle                                       */
-/* ------------------------------------------------------------------ */
 
-/** Write container env to a file for `docker run --env-file` (robust against
- *  multiline values like AGENT_TASK, quotes, `$`, etc.). Returns the file path. */
 function writeEnvFile(id, env) {
   const dir = path.join(SANDBOX_DIR, id);
   fs.mkdirSync(dir, { recursive: true });
@@ -151,7 +116,6 @@ function writeEnvFile(id, env) {
   const lines = [];
   for (const [k, v] of Object.entries(env)) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) continue;
-    // env-file format: no quoting needed except escaping newlines/backslashes.
     const safe = String(v).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/\r/g, "");
     lines.push(`${k}=${safe}`);
   }
@@ -159,7 +123,6 @@ function writeEnvFile(id, env) {
   return file;
 }
 
-/** Create a container from the sandbox image. Returns {id, containerId}. */
 async function createContainer(id, body) {
   const s = get(id);
   if (!s) throw new Error("unknown sandbox");
@@ -169,8 +132,6 @@ async function createContainer(id, body) {
   fs.mkdirSync(s.workspaceDir, { recursive: true });
   fs.mkdirSync(path.join(s.workspaceDir, "out"), { recursive: true });
 
-  // Fail fast with an actionable message instead of docker's cryptic
-  // "pull access denied … Run 'docker run --help'" when the image was never built.
   if (!imageExists(s.image)) {
     throw new Error(
       `sandbox image "${s.image}" not found locally. Build it first: npm run sandbox:build (docker build -t ${s.image} sandbox/container)`,
@@ -185,8 +146,6 @@ async function createContainer(id, body) {
   });
 
   const name = `omnia-${id}`;
-  // A previous run may have left a stopped container with the same name —
-  // remove it first so `docker run --name` doesn't conflict.
   docker(["rm", "-f", name], { timeout: 20_000 });
 
   const envFile = writeEnvFile(id, env);
@@ -234,9 +193,6 @@ async function startContainer(id) {
   setState(id, "starting");
 }
 
-/* ------------------------------------------------------------------ */
-/*  Workspace file access (host side of the /workspace volume)         */
-/* ------------------------------------------------------------------ */
 
 function safeJoin(workspaceDir, rel) {
   const target = path.resolve(workspaceDir, rel || ".");
@@ -281,9 +237,6 @@ function statMtime(p) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Exec (terminal / tool shell inside the container)                  */
-/* ------------------------------------------------------------------ */
 
 function execCommand(id, command, opts = {}) {
   const s = get(id);
@@ -311,9 +264,6 @@ function execCommand(id, command, opts = {}) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/*  SSE plumbing                                                       */
-/* ------------------------------------------------------------------ */
 
 function sse(res, id) {
   res.writeHead(200, {
@@ -350,12 +300,10 @@ function broadcast(id, obj) {
     try {
       res.write(`data: ${JSON.stringify(obj)}\n\n`);
     } catch {
-      /* ignore */
     }
   }
 }
 
-/** End all open SSE responses for a container (terminal state reached). */
 function closeEventStreams(id) {
   const s = get(id);
   if (!s) return;
@@ -364,13 +312,11 @@ function closeEventStreams(id) {
       res.write("data: {\"type\":\"close\"}\n\n");
       res.end();
     } catch {
-      /* ignore */
     }
   }
   s.events.clear();
 }
 
-/** Watch the container's exit so a crashed runner can't leave a sandbox dangling. */
 function watchContainerExit(id) {
   const s = get(id);
   if (!s || !s.containerId) return;
@@ -381,9 +327,6 @@ function watchContainerExit(id) {
   child.on("close", () => {
     const s2 = get(id);
     if (!s2) return;
-    // "idle" means the runner finished and closed cleanly (status:done was
-    // processed before the container exited). Only flag it as an error if it
-    // exited while the runner was still actively working.
     if (["starting", "ready", "busy"].includes(s2.state)) {
       const exitCode = code.trim();
       setState(id, "error", `container exited unexpectedly (code ${exitCode})`);
@@ -394,9 +337,6 @@ function watchContainerExit(id) {
   });
 }
 
-/* ------------------------------------------------------------------ */
-/*  HTTP server                                                        */
-/* ------------------------------------------------------------------ */
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -432,7 +372,6 @@ const server = http.createServer(async (req, res) => {
   const op = parts[2];
 
   try {
-    /* ---- health ---- */
     if (method === "GET" && parts[0] === "health") {
       const d = dockerOk();
       json(res, 200, {
@@ -446,7 +385,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    /* ---- create container ---- */
     if (method === "POST" && parts[0] === "containers" && !id) {
       const body = await readJson(req);
       const sid = body.id || randomUUID().slice(0, 8);
@@ -457,13 +395,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    /* ---- list ---- */
     if (method === "GET" && parts[0] === "containers" && !id) {
       json(res, 200, [...sandboxes.values()].map(snapshot));
       return;
     }
 
-    /* ---- container-scoped ops ---- */
     if (parts[0] === "containers" && id) {
       const s = get(id);
       if (!s && op !== "events" && op !== "screenshot") {
@@ -471,13 +407,11 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* events (SSE) */
       if (method === "GET" && op === "events") {
         sse(res, id);
         return;
       }
 
-      /* start / kill */
       if (method === "POST" && op === "start") {
         await startContainer(id);
         json(res, 200, { ok: true });
@@ -489,8 +423,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* delete — kill the container and drop the sandbox record entirely.
-         Used by the agent orchestrator to clean up a finished run. */
       if (method === "DELETE") {
         const s = get(id);
         if (s && s.containerId) docker(["rm", "-f", s.containerId], { timeout: 20_000 });
@@ -500,7 +432,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* exec */
       if (method === "POST" && op === "exec") {
         const body = await readJson(req);
         const { output, stderr, exitCode } = await execCommand(id, body.command, {
@@ -510,7 +441,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* write */
       if (method === "POST" && op === "write") {
         const body = await readJson(req);
         if (!body.path || !body.path.startsWith("/workspace")) {
@@ -524,7 +454,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* read */
       if (method === "GET" && op === "read") {
         const rel = (url.searchParams.get("path") || "/workspace").replace(/^\/workspace\/?/, "");
         const target = safeJoin(s.workspaceDir, rel);
@@ -537,7 +466,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* list */
       if (method === "GET" && op === "list") {
         const rel = (url.searchParams.get("path") || "/workspace").replace(/^\/workspace\/?/, "");
         const target = safeJoin(s.workspaceDir, rel);
@@ -547,7 +475,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* download */
       if (method === "GET" && op === "download") {
         const rel = (url.searchParams.get("path") || "/workspace/out").replace(/^\/workspace\/?/, "");
         const target = safeJoin(s.workspaceDir, rel);
@@ -565,14 +492,12 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      /* screenshot */
       if (method === "GET" && op === "screenshot") {
         json(res, 200, { image: s.lastScreenshot || null });
         return;
       }
     }
 
-    /* ---- agent event ingestion from inside the container ---- */
     if (method === "POST" && parts[0] === "agent-events" && id) {
       const body = await readJson(req);
       const events = Array.isArray(body) ? body : Array.isArray(body.events) ? body.events : [body];
@@ -586,7 +511,6 @@ const server = http.createServer(async (req, res) => {
           }
           continue;
         }
-        // state tracking
         if (evt.type === "status") {
           const s = get(id);
           if (s) {
@@ -612,7 +536,6 @@ const server = http.createServer(async (req, res) => {
         }
       }
       if (terminal) {
-        // close any waiting event streams (the orchestrator stops reading on done)
         closeEventStreams(id);
       }
       json(res, 200, { ok: true });
@@ -631,7 +554,6 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(d.ok ? `[sandbox] docker ready (${d.version})` : `[sandbox] docker NOT available: ${d.error}`);
 });
 
-// graceful shutdown
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => {
     console.log("\n[sandbox] shutting down");

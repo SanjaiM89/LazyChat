@@ -41,10 +41,6 @@ const SEARCH_KINDS: Record<
   },
 };
 
-/* ------------------------------------------------------------------ */
-/*  Search providers dialog — add Tavily / Brave / Serper / SearXNG so  */
-/*  web search keeps working when DuckDuckGo rate-limits.               */
-/* ------------------------------------------------------------------ */
 
 export function SearchProvidersDialog({
   open,
@@ -67,7 +63,6 @@ export function SearchProvidersDialog({
       const res = await fetch("/api/search-providers", { cache: "no-store" });
       if (res.ok) setProviders(await res.json());
     } catch {
-      /* ignore */
     }
   }, []);
 

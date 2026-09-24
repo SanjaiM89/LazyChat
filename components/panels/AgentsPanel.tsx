@@ -18,9 +18,6 @@ import { cn, Button, Badge, IconButton, Spinner } from "@/components/ui";
 import { useAppStore, modelLabel, providerGlyph } from "@/lib/app-store";
 import type { AgentMeta, ProviderId } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Agents panel: spawn + monitor N concurrent sandboxed agents.       */
-/* ------------------------------------------------------------------ */
 
 const STATUS_TONE: Record<string, "neutral" | "info" | "success" | "danger" | "warning"> = {
   queued: "neutral",
@@ -37,7 +34,6 @@ export function AgentsPanel() {
   const setPanel = useAppStore((s) => s.setPanel);
   const [showFinished, setShowFinished] = React.useState(false);
 
-  // poll live agents
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -48,7 +44,6 @@ export function AgentsPanel() {
           setAgents(await res.json());
         }
       } catch {
-        /* ignore */
       }
       if (!cancelled) timer = setTimeout(poll, 2500);
     };
@@ -107,13 +102,9 @@ export function AgentsPanel() {
   );
 }
 
-/* ------------------------------ Spawn UI ------------------------------ */
 
 function SpawnAgent() {
   const [task, setTask] = useState("");
-  // "" = auto: the first configured provider (a registered custom one if any,
-  // otherwise anthropic). Falls back gracefully because custom providers load
-  // asynchronously after mount.
   const [provider, setProvider] = useState<ProviderId>("");
   const [engine, setEngine] = useState<"tool-loop" | "agent-sdk">("tool-loop");
   const [research, setResearch] = useState(false);
@@ -241,7 +232,6 @@ function SpawnAgent() {
   );
 }
 
-/* ------------------------------ Agent card ------------------------------ */
 
 function AgentCard({ agent }: { agent: AgentMeta }) {
   const [open, setOpen] = React.useState(
@@ -303,7 +293,6 @@ function AgentCard({ agent }: { agent: AgentMeta }) {
         </IconButton>
       </div>
 
-      {/* progress */}
       {running && (
         <div className="px-3 pb-1">
           <div className="h-1.5 rounded-full bg-bg-hover overflow-hidden">
@@ -317,13 +306,11 @@ function AgentCard({ agent }: { agent: AgentMeta }) {
 
       {open && (
         <div className="border-t border-border">
-          {/* task */}
           <div className="px-3 pt-2.5">
             <p className="text-[12.5px] leading-relaxed text-fg-secondary line-clamp-3">
               {agent.task}
             </p>
           </div>
-          {/* log */}
           <div
             ref={logRef}
             className="mx-3 mt-2 max-h-44 overflow-y-auto rounded-lg bg-[#121210] p-2.5 font-mono text-[11px] leading-relaxed"
@@ -352,7 +339,6 @@ function AgentCard({ agent }: { agent: AgentMeta }) {
               </pre>
             ))}
           </div>
-          {/* result files */}
           {agent.resultFiles.length > 0 && (
             <div className="flex flex-wrap gap-1.5 px-3 py-2.5">
               {agent.resultFiles.map((f, i) => (

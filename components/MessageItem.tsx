@@ -12,12 +12,8 @@ import { cn } from "@/components/ui";
 import { Markdown, type Citation } from "@/components/Markdown";
 import { ThinkingBlock } from "@/components/ThinkingBlock";
 import { ToolCard } from "@/components/ToolCard";
+import { isSubchatMessage } from "@/lib/subchat-context";
 
-/* ------------------------------------------------------------------ */
-/*  One chat message (user or assistant), rendering every part type     */
-/*  produced by the AI SDK v7 UI message stream:                        */
-/*   text, reasoning, tool-<name>/dynamic-tool, source, file, …         */
-/* ------------------------------------------------------------------ */
 
 interface NormalizedTool {
   name: string;
@@ -27,7 +23,6 @@ interface NormalizedTool {
   errorText?: string;
 }
 
-/** Normalize the AI SDK's tool part (v7 `tool-*`/`dynamic-tool` + legacy `tool-invocation`). */
 function normalizeTool(part: any): NormalizedTool | null {
   if (part.type === "dynamic-tool") {
     const done = ["output-available", "output-error", "output-denied"].includes(
@@ -66,7 +61,6 @@ function normalizeTool(part: any): NormalizedTool | null {
   return null;
 }
 
-/* ------------------------------ File chip ------------------------------ */
 
 function FileChip({
   url,
@@ -98,7 +92,6 @@ function FileChip({
   );
 }
 
-/* ---------------------------- Source chip ----------------------------- */
 
 function SourceChips({ urls }: { urls: { url: string; title?: string }[] }) {
   if (!urls.length) return null;
@@ -128,7 +121,6 @@ function SourceChips({ urls }: { urls: { url: string; title?: string }[] }) {
   );
 }
 
-/* --------------------------- Assistant body --------------------------- */
 
 function AssistantParts({
   parts,
@@ -142,8 +134,6 @@ function AssistantParts({
     setSelected((s) => (s === n ? null : n));
   }, []);
 
-  // Collect every web-search result in this message into one global,
-  // URL-deduped citation list so [1], [2] … in the answer map to a card.
   const citations: Citation[] = [];
   const urlToN = new Map<string, number>();
   const pushCitation = (r: any) => {
@@ -240,13 +230,10 @@ function AssistantParts({
       case "data-start":
       case "data-end":
       case "data-file":
-        break; // handled elsewhere / no visual needed
+        break;
       default: {
-        // tool parts — both static (tool-*) and dynamic
         const normalized = normalizeTool(part);
         if (normalized) {
-          // Rewrite per-search result numbers to the message-global citation
-          // numbers so the card badges match the [n] pills in the answer.
           let result = normalized.result;
           let base = 0;
           if (normalized.name === "webSearch" && Array.isArray(result?.results)) {
@@ -280,8 +267,6 @@ function AssistantParts({
     }
   });
 
-  // Provider-native sources (Anthropic/Google) that aren't part of the
-  // webSearch tool also get citation numbers so everything is clickable.
   for (const s of sources) {
     if (s.url && s.url !== "#" && !urlToN.has(s.url)) {
       const n = citations.length + 1;
@@ -298,7 +283,17 @@ function AssistantParts({
   );
 }
 
-/* ----------------------------- MessageItem ---------------------------- */
+
+function ContextBadge() {
+  return (
+    <span
+      title="This turn came from the subchat — shared context both chats can see"
+      className="inline-flex w-fit items-center rounded-full bg-accent-soft px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-accent"
+    >
+      via subchat
+    </span>
+  );
+}
 
 export function MessageItem({
   message,
@@ -319,6 +314,7 @@ export function MessageItem({
       .join("");
     const imageParts = fileParts.filter((p) => p.mediaType.startsWith("image/"));
     const otherParts = fileParts.filter((p) => !p.mediaType.startsWith("image/"));
+    const viaSubchat = isSubchatMessage(message);
 
     return (
       <div className="group flex gap-3 px-1 py-3 animate-fade-in-up">
@@ -326,10 +322,10 @@ export function MessageItem({
           <User size={14} />
         </span>
         <div className="min-w-0 flex-1 pt-0.5 space-y-2">
+          {viaSubchat && <ContextBadge />}
           {imageParts.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {imageParts.map((p: any, i: number) => (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={i}
                   src={p.url}
@@ -367,12 +363,12 @@ export function MessageItem({
   if (role === "assistant") {
     return (
       <div className="px-1 py-3 animate-fade-in-up">
+        {isSubchatMessage(message) && <ContextBadge />}
         <AssistantParts parts={message.parts} streaming={isLast && streaming} />
       </div>
     );
   }
 
-  // system / other roles — render plainly
   return (
     <div className="px-1 py-3">
       <div className="rounded-xl border border-border bg-bg-subtle px-4 py-2 text-[13px] text-fg-muted">

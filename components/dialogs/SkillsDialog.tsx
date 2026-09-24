@@ -7,9 +7,6 @@ import { Modal, Button, Badge, Toggle } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { SkillDef } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Skills dialog — custom instructions the model follows in-chat.     */
-/* ------------------------------------------------------------------ */
 
 export function SkillsDialog({
   open,
@@ -77,7 +74,6 @@ export function SkillsDialog({
       width="max-w-2xl"
     >
       <div className="space-y-4">
-        {/* add form */}
         <div className="rounded-xl border border-border bg-bg-subtle/50 p-3.5 space-y-2">
           <div className="flex items-center gap-2 text-[13px] font-medium text-fg-secondary">
             <Plus size={14} className="text-accent" /> Add a skill
@@ -109,7 +105,6 @@ export function SkillsDialog({
           </div>
         </div>
 
-        {/* list */}
         {skills.length === 0 && (
           <p className="text-center text-[13px] text-fg-muted py-4">
             No skills yet — add one above.

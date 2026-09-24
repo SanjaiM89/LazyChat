@@ -8,12 +8,6 @@ import type { BuiltinProviderId } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/* ------------------------------------------------------------------ */
-/*  GET /api/models?provider=google → effective + live model ids.       */
-/*  Merges hardcoded + user overrides with what the provider API        */
-/*  actually reports, so retired ids (e.g. gemini-2.5-flash-lite) stop   */
-/*  being a surprise 404. No secrets are returned — only ids + names.   */
-/* ------------------------------------------------------------------ */
 
 interface LiveModel {
   id: string;
@@ -42,7 +36,6 @@ function stripGooglePrefix(name: string): string {
 }
 
 async function fetchLive(provider: string): Promise<LiveModel[]> {
-  // Custom provider → try OpenAI-compatible /models.
   if (!(provider in PROVIDERS)) {
     const custom = await getCustomProvider(provider);
     if (!custom) return [];
@@ -109,7 +102,6 @@ async function fetchLive(provider: string): Promise<LiveModel[]> {
         cfg.defaultBaseUrl ||
         "";
       if (!base) return [];
-      // Ollama tags live at <host>/api/tags; LM Studio + others at <base>/models.
       const noV1 = base.replace(/\/v1\/?$/, "");
       const candidates =
         provider === "ollama"
@@ -131,13 +123,11 @@ async function fetchLive(provider: string): Promise<LiveModel[]> {
               .filter((m: LiveModel) => m.id);
           }
         } catch {
-          /* try next */
         }
       }
       return [];
     }
     case "anthropic":
-      // Anthropic has no public list-models endpoint.
       return [];
     case "opencode": {
       const key = await resolveBuiltinKey("opencode");
@@ -169,7 +159,6 @@ export async function GET(req: NextRequest) {
   const out: Record<string, unknown> = {};
   for (const id of ids) {
     if (!(id in PROVIDERS)) {
-      // Custom provider id → still report live models.
       const custom = await getCustomProvider(id);
       if (!custom) continue;
       const live = await liveModels(id);

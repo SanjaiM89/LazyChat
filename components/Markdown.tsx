@@ -8,9 +8,6 @@ import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
 import { Check, Copy } from "lucide-react";
 
-/* ------------------------------------------------------------------ */
-/*  Markdown renderer with math, GFM tables, and highlighted code      */
-/* ------------------------------------------------------------------ */
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = React.useState(false);
@@ -20,7 +17,6 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
-      /* ignore */
     }
   };
   return (
@@ -67,7 +63,6 @@ function CitationPill({
 }) {
   const label = `[${n}]`;
   if (!citation) {
-    // Model cited a number with no matching source — render plainly, no dead link.
     return <span className="text-fg-muted">{label}</span>;
   }
   return (
@@ -76,7 +71,6 @@ function CitationPill({
         e.preventDefault();
         e.stopPropagation();
         onSelect?.(n);
-        // Jump to the source card / sources list entry.
         requestAnimationFrame(() => {
           document
             .getElementById(`cite-${n}`)
@@ -108,7 +102,6 @@ function Link({
   selected?: number | null;
   onSelect?: (n: number) => void;
 }) {
-  // Internal citation links produced by preprocessCitations(): "citation:3".
   const internal = href && /^citation:(\d+)$/.exec(href);
   if (internal) {
     const n = parseInt(internal[1], 10);
@@ -121,8 +114,6 @@ function Link({
       />
     );
   }
-  // A normal markdown link whose URL matches a known source → keep the link
-  // but append the numbered pill so the reference is visible inline.
   const match = href && citations?.find((c) => c.url === href);
   if (match) {
     return (
@@ -146,11 +137,6 @@ function Link({
   );
 }
 
-/**
- * Rewrite bare [1], [2] markers into internal citation links so the custom
- * <a> renderer above turns them into clickable pills. Skips fenced code
- * blocks so code samples are never mangled.
- */
 export function preprocessCitations(text: string, count: number): string {
   if (!count || !text.includes("[")) return text;
   const parts = text.split(/(```[\s\S]*?```)/g);
@@ -195,7 +181,6 @@ export function Markdown({
             />
           ),
           pre: ({ children }) => {
-            // pre without a code child — render plainly
             const child = React.Children.toArray(children)[0] as React.ReactElement;
             if (child && child.type === "code") {
               const props = child.props as { className?: string; children?: string };

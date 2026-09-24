@@ -59,7 +59,6 @@ export async function DELETE(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  // Toggle enabled without resending secrets.
   let body: any;
   try {
     body = await req.json();

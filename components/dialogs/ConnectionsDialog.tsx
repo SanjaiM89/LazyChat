@@ -7,9 +7,6 @@ import { Modal, Button, Badge, Toggle } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { MCPServerDef } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Connections dialog — MCP servers (stdio / HTTP) for tool access.   */
-/* ------------------------------------------------------------------ */
 
 export function ConnectionsDialog({
   open,
@@ -94,7 +91,6 @@ export function ConnectionsDialog({
       width="max-w-3xl"
     >
       <div className="space-y-4">
-        {/* add form */}
         <div className="rounded-xl border border-border bg-bg-subtle/50 p-3.5 space-y-2">
           <div className="flex items-center gap-2">
             <Plus size={14} className="text-accent" />
@@ -161,7 +157,6 @@ export function ConnectionsDialog({
           </div>
         </div>
 
-        {/* servers */}
         {mcpServers.length === 0 && (
           <p className="py-3 text-center text-[13px] text-fg-muted">
             No MCP servers connected.
@@ -217,7 +212,6 @@ export function ConnectionsDialog({
           ))}
         </div>
 
-        {/* connected tools summary */}
         {mcpTools.length > 0 && (
           <div className="rounded-xl border border-border bg-bg-subtle/40 p-3">
             <div className="flex items-center gap-2 text-[12px] font-medium text-fg-muted mb-2">

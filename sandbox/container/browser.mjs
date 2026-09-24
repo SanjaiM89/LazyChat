@@ -1,8 +1,3 @@
-/**
- * Live Chromium browser helper for the sandbox agent.
- * Single browser instance shared across tool calls; screenshots are
- * captured as small JPEG data-URLs for streaming to the mini-computer view.
- */
 import { chromium } from "playwright";
 
 export async function launchBrowser(report) {
@@ -25,13 +20,11 @@ export async function launchBrowser(report) {
     locale: "en-US",
   });
   context.setDefaultTimeout(30_000);
-  // a pristine tab so navigation is instant
   await context.newPage();
   report({ type: "log", message: "Chromium browser ready" });
   return browser;
 }
 
-/** JPEG data-url of the current page (compressed so it streams fast). */
 export async function screenshotDataUrl(page) {
   const buf = await page.screenshot({
     type: "jpeg",

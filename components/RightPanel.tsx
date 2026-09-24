@@ -7,9 +7,6 @@ import { SandboxPanel } from "@/components/panels/SandboxPanel";
 import { AgentsPanel } from "@/components/panels/AgentsPanel";
 import { cn } from "@/components/ui";
 
-/* ------------------------------------------------------------------ */
-/*  Right-hand side panel, switches by active tab.                     */
-/* ------------------------------------------------------------------ */
 
 export function RightPanel() {
   const panel = useAppStore((s) => s.panel);
@@ -18,7 +15,6 @@ export function RightPanel() {
 
   return (
     <>
-      {/* mobile: overlay */}
       <div
         className="fixed inset-0 z-40 bg-black/30 md:hidden"
         onClick={() => useAppStore.getState().setPanel(null)}

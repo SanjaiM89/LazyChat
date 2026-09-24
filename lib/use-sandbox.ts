@@ -4,12 +4,6 @@ import { useEffect, useRef } from "react";
 import { useAppStore } from "@/lib/app-store";
 import type { SandboxMeta } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Sandbox registry                                                    */
-/*  Polls the sandbox service (via the Next proxy) and merges live      */
-/*  Docker VMs into the store, so the mini-computer + Sandbox panel      */
-/*  show every sandbox spawned by agents or the chat.                   */
-/* ------------------------------------------------------------------ */
 
 export function useSandboxRegistry() {
   const registerSandbox = useAppStore((s) => s.registerSandbox);
@@ -38,9 +32,6 @@ export function useSandboxRegistry() {
         const sandboxes: SandboxMeta[] = await res.json();
         setStatusOnce("ok");
         const listed = new Set(sandboxes.map((s) => s.id));
-        // A finished agent disposes its sandbox server-side, so any sandbox we
-        // still hold that the server no longer lists has already auto-closed —
-        // drop it so the mini-computer / sandbox panel don't keep stale cards.
         for (const sb of useAppStore.getState().sandboxes) {
           if (!listed.has(sb.id)) removeSandbox(sb.id);
         }

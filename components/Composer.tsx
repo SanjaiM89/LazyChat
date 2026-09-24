@@ -11,6 +11,7 @@ import {
   FileText,
   Bot,
   Brain,
+  Monitor,
 } from "lucide-react";
 import type { FileUIPart } from "ai";
 import { cn, IconButton, Tooltip } from "@/components/ui";
@@ -23,9 +24,6 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { SandboxMini } from "@/components/SandboxMini";
 import { BackgroundRunBar } from "@/components/BackgroundRunBar";
 
-/* ------------------------------------------------------------------ */
-/*  Composer: message box with attachments, tool toggles, model picker */
-/* ------------------------------------------------------------------ */
 
 const TOOL_BUTTONS: {
   id: string;
@@ -50,6 +48,12 @@ const TOOL_BUTTONS: {
     label: "Agents",
     icon: <Bot size={15} />,
     tooltip: "Run autonomous agents in Docker sandboxes",
+  },
+  {
+    id: "computerUse",
+    label: "Computer",
+    icon: <Monitor size={15} />,
+    tooltip: "Let the model drive the shared Chromium computer anytime (recorded, you can take over)",
   },
 ];
 
@@ -109,8 +113,6 @@ export function Composer({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isBusy = chat.status === "submitted" || chat.status === "streaming";
-  // A reply for this conversation is being generated on the server and this tab
-  // isn't watching it (reloaded page, another tab, or we switched away).
   const liveRun = activeRunFor(runs, activeConversationId);
   const backgroundRun = isBusy ? null : liveRun;
   const thinkingSupported = modelSupportsThinking(
@@ -162,8 +164,6 @@ export function Composer({
     const value = text.trim();
     if (!value && !pending.length) return;
     if (isBusy) return;
-    // A background run owns this conversation — stop it first, so the typed
-    // message isn't swallowed.
     if (backgroundRun) return;
     chat.send(value, pending.length ? pending : undefined);
     setText("");
@@ -184,10 +184,8 @@ export function Composer({
   return (
     <div className="sticky bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-3 pb-3 pt-2 sm:px-6">
       <div className="mx-auto w-full" style={{ maxWidth: contentWidth }}>
-        {/* Manus-style mini computer shown above the chat box while a sandbox runs */}
         <SandboxMini />
 
-        {/* Generating on the server, but this tab isn't watching it */}
         {backgroundRun && <BackgroundRunBar run={backgroundRun} chat={chat} />}
 
         <div
@@ -230,7 +228,6 @@ export function Composer({
               </p>
             </div>
           )}
-          {/* pending attachments */}
           {pending.length > 0 && (
             <div className="flex flex-wrap gap-2 px-3 pt-3">
               {pending.map((p, i) => (
