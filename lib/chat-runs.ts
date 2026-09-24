@@ -64,6 +64,7 @@ const TOOL_ACTIVITY: Record<string, string> = {
   createArtifact: "Creating an artifact…",
   runAgentTask: "Running a sandbox agent…",
   computer_navigate: "Using the computer…",
+  computer_search: "Searching Google…",
   computer_click: "Using the computer…",
   computer_type: "Using the computer…",
   computer_press: "Using the computer…",
@@ -166,9 +167,47 @@ export class ChatRunConflictError extends Error {
   }
 }
 
+// A tool part counts as complete only when it carries an output.
+function hasToolOutput(p: any): boolean {
+  if (!p || typeof p.type !== "string") return true;
+  if (p.type === "dynamic-tool" || p.type.startsWith("tool-")) {
+    return (
+      p.state === "output-available" ||
+      p.state === "output-error" ||
+      p.state === "output-denied"
+    );
+  }
+  if (p.type === "tool-invocation") {
+    return p.toolInvocation?.state === "result";
+  }
+  return true;
+}
+
+// Drop tool calls that never produced a result (interrupted turns), so
+// convertToModelMessages never throws AI_MissingToolResultsError. Assistant
+// messages left with no parts at all are dropped; user messages are kept.
+function sanitizeToolHistory(messages: UIMessage[]): UIMessage[] {
+  const out: UIMessage[] = [];
+  for (const m of messages) {
+    const parts = (m as any)?.parts;
+    if (!m || !Array.isArray(parts)) {
+      if (m) out.push(m);
+      continue;
+    }
+    const kept = parts.filter(hasToolOutput);
+    if ((m as any).role === "assistant" && kept.length === 0) continue;
+    out.push(kept.length === parts.length ? m : ({ ...(m as any), parts: kept } as UIMessage));
+  }
+  return out;
+}
+
 export function createChatRun(input: CreateChatRunInput): ChatRunRecord {
   const settings: ChatSettings = { ...DEFAULT_SETTINGS, ...(input.settings || {}) };
-  const requestMessages = input.messages || [];
+  // A previous turn may have been interrupted (user hit Stop, stream error)
+  // leaving tool calls with no results. convertToModelMessages throws
+  // AI_MissingToolResultsError on those, and the poisoned message would fail
+  // every later send — so prune orphan tool calls up front.
+  const requestMessages = sanitizeToolHistory(input.messages || []);
   if (!requestMessages.length) throw new Error("No messages.");
 
   const conversationId = input.conversationId;

@@ -245,6 +245,41 @@ export async function chromiumNav(actor: ChromiumActor, op: "back" | "forward" |
   return act(actor, op, op, `/${op}`, { method: "POST" });
 }
 
+export interface ChromiumSearchResult extends ChromiumResult {
+  engine: string;
+  query: string;
+  results: { title: string; url: string; hostname: string; position: number }[];
+}
+
+export async function chromiumSearch(
+  actor: ChromiumActor,
+  query: string,
+  max = 8,
+): Promise<ChromiumSearchResult> {
+  const data = await daemon("/search", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query, max }),
+  }, 90_000);
+  const result: ChromiumSearchResult = {
+    url: data.url || "",
+    title: data.title || "",
+    image: typeof data.image === "string" ? data.image : undefined,
+    engine: data.engine || "unknown",
+    query,
+    results: Array.isArray(data.results) ? data.results : [],
+  };
+  await recordStep({
+    actor,
+    action: "search",
+    detail: `${result.engine}: "${query}" → ${result.results.length} results`,
+    url: result.url,
+    title: result.title,
+    shot: result.image,
+  });
+  return result;
+}
+
 export async function chromiumRead(): Promise<ChromiumResult> {
   const data = await daemon(`/text?max=12000`);
   return { url: data.url || "", title: data.title || "", text: data.text || "" };

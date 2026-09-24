@@ -6,12 +6,14 @@ import {
   chromiumPress,
   chromiumRead,
   chromiumScroll,
+  chromiumSearch,
   chromiumShot,
   chromiumState,
   chromiumType,
   clearTimeline,
   ensureChromium,
   listSteps,
+  recordStep,
   takeControl,
 } from "@/lib/chromium";
 
@@ -50,7 +52,12 @@ export async function POST(req: NextRequest) {
   }
   const op = String(body.op || "");
   try {
-    if (op === "take") return Response.json(await takeControl("user"));
+    if (op === "take") {
+      await ensureChromium();
+      const doc = await takeControl("user");
+      const shot = await chromiumShot().catch(() => null);
+      return Response.json({ control: doc.control, ...(shot || {}) });
+    }
     if (op === "release") return Response.json(await takeControl("model"));
     await ensureChromium();
     switch (op) {
@@ -59,6 +66,10 @@ export async function POST(req: NextRequest) {
         if (!/^https?:\/\//i.test(url)) return bad("An http(s) URL is required.");
         return Response.json(await chromiumNavigate("user", url));
       }
+      case "search":
+        return Response.json(
+          await chromiumSearch("user", String(body.query || ""), Number(body.max) || 8),
+        );
       case "click":
         return Response.json(
           await chromiumClick("user", Number(body.x), Number(body.y), body.label),
@@ -75,8 +86,17 @@ export async function POST(req: NextRequest) {
       case "forward":
       case "reload":
         return Response.json(await chromiumNav("user", op));
-      case "read":
-        return Response.json(await chromiumRead());
+      case "read": {
+        const r = await chromiumRead();
+        await recordStep({
+          actor: "user",
+          action: "read",
+          detail: (r.title || r.url || "page").slice(0, 120),
+          url: r.url,
+          title: r.title,
+        });
+        return Response.json(r);
+      }
       default:
         return bad(`Unknown op: ${op || "(none)"}`);
     }

@@ -42,7 +42,7 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
 
   const PANELS = [
     { id: "artifacts" as const, label: "Artifacts", icon: <FileText size={16} /> },
-    { id: "sandbox" as const, label: "Sandbox", icon: <Monitor size={16} /> },
+    { id: "sandbox" as const, label: "Chromium", icon: <Monitor size={16} /> },
     { id: "agents" as const, label: "Agents", icon: <Bot size={16} /> },
   ];
 

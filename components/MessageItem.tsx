@@ -71,10 +71,10 @@ function FileChip({
   mediaType: string;
   filename?: string;
 }) {
-  const isImage = mediaType.startsWith("image/");
+  const isImage = (mediaType ?? "").startsWith("image/");
   return (
     <a
-      href={url}
+      href={url || "#"}
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
@@ -312,8 +312,8 @@ export function MessageItem({
       .filter((p) => p.type === "text")
       .map((p: any) => p.text ?? "")
       .join("");
-    const imageParts = fileParts.filter((p) => p.mediaType.startsWith("image/"));
-    const otherParts = fileParts.filter((p) => !p.mediaType.startsWith("image/"));
+    const imageParts = fileParts.filter((p) => (p.mediaType ?? "").startsWith("image/"));
+    const otherParts = fileParts.filter((p) => !(p.mediaType ?? "").startsWith("image/"));
     const viaSubchat = isSubchatMessage(message);
 
     return (
