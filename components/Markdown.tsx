@@ -163,9 +163,12 @@ export function Markdown({
   selectedCitation?: number | null;
   onSelectCitation?: (n: number) => void;
 }) {
+  // Streaming tokens arrive faster than a large markdown tree can be parsed.
+  // Let urgent input/scroll work run first, then render the newest content.
+  const deferredContent = React.useDeferredValue(content);
   const body = citations?.length
-    ? preprocessCitations(content, citations.length)
-    : content;
+    ? preprocessCitations(deferredContent, citations.length)
+    : deferredContent;
   return (
     <div className={`md ${className || ""}`}>
       <ReactMarkdown

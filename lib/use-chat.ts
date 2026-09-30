@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import type { FileUIPart, UIMessage } from "ai";
 import { activeRunFor, useAppStore } from "@/lib/app-store";
@@ -27,6 +27,7 @@ type ChatApi = {
 export function useChatController() {
   const settings = useAppStore((s) => s.settings);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
+  const conversations = useAppStore((s) => s.conversations);
   const setActiveConversation = useAppStore((s) => s.setActiveConversation);
   const loadConversations = useAppStore((s) => s.loadConversations);
   const loadArtifacts = useAppStore((s) => s.loadArtifacts);
@@ -40,7 +41,10 @@ export function useChatController() {
   const attachRef = useRef<AttachTarget | null>(null);
   const attachingRef = useRef(false);
   const sawRunRef = useRef(false);
-  const bootstrappedRef = useRef(false);
+  const conversationRequestRef = useRef(0);
+  const observedConversationRef = useRef<string | null | undefined>(undefined);
+  const [loadingConversationId, setLoadingConversationId] = useState<string | null>(null);
+  const [conversationLoadError, setConversationLoadError] = useState<string | null>(null);
   const apiRef = useRef<{
     chat: ChatApi;
     attachToRun: (runId: string) => Promise<boolean>;
@@ -90,7 +94,7 @@ export function useChatController() {
     async (cid: string): Promise<UIMessage[] | null> => {
       try {
         const res = await fetch(`/api/conversations/${cid}`, { cache: "no-store" });
-        if (!res.ok) return null;
+        if (!res.ok) throw new Error(`Conversation could not be loaded (${res.status}).`);
         const conv = await res.json();
         const messages = Array.isArray(conv.messages) ? (conv.messages as UIMessage[]) : [];
         noteStoredSubchatIds(messages);
@@ -136,7 +140,7 @@ export function useChatController() {
   });
 
   const attachToRun = useCallback(
-    async (runId: string): Promise<boolean> => {
+    async (runId: string, expectedConversationId?: string): Promise<boolean> => {
       if (attachingRef.current) return false;
       attachingRef.current = true;
       try {
@@ -151,6 +155,8 @@ export function useChatController() {
           : [];
         const run = snap?.run as ChatRunSummary | undefined;
         noteStoredSubchatIds(messages);
+
+        if (expectedConversationId && cidRef.current !== expectedConversationId) return false;
 
         attachRef.current = { runId };
         if (run?.conversationId) {
@@ -175,27 +181,50 @@ export function useChatController() {
 
   const syncConversation = useCallback(
     async (cid: string) => {
+      const requestId = ++conversationRequestRef.current;
+      setLoadingConversationId(cid);
+      setConversationLoadError(null);
       const busy = chat.status === "submitted" || chat.status === "streaming";
-      if (busy && attachRef.current?.runId) return;
-
-      const runs = await fetchRuns();
-      useAppStore.getState().setRuns(runs);
-      const live = runs.find(
-        (r) => r.conversationId === cid && r.status === "running",
-      );
-      if (live) {
-        await attachToRun(live.id);
+      if (busy && attachRef.current?.runId) {
+        if (requestId === conversationRequestRef.current) setLoadingConversationId(null);
         return;
       }
-      attachRef.current = null;
-      const messages = await reloadStored(cid);
-      if (messages) {
+
+      try {
+        const runs = await fetchRuns();
+        if (requestId !== conversationRequestRef.current || cidRef.current !== cid) return;
+        useAppStore.getState().setRuns(runs);
+        const live = runs.find(
+          (r) => r.conversationId === cid && r.status === "running",
+        );
+        if (live) {
+          const attached = await attachToRun(live.id, cid);
+          if (!attached) throw new Error("The active response could not be resumed.");
+          return;
+        }
+        attachRef.current = null;
+        const messages = await reloadStored(cid);
+        if (requestId !== conversationRequestRef.current || cidRef.current !== cid) return;
+        if (!messages) throw new Error("Conversation could not be loaded.");
         chat.setMessages(messages);
         chat.clearError();
+      } catch (error) {
+        if (requestId === conversationRequestRef.current && cidRef.current === cid) {
+          setConversationLoadError(error instanceof Error ? error.message : "Conversation could not be loaded.");
+        }
+      } finally {
+        if (requestId === conversationRequestRef.current) setLoadingConversationId(null);
       }
       void loadArtifactsRef.current(cid);
     },
-    [attachToRun, chat, fetchRuns, reloadStored],
+    [
+      attachToRun,
+      chat,
+      fetchRuns,
+      reloadStored,
+      setConversationLoadError,
+      setLoadingConversationId,
+    ],
   );
 
 
@@ -208,24 +237,34 @@ export function useChatController() {
   }, [chat]);
 
   const startNew = useCallback(() => {
+    conversationRequestRef.current++;
+    setLoadingConversationId(null);
+    setConversationLoadError(null);
     void detach();
     chat.setMessages([]);
     chat.clearError();
     cidRef.current = null;
     setActiveConversationRef.current(null);
-  }, [chat, detach]);
+  }, [chat, detach, setConversationLoadError, setLoadingConversationId]);
 
   const openConversation = useCallback(
     async (id: string) => {
+      if (id === cidRef.current) {
+        await syncConversation(id);
+        return;
+      }
       if (chat.status === "submitted" || chat.status === "streaming") {
         await detach();
       }
       cidRef.current = id;
+      conversationRequestRef.current++;
+      setLoadingConversationId(id);
+      setConversationLoadError(null);
+      chat.setMessages([]);
       setActiveConversationRef.current(id);
       attachRef.current = null;
-      await syncConversation(id);
     },
-    [chat.status, detach, syncConversation],
+    [chat, detach, syncConversation, setConversationLoadError, setLoadingConversationId],
   );
 
   const send = useCallback(
@@ -305,14 +344,17 @@ export function useChatController() {
   });
 
   useEffect(() => {
-    if (bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
-    const cid = cidRef.current;
+    if (
+      activeConversationId &&
+      !conversations.some((conversation) => conversation.id === activeConversationId)
+    ) return;
+    if (observedConversationRef.current === activeConversationId) return;
+    observedConversationRef.current = activeConversationId;
     const api = apiRef.current;
     if (!api) return;
-    if (cid) void api.syncConversation(cid);
+    if (activeConversationId) void api.syncConversation(activeConversationId);
     else void api.refreshRuns();
-  }, []);
+  }, [activeConversationId, conversations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -380,6 +422,12 @@ export function useChatController() {
     regenerate,
     stop,
     activeConversationId,
+    loadingConversation: loadingConversationId === activeConversationId,
+    conversationLoadError,
+    reloadConversation: () => {
+      const cid = cidRef.current;
+      if (cid) void syncConversation(cid);
+    },
     stopRun,
     showRun,
     attachToRun,

@@ -361,3 +361,9 @@ body {
 .chat-reading .user-text {
   font-size: var(--reading-size);
 }
+
+/* Keep long chat histories cheap to paint while retaining scrollable space. */
+.chat-message {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
