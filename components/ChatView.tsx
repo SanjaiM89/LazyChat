@@ -10,6 +10,7 @@ import {
   BrainCircuit,
   MessagesSquare,
   Copy,
+  LoaderCircle,
 } from "lucide-react";
 import type { ChatController } from "@/lib/use-chat";
 import { MessageItem } from "@/components/MessageItem";
@@ -93,6 +94,29 @@ export function ChatView({ chat }: { chat: ChatController }) {
   }, [menu]);
 
   if (messages.length === 0) {
+    if (chat.loadingConversation) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-fg-muted" role="status" aria-live="polite">
+          <LoaderCircle size={22} className="animate-spin text-accent" />
+          <p className="text-[13px]">Loading conversation…</p>
+        </div>
+      );
+    }
+
+    if (chat.conversationLoadError) {
+      return (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+          <p className="text-[13px] text-danger">{chat.conversationLoadError}</p>
+          <button
+            onClick={chat.reloadConversation}
+            className="rounded-lg border border-border px-3 py-1.5 text-[12px] text-fg-secondary hover:bg-bg-hover"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-10">
         <SubchatOpenerButton />

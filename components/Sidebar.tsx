@@ -136,7 +136,7 @@ export function Sidebar({
                         : "hover:bg-bg-hover",
                     )}
                     onClick={() => {
-                      if (c.id !== activeConversationId) chat.openConversation(c.id);
+                      void chat.openConversation(c.id);
                     }}
                   >
                     {live ? (

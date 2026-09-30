@@ -295,7 +295,7 @@ function ContextBadge() {
   );
 }
 
-export function MessageItem({
+function MessageItemComponent({
   message,
   isLast,
   streaming,
@@ -317,7 +317,7 @@ export function MessageItem({
     const viaSubchat = isSubchatMessage(message);
 
     return (
-      <div className="group flex gap-3 px-1 py-3 animate-fade-in-up">
+      <div className="chat-message group flex gap-3 px-1 py-3 animate-fade-in-up">
         <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-strong text-[11px] font-semibold text-white shadow-sm">
           <User size={14} />
         </span>
@@ -362,7 +362,7 @@ export function MessageItem({
 
   if (role === "assistant") {
     return (
-      <div className="px-1 py-3 animate-fade-in-up">
+      <div className="chat-message px-1 py-3 animate-fade-in-up">
         {isSubchatMessage(message) && <ContextBadge />}
         <AssistantParts parts={message.parts} streaming={isLast && streaming} />
       </div>
@@ -370,7 +370,7 @@ export function MessageItem({
   }
 
   return (
-    <div className="px-1 py-3">
+    <div className="chat-message px-1 py-3">
       <div className="rounded-xl border border-border bg-bg-subtle px-4 py-2 text-[13px] text-fg-muted">
         {message.parts
           .filter((p) => p.type === "text")
@@ -380,3 +380,7 @@ export function MessageItem({
     </div>
   );
 }
+
+// A streaming response changes the messages array on every update. Keep completed
+// turns mounted but skip their markdown/tool rendering when their data is stable.
+export const MessageItem = React.memo(MessageItemComponent);
