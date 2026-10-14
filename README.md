@@ -478,6 +478,48 @@ server falls back to the folder basename when the field is empty.
 
 ---
 
+## Ask-user questions
+
+The agent can stop mid-turn and ask you a question, then continue with your
+answer — DeepSeek Harness' `ask_user_question`
+(`packages/interaction/tool-ask-user`).
+
+**How the pause works.** A tool `execute` runs *during* the stream, so the chat
+request stays open while `lib/ask-user.ts` holds the promise open. The browser
+answers over a second request (`POST /api/chat/ask-user`), which resolves it,
+the model resumes, and the transcript renders the answered card. This is the one
+thing in the app that depends on the server being a **single process**: the
+registry lives in memory, so a multi-instance or serverless deployment would
+need it moved to shared storage.
+
+That is also why the registry is pinned to `globalThis` rather than a module
+`Map` — Next compiles each route as its own bundle, and a per-module copy would
+mean the question the stream opened was invisible to the endpoint that answers
+it.
+
+**Safety.** The tool description tells the model that an unanswered question
+comes back empty and must be read as "not approved", never as consent. A
+question also expires after 10 minutes, and stopping a run releases it
+immediately, so a closed tab can never leave the model waiting.
+
+**UI** (`components/AskUserCard.tsx`) follows dsh's two states: an interactive
+composer while the call is pending — option rows, a "Something else" free-text
+answer, single- or multi-select — and dsh's read-only transcript once answered
+(question above, answer below), which is what the conversation keeps afterwards.
+dsh collects the answer in a side panel; Omnia answers inline, because the
+transcript is where the question was asked.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/chat/ask-user?toolCallId=` | current question state, for a client that reloaded |
+| `POST /api/chat/ask-user` | submit answers; `409` when the question is gone |
+
+The tool is always on, not a composer toggle — it is how the agent asks for
+confirmation, so it ships in every turn the way dsh composes `tool-ask-user`
+into every preset.
+
+---
+
 ## Testing
 
 ```bash

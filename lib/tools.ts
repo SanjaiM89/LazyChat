@@ -18,6 +18,7 @@ import {
   getControl,
 } from "@/lib/chromium";
 import type { ArtifactType } from "@/lib/types";
+import { buildAskUserQuestionTool } from "@/lib/ask-user-tool";
 
 
 const ARTIFACT_TYPES: ArtifactType[] = [
@@ -415,6 +416,8 @@ export interface EnabledToolsOpts {
   provider: string;
   model: string;
   conversationId?: string;
+  /** Owning run, so stopping it releases any question the tool is holding. */
+  runId?: string;
 }
 
 export function enabledTools(names: string[], opts: EnabledToolsOpts) {
@@ -424,7 +427,12 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
     runAgentTask: buildRunAgentTaskTool(opts),
     companyBrain: buildCompanyBrainTool(opts),
   };
-  const out: Record<string, any> = {};
+  const out: Record<string, any> = {
+    // `ask_user_question` is not toggleable: it is how the agent asks for
+    // confirmation or a missing decision, so it ships in every turn the way dsh
+    // composes `tool-ask-user` into every preset.
+    ask_user_question: buildAskUserQuestionTool(opts),
+  };
   for (const n of names) {
     if (n === "computerUse") Object.assign(out, buildComputerTools());
     else if (map[n]) out[n] = map[n];

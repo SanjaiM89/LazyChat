@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
+import { AskUserCard } from "@/components/AskUserCard";
 import { TerminalBlock } from "@/components/dsh/TerminalBlock";
 import { terminalCardModel, terminalFailed } from "@/components/dsh/terminal-card-model";
 import { TextShimmer } from "@/components/dsh/TextShimmer";
@@ -35,6 +36,7 @@ export function ToolCard({
   streaming,
   open,
   errorText,
+  toolCallId,
   citationBase = 0,
   selectedCitation,
   onSelectCitation,
@@ -45,10 +47,26 @@ export function ToolCard({
   streaming: boolean;
   open?: boolean;
   errorText?: string;
+  /** The transcript's call id — the answer key for an ask-user question. */
+  toolCallId?: string;
   citationBase?: number;
   selectedCitation?: number | null;
   onSelectCitation?: (n: number) => void;
 }) {
+  // An ask-user question owns the interaction: it is a composer while the call
+  // is pending and a read-only transcript once answered, so it never renders
+  // through the generic row's disclosure.
+  if (toolName === "ask_user_question") {
+    return (
+      <AskUserCard
+        toolCallId={toolCallId ?? ""}
+        questions={Array.isArray(args?.questions) ? args.questions : []}
+        result={result}
+        streaming={streaming}
+        errorText={errorText}
+      />
+    );
+  }
   if (toolName === "webSearch") {
     return (
       <SearchCardWrapper
