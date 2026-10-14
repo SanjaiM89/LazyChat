@@ -399,6 +399,21 @@ become "the agent makes things up".
 | `GET` | `/api/brain/memory/{user_id}` | episodic + semantic + procedural memory |
 | `POST` | `/api/brain/memory/{user_id}/consolidate` | force consolidation of a session |
 | `GET` | `/api/brain/health` | liveness + FalkorDB reachability |
+| `GET` | `/api/conversations/{id}/usage` | token accounting for the composer bar |
+| `POST` | `/api/conversations/{id}/compact` | condense history (`{force?}`) |
+
+---
+
+## Composer stats + compaction
+
+Below the input box, dsh-style pills show decode speed (tok/s), cumulative
+tokens burned, and context-window usage for the conversation — backed by
+per-run provider-reported usage accumulated in `lib/chat-runs.ts`.
+
+**Compact** condenses older history into a summary via the conversation's own
+provider/model (cut at a user boundary, newest messages kept verbatim);
+**Auto** (on by default) does the same at 80% context pressure, mirroring
+`dsh-compaction-basic`.
 
 ---
 

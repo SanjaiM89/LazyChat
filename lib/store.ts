@@ -42,6 +42,10 @@ export interface StoredConversation {
   provider: string;
   model: string;
   messages: unknown[];
+  /** Cumulative token usage across runs (dsh-style accounting). */
+  usage?: { inputTokens: number; outputTokens: number };
+  /** Last finished run: freshness for speed + context pressure. */
+  lastRun?: { inputTokens: number; outputTokens: number; decodeMs: number; at: number };
 }
 
 export async function listConversations(): Promise<StoredConversation[]> {
