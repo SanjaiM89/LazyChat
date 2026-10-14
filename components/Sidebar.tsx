@@ -16,6 +16,7 @@ import {
   Globe,
 } from "lucide-react";
 import { cn, Tooltip } from "@/components/ui";
+import { AttachWorkspaceDialog } from "@/components/workspace/AttachWorkspaceDialog";
 import {
   useAppStore,
   modelLabel,
@@ -49,6 +50,8 @@ export function Sidebar({
   onOpenConnections?: () => void;
   onOpenSearch?: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
   const conversations = useAppStore((s) => s.conversations);
@@ -113,7 +116,7 @@ export function Sidebar({
             </div>
 
             <div className="px-3 pb-2">
-              <div className="mb-2 grid grid-cols-3 gap-1 rounded-xl border border-border bg-bg-subtle p-1">
+              <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl border border-border bg-bg-subtle p-1">
                 <button
                   onClick={() => setMainView("chat")}
                   className={cn(
@@ -138,27 +141,56 @@ export function Sidebar({
                   <Brain size={14} />
                   Brain
                 </button>
-                <button
-                  onClick={() => setMainView("workspace")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
-                    mainView === "workspace"
-                      ? "bg-bg-elevated text-fg shadow-sm"
-                      : "text-fg-muted hover:text-fg-secondary",
-                  )}
-                >
-                  <Briefcase size={14} />
-                  Workspace
-                </button>
               </div>
               {mainView === "chat" && (
-                <button
-                  onClick={() => chat.startNew()}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 text-[13.5px] font-medium text-fg hover:border-accent/40 hover:bg-bg-hover transition-colors"
-                >
-                  <Plus size={15} />
-                  New chat
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setMenuOpen((v) => !v)}
+                    onMouseEnter={() => setMenuOpen(true)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 text-[13.5px] font-medium text-fg hover:border-accent/40 hover:bg-bg-hover transition-colors"
+                  >
+                    <Plus size={15} />
+                    New chat
+                  </button>
+                  {menuOpen && (
+                    <div
+                      onMouseLeave={() => setMenuOpen(false)}
+                      className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-soft"
+                    >
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          chat.startNew();
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] hover:bg-bg-hover"
+                      >
+                        <MessageCircle size={14} className="text-accent" />
+                        <span>
+                          New chat
+                          <span className="block text-[11px] text-fg-muted">Plain conversation</span>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setAttachOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] hover:bg-bg-hover"
+                      >
+                        <Briefcase size={14} className="text-accent" />
+                        <span>
+                          New workspace
+                          <span className="block text-[11px] text-fg-muted">
+                            Chat bound to a project folder
+                          </span>
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {attachOpen && (
+                <AttachWorkspaceDialog chat={chat} onClose={() => setAttachOpen(false)} />
               )}
             </div>
 
@@ -234,15 +266,6 @@ export function Sidebar({
                   The Company Brain answers from the FalkorDB knowledge graph —
                   people, services, tickets, decisions — and remembers earlier
                   sessions. Its own past sessions live in the Brain panel.
-                </p>
-              </div>
-            )}
-            {mainView === "workspace" && (
-              <div className="flex-1 overflow-y-auto px-4 py-3">
-                <p className="text-[12px] leading-relaxed text-fg-muted">
-                  DeepSeek Harness-powered agent workspaces. Create a project
-                  directory, run agents in it, and every plan, command, error
-                  and fix is remembered — per workspace plus shared globally.
                 </p>
               </div>
             )}

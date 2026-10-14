@@ -5,6 +5,7 @@ import { useAppStore } from "@/lib/app-store";
 import { ArtifactPanel } from "@/components/panels/ArtifactPanel";
 import { SandboxPanel } from "@/components/panels/SandboxPanel";
 import { AgentsPanel } from "@/components/panels/AgentsPanel";
+import { FileExplorer } from "@/components/workspace/FileExplorer";
 import { cn } from "@/components/ui";
 
 
@@ -28,6 +29,7 @@ export function RightPanel() {
         {panel === "artifacts" && <ArtifactPanel />}
         {panel === "sandbox" && <SandboxPanel />}
         {panel === "agents" && <AgentsPanel />}
+        {panel === "files" && <FileExplorer />}
       </aside>
     </>
   );

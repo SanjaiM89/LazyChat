@@ -277,8 +277,13 @@ export function useChatController() {
       }
       const payload: { text: string; files?: FileUIPart[] } = { text };
       if (files?.length) payload.files = files;
+      const attached = useAppStore.getState().conversationWorkspaces[cid];
       void chat.sendMessage(payload, {
-        body: { settings: settingsRef.current, conversationId: cid },
+        body: {
+          settings: settingsRef.current,
+          conversationId: cid,
+          ...(attached ? { workspaceId: attached.id } : {}),
+        },
       });
     },
     [attachToRun, chat, ensureConversationId],
@@ -291,8 +296,13 @@ export function useChatController() {
       void attachToRun(live.id);
       return;
     }
+    const attached = useAppStore.getState().conversationWorkspaces[cid];
     void chat.regenerate({
-      body: { settings: settingsRef.current, conversationId: cid },
+      body: {
+        settings: settingsRef.current,
+        conversationId: cid,
+        ...(attached ? { workspaceId: attached.id } : {}),
+      },
     });
   }, [attachToRun, chat, ensureConversationId]);
 

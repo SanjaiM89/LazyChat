@@ -26,10 +26,10 @@ import {
 } from "@/lib/display";
 
 
-export type PanelTab = "artifacts" | "sandbox" | "agents" | null;
+export type PanelTab = "artifacts" | "sandbox" | "agents" | "files" | null;
 export type ThemeMode = "system" | "light" | "dark";
 /** Top-level view inside the single Omnia shell: chat, or the Company Brain. */
-export type MainView = "chat" | "brain" | "workspace";
+export type MainView = "chat" | "brain";
 
 interface AppStore {
   theme: ThemeMode;
@@ -51,6 +51,9 @@ interface AppStore {
   newConversation: () => void;
   setActiveConversation: (id: string | null) => void;
   deleteConversation: (id: string) => Promise<void>;
+  /** Workspace attached per conversation: {workspaceId, name, path}. */
+  conversationWorkspaces: Record<string, { id: string; name: string; path: string }>;
+  setConversationWorkspace: (cid: string, ws: { id: string; name: string; path: string } | null) => void;
 
   artifacts: ArtifactMeta[];
   openArtifactId: string | null;
@@ -153,6 +156,14 @@ export const useAppStore = create<AppStore>()(
       },
       newConversation: () => set({ activeConversationId: null, openArtifactId: null }),
       setActiveConversation: (id) => set({ activeConversationId: id }),
+      conversationWorkspaces: {},
+      setConversationWorkspace: (cid, ws) =>
+        set((s) => {
+          const map = { ...s.conversationWorkspaces };
+          if (ws) map[cid] = ws;
+          else delete map[cid];
+          return { conversationWorkspaces: map };
+        }),
       deleteConversation: async (id) => {
         await fetch(`/api/conversations/${id}`, { method: "DELETE" });
         set({
@@ -311,6 +322,10 @@ export const useAppStore = create<AppStore>()(
         if (settings?.provider === "anthropic" && settings?.model === "claude-sonnet-5") {
           state.settings = { ...settings, provider: "sarvam", model: "sarvam-105b" };
         }
+        // The standalone Workspace tab was folded into chat; land back on chat.
+        if ((state as { mainView?: string }).mainView === "workspace") {
+          (state as { mainView?: string }).mainView = "chat";
+        }
         return state;
       },
       partialize: (s) => ({
@@ -318,6 +333,7 @@ export const useAppStore = create<AppStore>()(
         mainView: s.mainView,
         settings: s.settings,
         activeConversationId: s.activeConversationId,
+        conversationWorkspaces: s.conversationWorkspaces,
         display: s.display,
         subchatWidth: s.subchatWidth,
       }),

@@ -25,6 +25,40 @@ import { enabledTools } from "@/lib/tools";
 import { buildMCPToolSet } from "@/lib/mcp";
 import { buildSystemPrompt } from "@/lib/system";
 import { captureOmniaMemory, messageText, recallForOmnia, recordOmniaTurn } from "@/lib/brain/omnia-memory";
+
+/**
+ * Workspace attachment for a run: folder-bound tools + memory briefing.
+ * No-ops (empty tools, unchanged prompt) when nothing is attached or the
+ * workspace is gone — a detached folder must never break a chat.
+ */
+async function buildRunWorkspaceTools(run: ChatRunRecord): Promise<Record<string, unknown>> {
+  if (!run.workspaceId) return {};
+  try {
+    const { workspaceBriefing, buildWorkspaceTools } = await import("@/lib/dsh/workspace-tools");
+    const brief = await workspaceBriefing(run.workspaceId);
+    if (!brief) return {};
+    return buildWorkspaceTools({ workspaceId: run.workspaceId, root: brief.root }) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+async function withWorkspaceBriefing(run: ChatRunRecord, system: string): Promise<string> {
+  if (!run.workspaceId) return system;
+  try {
+    const { workspaceBriefing } = await import("@/lib/dsh/workspace-tools");
+    const brief = await workspaceBriefing(run.workspaceId);
+    if (!brief) return system;
+    return (
+      system +
+      "\n\n## Attached workspace\n" +
+      brief.briefing +
+      "\nPrefer the ws_* tools for anything involving the project files or commands."
+    );
+  } catch {
+    return system;
+  }
+}
 import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
 import { getConversation, saveConversation } from "@/lib/store";
 
@@ -32,6 +66,8 @@ import { getConversation, saveConversation } from "@/lib/store";
 export interface ChatRunRecord {
   id: string;
   conversationId?: string;
+  /** Attached workspace (folder-bound execution + memory scope), if any. */
+  workspaceId?: string;
   status: ChatRunStatus;
   activity: string;
   step: number;
@@ -147,6 +183,7 @@ export interface CreateChatRunInput {
   model?: LanguageModel;
   conversationId?: string;
   trigger?: "submit-message" | "regenerate-message";
+  workspaceId?: string;
 }
 
 export async function prepareChatRun(
@@ -224,6 +261,7 @@ export function createChatRun(input: CreateChatRunInput): ChatRunRecord {
   const run: ChatRunRecord = {
     id: nanoid(10),
     conversationId,
+    workspaceId: input.workspaceId,
     status: "running",
     activity: "Starting…",
     step: 0,
@@ -287,12 +325,14 @@ async function pump(run: ChatRunRecord) {
         conversationId: run.conversationId,
       }),
       ...(await buildMCPToolSet()),
+      ...(await buildRunWorkspaceTools(run)),
     };
 
-    const system = await buildSystemPrompt({
+    let system = await buildSystemPrompt({
       provider: settings.provider,
       model: settings.model,
     });
+    system = await withWorkspaceBriefing(run, system);
 
     // FalkorDB memory: what earlier Omnia conversations established about this
     // question rides in the system prompt. Never throws; empty when unknown.
