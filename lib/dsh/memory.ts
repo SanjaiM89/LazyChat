@@ -186,8 +186,7 @@ export async function setTodoStatus(
   });
 }
 
-export async function listTodos(client: FalkorClient, workspaceId: string): Promise<TodoItem[]> {
-  const rows = await client.query(
+export async function listTodos(client: FalkorClient, workspaceId: string): Promise<TodoItem[]> {  const rows = await client.query(
     "MATCH (t:Todo) WHERE t.workspace_id = $wid RETURN t.id AS id, t.text AS text, " +
       "t.status AS status, t.sort AS sort, t.created_at AS created_at, t.updated_at AS updated_at " +
       "ORDER BY t.sort ASC",
@@ -407,4 +406,128 @@ export async function deleteShared(client: FalkorClient, id: string): Promise<bo
     { id },
   );
   return rows.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic workspace capture: the user's own words, no model needed
+//
+// Mirrors the Omnia personal-fact fast path. Explicit statements ("remember
+// that X", "we decided Y", "TODO: Z") are stored as workspace memory the
+// moment the turn finishes — independent of whether the model calls any
+// memory tool. Everything here is pure regex + MERGE; it never throws.
+// ---------------------------------------------------------------------------
+
+export interface WorkspaceFacts {
+  memories: Array<{ kind: string; text: string; slot?: string | null }>;
+  todos: string[];
+  decisions: Array<{ title: string; body: string }>;
+}
+
+function cleanLine(text: string, maxLen = 200): string {
+  return text.trim().replace(/\s+/g, " ").replace(/[.?!;,]+$/g, "").trim().slice(0, maxLen);
+}
+
+/**
+ * Pull durable workspace facts out of one user turn. Pure and synchronous.
+ */
+export function extractWorkspaceFacts(text: string): WorkspaceFacts {
+  const out: WorkspaceFacts = { memories: [], todos: [], decisions: [] };
+  if (!text) return out;
+
+  // Explicit remembers: "remember that X", "note X", "don't forget X".
+  const rememberRe =
+    /(?:remember|note)(?:\s+that)?\s+(.+?)(?:[.!?]|$)|don't forget\s+(.+?)(?:[.!?]|$)|keep in mind\s+(.+?)(?:[.!?]|$)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = rememberRe.exec(text)) !== null) {
+    const raw = cleanLine(m[1] ?? m[2] ?? m[3] ?? "");
+    if (raw.length < 4) continue;
+    if (/^me\b/i.test(raw)) continue; // "remember me" (login checkbox), not a fact
+    if (/^to\s+\w/i.test(raw)) {
+      // "remember to restart X" is future work, not a fact.
+      out.todos.push(raw.replace(/^to\s+/i, ""));
+    } else {
+      out.memories.push({ kind: "note", text: raw.endsWith(".") ? raw : `${raw}.` });
+    }
+  }
+
+  // TODO markers: lines starting with TODO:/TASK:, plus "add a todo".
+  for (const line of text.split("\n")) {
+    const marked = /^(?:todo|task)\s*:\s*(.+)$/i.exec(line.trim())?.[1];
+    if (marked) {
+      const clean = cleanLine(marked, 160);
+      if (clean.length >= 3) out.todos.push(clean);
+    }
+  }
+  const addTodo =
+    /how (?:do|to|can|should)\b/i.test(text)
+      ? undefined // "how do I add a todo" is a question, not a task
+      : /add (?:a )?todo\s*:?\s*(.+?)(?:[.!?]|$)/i.exec(text)?.[1];
+  if (addTodo) {
+    const clean = cleanLine(addTodo, 160);
+    if (clean.length >= 3 && !out.todos.includes(clean)) out.todos.push(clean);
+  }
+
+  // Stated decisions: "we decided X", "decision: Y", "let's go with Z".
+  const decided =
+    /\bwe (?:decided|chose|picked|will use|are going with|agreed (?:on|to))\b\s*(.{4,140})/i.exec(
+      text,
+    )?.[1] ?? /^\s*decision\s*:\s*(.+)$/im.exec(text)?.[1];
+  if (decided) {
+    const title = cleanLine(decided, 140);
+    if (title.length >= 4) {
+      out.decisions.push({ title, body: cleanLine(text, 600) });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Store extracted facts as workspace memory with existence checks:
+ * - memories MERGE by content id (storeShared dedups repeats);
+ * - todos skip when an equal open todo already exists;
+ * - decisions skip when an equal-titled decision already exists.
+ */
+export async function captureWorkspaceFacts(
+  client: FalkorClient,
+  workspaceId: string,
+  userText: string,
+  sessionId?: string,
+): Promise<{ memories: number; todos: number; decisions: number }> {
+  const found = extractWorkspaceFacts(userText ?? "");
+  const scope = `workspace:${workspaceId}`;
+  let memories = 0;
+  let todos = 0;
+  let decisions = 0;
+
+  for (const mem of found.memories) {
+    await storeShared(client, { scope, kind: mem.kind, text: mem.text, slot: mem.slot ?? null });
+    memories += 1;
+  }
+
+  for (const text of found.todos) {
+    const existing = await client.query<{ id: string }>(
+      "MATCH (t:Todo) WHERE t.workspace_id = $wid AND t.status <> 'done' " +
+        "AND toLower(t.text) = toLower($text) RETURN t.id AS id LIMIT 1",
+      { wid: workspaceId, text },
+    );
+    if (existing.length === 0) {
+      await addTodo(client, workspaceId, text);
+      todos += 1;
+    }
+  }
+
+  for (const d of found.decisions) {
+    const existing = await client.query<{ id: string }>(
+      "MATCH (n:WorkspaceDecision) WHERE n.workspace_id = $wid " +
+        "AND toLower(n.title) = toLower($title) RETURN n.id AS id LIMIT 1",
+      { wid: workspaceId, title: d.title },
+    );
+    if (existing.length === 0) {
+      await writeWorkspaceRecord(client, workspaceId, "decision", { title: d.title, body: d.body }, sessionId);
+      decisions += 1;
+    }
+  }
+
+  return { memories, todos, decisions };
 }

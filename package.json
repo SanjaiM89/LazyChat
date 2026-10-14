@@ -10,7 +10,7 @@
     "sandbox:up": "node scripts/sandbox-up.mjs",
     "sandbox": "node sandbox/server.mjs",
     "sandbox:build": "docker build -t omnia-sandbox:latest sandbox/container",
-    "test:brain": "tsx --test tests/brain/intent.test.ts && tsx --test tests/brain/actions.test.ts && tsx --test tests/brain/capture.test.ts && tsx --test tests/dsh/memory.test.ts && tsx --test tests/dsh/workspace-tools.test.ts"
+    "test:brain": "tsx --test tests/brain/intent.test.ts && tsx --test tests/brain/actions.test.ts && tsx --test tests/brain/capture.test.ts && tsx --test tests/dsh/memory.test.ts && tsx --test tests/dsh/workspace-tools.test.ts && tsx --test tests/dsh/capture.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.48",

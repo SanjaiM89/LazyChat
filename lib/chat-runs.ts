@@ -595,7 +595,9 @@ async function persistRun(run: ChatRunRecord) {
 }
 
 /**
- * Upsert the AgentSession for a workspace-bound chat run (idempotent MERGE).
+ * Upsert the AgentSession for a workspace-bound chat run (idempotent MERGE),
+ * then deterministically capture the user's own workspace statements
+ * (remembers, TODOs, stated decisions) — no model call required.
  * Runs in persistRun's fire-and-forget chain; failures are swallowed.
  */
 async function recordWorkspaceSession(run: ChatRunRecord): Promise<void> {
@@ -617,6 +619,15 @@ async function recordWorkspaceSession(run: ChatRunRecord): Promise<void> {
       ts: new Date().toISOString(),
     },
   );
+
+  const userTexts = (run.requestMessages ?? [])
+    .filter((msg) => msg.role === "user")
+    .map((msg) => messageText(msg as { parts?: Array<{ type: string; text?: string }> }));
+  const lastUser = userTexts[userTexts.length - 1] ?? "";
+  if (lastUser) {
+    const { captureWorkspaceFacts } = await import("@/lib/dsh/memory");
+    await captureWorkspaceFacts(client, run.workspaceId, lastUser, sid);
+  }
 }
 
 async function recordOmniaMemory(conversationId: string, messages: UIMessage[]): Promise<void> {

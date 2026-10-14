@@ -168,6 +168,17 @@ export function extractPersonalFacts(text: string): PersonalFact[] {
     if (clean.length >= 2) out.push({ fact: `The user likes ${clean}.`, slot: null });
   }
 
+  // Explicit "remember this" — stored verbatim as a durable fact even when no
+  // model is involved to interpret it.
+  const remember = /(?:remember|note)(?:\s+that)?\s+(.+?)(?:[.!?]|$)|don't forget\s+(.+?)(?:[.!?]|$)|keep in mind\s+(.+?)(?:[.!?]|$)/i.exec(
+    text,
+  );
+  const remembered = remember?.[1] ?? remember?.[2] ?? remember?.[3];
+  if (remembered && !/^me\b/i.test(remembered.trim())) {
+    const clean = cleanPhrase(remembered, 200);
+    if (clean.length >= 4) out.push({ fact: clean.endsWith(".") ? clean : `${clean}.`, slot: null });
+  }
+
   return out;
 }
 
