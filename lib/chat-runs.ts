@@ -22,6 +22,7 @@ import {
 import { buildLanguageModel, thinkingProviderOptions } from "@/lib/providers";
 import { getOpencodeTransport } from "@/lib/models";
 import { enabledTools } from "@/lib/tools";
+import { cancelRunQuestions, forgetRun } from "@/lib/ask-user";
 import { buildMCPToolSet } from "@/lib/mcp";
 import { buildSystemPrompt } from "@/lib/system";
 import { captureOmniaMemory, messageText, recallForOmnia, recordOmniaTurn } from "@/lib/brain/omnia-memory";
@@ -306,6 +307,9 @@ export async function stopChatRun(id: string): Promise<boolean> {
   run.aborted = true;
   run.activity = "Stopping…";
   emit(run);
+  // A run waiting on an ask-user question would otherwise hold the model (and
+  // this process) open long after the user pressed stop.
+  void cancelRunQuestions(id);
   try {
     run.abort.abort();
   } catch {
@@ -333,6 +337,7 @@ async function pump(run: ChatRunRecord) {
         provider: settings.provider,
         model: settings.model,
         conversationId: run.conversationId,
+        runId: run.id,
       }),
       ...(await buildMCPToolSet()),
       ...(await buildRunWorkspaceTools(run)),
@@ -545,6 +550,10 @@ async function finishRun(
     status === "failed" ? error || run.error || "Generation failed." : undefined;
   run.activity =
     status === "done" ? "Finished" : status === "stopped" ? "Stopped" : "Failed";
+  // Settled runs own no questions: a stopped turn must not leave a question
+  // holding a promise, and a finished one has already been answered.
+  void cancelRunQuestions(run.id);
+  forgetRun(run.id);
   await checkpoint(run, true);
   emit(run);
 }

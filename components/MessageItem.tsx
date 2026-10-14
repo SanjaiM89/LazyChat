@@ -21,6 +21,8 @@ interface NormalizedTool {
   result: any;
   streaming: boolean;
   errorText?: string;
+  /** The transcript's call id — the answer key for an ask-user question. */
+  toolCallId?: string;
 }
 
 function normalizeTool(part: any): NormalizedTool | null {
@@ -34,6 +36,7 @@ function normalizeTool(part: any): NormalizedTool | null {
       result: done ? part.output : undefined,
       streaming: !done,
       errorText: part.errorText,
+      toolCallId: part.toolCallId,
     };
   }
   if (typeof part.type === "string" && part.type.startsWith("tool-")) {
@@ -46,6 +49,7 @@ function normalizeTool(part: any): NormalizedTool | null {
       result: done ? part.output : undefined,
       streaming: !done,
       errorText: part.errorText,
+      toolCallId: part.toolCallId,
     };
   }
   if (part.type === "tool-invocation" && part.toolInvocation) {
@@ -56,6 +60,7 @@ function normalizeTool(part: any): NormalizedTool | null {
       result: ti.state === "result" ? ti.result : undefined,
       streaming: ti.state !== "result",
       errorText: ti.error,
+      toolCallId: ti.toolCallId,
     };
   }
   return null;
@@ -256,6 +261,7 @@ function AssistantParts({
               result={result}
               streaming={normalized.streaming}
               errorText={normalized.errorText}
+              toolCallId={normalized.toolCallId}
               citationBase={base}
               selectedCitation={selected}
               onSelectCitation={toggleSelect}
