@@ -20,6 +20,8 @@ import { execute } from "../../lib/brain/tools";
 
 const CID = `capture-suite:${Math.random().toString(16).slice(2, 10)}`;
 const SID = `omnia:${CID}`;
+/** Isolated user so slot writes can never touch real user data. */
+const TEST_USER = "test-capture";
 
 afterEach(async () => {
   const client = await FalkorClient.get();
@@ -29,7 +31,10 @@ afterEach(async () => {
   await client.write("MATCH (n) WHERE n.session_id = $sid OR n.id = $sid DETACH DELETE n", {
     sid: SID,
   });
-  await client.write("MATCH (m:SemanticMemory) WHERE m.source = $sid DETACH DELETE m", { sid: SID });
+  await client.write("MATCH (m:SemanticMemory) WHERE m.source = $sid OR m.user_id = $user DETACH DELETE m", {
+    sid: SID,
+    user: TEST_USER,
+  });
   await client.write("MATCH (c:Concept) DETACH DELETE c", {});
 });
 
@@ -68,19 +73,20 @@ describe("extractPersonalFacts", () => {
 describe("writeSemanticFact", () => {
   it("stores, dedups and replaces by slot", async () => {
     const client = await FalkorClient.get();
-    const first = await writeSemanticFact(client, "omnia", "The user's name is Jev.", SID, "user.name");
+    const first = await writeSemanticFact(client, TEST_USER, "The user's name is Jev.", SID, "user.name");
     assert.equal(first.stored, true);
 
-    const dup = await writeSemanticFact(client, "omnia", "The user's name is Jev.", SID, "user.name");
+    const dup = await writeSemanticFact(client, TEST_USER, "The user's name is Jev.", SID, "user.name");
     assert.equal(dup.stored, false);
     assert.equal(dup.id, first.id);
 
-    const renamed = await writeSemanticFact(client, "omnia", "The user's name is Jevans.", SID, "user.name");
+    const renamed = await writeSemanticFact(client, TEST_USER, "The user's name is Jevans.", SID, "user.name");
     assert.equal(renamed.stored, true);
     assert.equal(renamed.replaced, true);
 
     const rows = await client.query<{ fact: string }>(
-      "MATCH (m:SemanticMemory) WHERE m.user_id = 'omnia' AND m.slot = 'user.name' RETURN m.fact AS fact",
+      "MATCH (m:SemanticMemory) WHERE m.user_id = $user AND m.slot = 'user.name' RETURN m.fact AS fact",
+      { user: TEST_USER },
     );
     assert.deepEqual(
       rows.map((r) => r.fact),
@@ -92,8 +98,8 @@ describe("writeSemanticFact", () => {
 describe("captureOmniaMemory", () => {
   it("makes a volunteered name answerable afterwards", async () => {
     const client = await FalkorClient.get();
-    await captureOmniaMemory(CID, "hello, my name is jev");
-    const found = await recallMemories(client, "omnia", "what is my name", 6);
+    await captureOmniaMemory(CID, "hello, my name is jev", TEST_USER);
+    const found = await recallMemories(client, TEST_USER, "what is my name", 6);
     assert.ok(
       found.some((m) => m.summary.includes("Jev")),
       `expected the name in recall, got: ${JSON.stringify(found.map((m) => m.summary))}`,

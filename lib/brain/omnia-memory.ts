@@ -235,20 +235,21 @@ export async function writeSemanticFact(
 export async function captureOmniaMemory(
   conversationId: string,
   userText: string,
+  userId: string = OMNIA_USER,
 ): Promise<void> {
   const text = (userText ?? "").trim();
   if (!conversationId) return;
   try {
     const client = await brainClient();
     if (!client) return;
-    const sid = await ensureSession(client, OMNIA_USER, sessionFor(conversationId));
+    const sid = await ensureSession(client, userId, sessionFor(conversationId));
 
     for (const { fact, slot } of extractPersonalFacts(text)) {
-      await writeSemanticFact(client, OMNIA_USER, fact, sid, slot);
+      await writeSemanticFact(client, userId, fact, sid, slot);
     }
 
     const { consolidateSession } = await import("@/lib/brain/memory/consolidation");
-    await consolidateSession(client, sid, OMNIA_USER, {});
+    await consolidateSession(client, sid, userId, {});
   } catch (err) {
     console.warn(`[omnia-memory] capture failed: ${(err as Error).message}`);
   }

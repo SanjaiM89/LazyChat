@@ -12,6 +12,7 @@ import { ChatHeader } from "@/components/ChatHeader";
 import { ChatView } from "@/components/ChatView";
 import { Composer } from "@/components/Composer";
 import { BrainApp } from "@/components/brain/BrainApp";
+import { WorkspaceView } from "@/components/workspace/WorkspaceView";
 import { SubchatPanel } from "@/components/SubchatPanel";
 import { RightPanel } from "@/components/RightPanel";
 import { SkillsDialog } from "@/components/dialogs/SkillsDialog";
@@ -19,7 +20,9 @@ import { ConnectionsDialog } from "@/components/dialogs/ConnectionsDialog";
 import { SearchProvidersDialog } from "@/components/dialogs/SearchProvidersDialog";
 
 
-export function App({ initialView }: { initialView?: "chat" | "brain" }) {
+import type { MainView } from "@/lib/app-store";
+
+export function App({ initialView }: { initialView?: MainView }) {
   const theme = useAppStore((s) => s.theme);
   const mainView = useAppStore((s) => s.mainView);
   const display = useAppStore((s) => s.display) ?? DEFAULT_DISPLAY;
@@ -48,7 +51,7 @@ export function App({ initialView }: { initialView?: "chat" | "brain" }) {
 
   // Deep link: /?view=brain opens the Company Brain inside this same shell.
   useEffect(() => {
-    if (initialView === "brain" || initialView === "chat") {
+    if (initialView === "brain" || initialView === "chat" || initialView === "workspace") {
       useAppStore.getState().setMainView(initialView);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +85,11 @@ export function App({ initialView }: { initialView?: "chat" | "brain" }) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {mainView === "brain" ? (
+        {mainView === "workspace" ? (
+          <main className="flex min-h-0 flex-1 overflow-hidden">
+            <WorkspaceView />
+          </main>
+        ) : mainView === "brain" ? (
           <main className="flex min-h-0 flex-1 overflow-hidden">
             <BrainApp />
           </main>

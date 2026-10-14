@@ -54,3 +54,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# DeepSeek Harness (vendored checkout; see README — clone, not tracked)
+harness/

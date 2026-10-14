@@ -29,7 +29,7 @@ import {
 export type PanelTab = "artifacts" | "sandbox" | "agents" | null;
 export type ThemeMode = "system" | "light" | "dark";
 /** Top-level view inside the single Omnia shell: chat, or the Company Brain. */
-export type MainView = "chat" | "brain";
+export type MainView = "chat" | "brain" | "workspace";
 
 interface AppStore {
   theme: ThemeMode;
