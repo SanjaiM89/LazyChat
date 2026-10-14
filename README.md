@@ -417,10 +417,40 @@ provider/model (cut at a user boundary, newest messages kept verbatim);
 
 ---
 
+## Tool call + shell presentation (dsh port)
+
+`components/dsh/` holds the conversation surfaces ported from DeepSeek
+Harness' client primitives, restyled onto Omnia tokens:
+
+| Module | Ported from | Role |
+| --- | --- | --- |
+| `ansi.ts` | `ui-primitives/src/ansi.ts` | strips OSC/C0 escapes, replays `\r`/`\b`, resolves SGR colors onto theme tokens |
+| `head-tail-cap.ts` | `ui-primitives/src/head-tail-cap.ts` | collapses long output head/tail instead of tail-only |
+| `StateDot.tsx` | `ui-primitives/src/StateDot.tsx` | run-state dot + running chase |
+| `CommandText.tsx` | `ui-primitives/src/CommandText.tsx` | horizontally scrollable command, focusable only while overflowing |
+| `TextShimmer.tsx` | `ui-primitives/src/TextShimmer.tsx` | masked sweep over an inert copy of running row text |
+| `TerminalBlock.tsx` | `ui-primitives/src/TerminalBlock.tsx` | the terminal surface: `$ cwd` prompt, exit-status pill, copy control, colored output |
+| `terminal-card-model.ts` | `ui-tool/.../terminal-card-model.ts` | derives a terminal card from a shell call, or `null` for the generic card |
+
+The row itself (`ToolRow` in `components/ToolCard.tsx`) keeps dsh's geometry: a
+flat 24px line — no card border or fill — whose leading icon crossfades into a
+chevron on hover, with the argument-derived summary ellipsized into the space to
+its right. Lifecycle states are dsh's (`preparing | running | ok | error |
+stopped`), and a **failing exit code turns the collapsed row red** even though
+the call itself settled `ok` — the exit status is result data, which is why it
+is the card's own error signal.
+
+Not ported: dsh's interactive PTY terminal sidebar
+(`ui-sidebar-terminal`), which needs persistent process sessions rather than
+one-shot `bash -lc` results.
+
+---
+
 ## Testing
 
 ```bash
-npm run test:brain   # 23 passed (intent + conversational robustness, live graph)
+npm run test:brain   # 55 passed (intent, actions, memory, dsh capture; live graph)
+npm run test:ui      # 20 passed (ANSI parsing, height cap, terminal derivation)
 ```
 
 | File | Covers |
