@@ -128,7 +128,8 @@ export function ChatView({ chat }: { chat: ChatController }) {
         </h1>
         <p className="mt-2 max-w-md text-center text-[13.5px] leading-relaxed text-fg-muted animate-fade-in-up">
           Chat with multiple providers, search the web, create artifacts, and
-          deploy autonomous agents in Docker sandboxes.
+          deploy autonomous agents in Docker sandboxes — or ask the Company
+          Brain about the engineering org via the Brain tab.
         </p>
         <div className="mt-8 grid w-full max-w-3xl gap-2.5 sm:grid-cols-2 animate-fade-in-up">
           {SUGGESTIONS.map((s) => (

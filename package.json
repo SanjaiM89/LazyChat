@@ -9,7 +9,8 @@
     "lint": "eslint",
     "sandbox:up": "node scripts/sandbox-up.mjs",
     "sandbox": "node sandbox/server.mjs",
-    "sandbox:build": "docker build -t omnia-sandbox:latest sandbox/container"
+    "sandbox:build": "docker build -t omnia-sandbox:latest sandbox/container",
+    "test:brain": "tsx --test tests/brain/intent.test.ts && tsx --test tests/brain/actions.test.ts && tsx --test tests/brain/capture.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.48",
@@ -23,6 +24,7 @@
     "clsx": "^2.1.1",
     "docx-preview": "^0.4.0",
     "duck-duck-scrape": "^2.2.7",
+    "falkordb": "^6.8.0",
     "katex": "^0.18.5",
     "lucide-react": "^1.39.0",
     "marked": "^18.0.11",
@@ -31,6 +33,7 @@
     "pdfjs-dist": "^6.3.289",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-force-graph-2d": "^1.29.2",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
@@ -50,6 +53,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

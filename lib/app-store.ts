@@ -28,10 +28,14 @@ import {
 
 export type PanelTab = "artifacts" | "sandbox" | "agents" | null;
 export type ThemeMode = "system" | "light" | "dark";
+/** Top-level view inside the single Omnia shell: chat, or the Company Brain. */
+export type MainView = "chat" | "brain";
 
 interface AppStore {
   theme: ThemeMode;
   setTheme: (t: ThemeMode) => void;
+  mainView: MainView;
+  setMainView: (v: MainView) => void;
   panel: PanelTab;
   setPanel: (p: PanelTab) => void;
   sidebarOpen: boolean;
@@ -124,6 +128,8 @@ export const useAppStore = create<AppStore>()(
       setPanel: (panel) => set({ panel }),
       sidebarOpen: true,
       setSidebarOpen: (b) => set({ sidebarOpen: b }),
+      mainView: "chat",
+      setMainView: (v) => set({ mainView: v }),
 
       settings: DEFAULT_SETTINGS,
       setSettings: (p) => set({ settings: { ...get().settings, ...p } }),
@@ -295,8 +301,21 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: "omnia-store",
+      version: 2,
+      migrate: (persisted: unknown) => {
+        const state = (persisted ?? {}) as Record<string, unknown>;
+        // v1 → v2: the default provider changed from Claude to Sarvam. Only
+        // migrate stores that still hold the untouched old default — a user
+        // who deliberately picked a provider keeps their choice.
+        const settings = state.settings as { provider?: string; model?: string } | undefined;
+        if (settings?.provider === "anthropic" && settings?.model === "claude-sonnet-5") {
+          state.settings = { ...settings, provider: "sarvam", model: "sarvam-105b" };
+        }
+        return state;
+      },
       partialize: (s) => ({
         theme: s.theme,
+        mainView: s.mainView,
         settings: s.settings,
         activeConversationId: s.activeConversationId,
         display: s.display,

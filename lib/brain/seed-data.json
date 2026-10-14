@@ -1,0 +1,2208 @@
+{
+ "TEAMS": [
+  {
+   "id": "team:platform",
+   "name": "Platform",
+   "mission": "Keep the paved road paved: identity, gateways, reliability."
+  },
+  {
+   "id": "team:payments",
+   "name": "Payments & Billing",
+   "mission": "Move money correctly, idempotently, and auditably."
+  },
+  {
+   "id": "team:growth",
+   "name": "Growth & Activation",
+   "mission": "Get customers to first value, and keep them."
+  },
+  {
+   "id": "team:data",
+   "name": "Data & ML",
+   "mission": "One trustworthy event stream, and models on top of it."
+  }
+ ],
+ "PEOPLE": [
+  {
+   "id": "person:priya",
+   "name": "Priya Raghavan",
+   "role": "Staff Platform Engineer",
+   "email": "priya@meridian.example",
+   "seniority": "staff",
+   "team": "team:platform"
+  },
+  {
+   "id": "person:marcus",
+   "name": "Marcus Webb",
+   "role": "Site Reliability Engineer",
+   "email": "marcus@meridian.example",
+   "seniority": "senior",
+   "team": "team:platform"
+  },
+  {
+   "id": "person:yuki",
+   "name": "Yuki Tanaka",
+   "role": "Senior Backend Engineer",
+   "email": "yuki@meridian.example",
+   "seniority": "senior",
+   "team": "team:platform"
+  },
+  {
+   "id": "person:sofia",
+   "name": "Sofia Alvarez",
+   "role": "Infrastructure Engineer",
+   "email": "sofia@meridian.example",
+   "seniority": "mid",
+   "team": "team:platform"
+  },
+  {
+   "id": "person:dan",
+   "name": "Dan Osei",
+   "role": "Principal Engineer",
+   "email": "dan@meridian.example",
+   "seniority": "principal",
+   "team": "team:platform"
+  },
+  {
+   "id": "person:elena",
+   "name": "Elena Vasquez",
+   "role": "Engineering Manager",
+   "email": "elena@meridian.example",
+   "seniority": "manager",
+   "team": "team:payments"
+  },
+  {
+   "id": "person:ravi",
+   "name": "Ravi Menon",
+   "role": "Senior Payments Engineer",
+   "email": "ravi@meridian.example",
+   "seniority": "senior",
+   "team": "team:payments"
+  },
+  {
+   "id": "person:chloe",
+   "name": "Chloe Dubois",
+   "role": "Payments Engineer",
+   "email": "chloe@meridian.example",
+   "seniority": "mid",
+   "team": "team:payments"
+  },
+  {
+   "id": "person:tomasz",
+   "name": "Tomasz Kowalski",
+   "role": "Staff Engineer",
+   "email": "tomasz@meridian.example",
+   "seniority": "staff",
+   "team": "team:payments"
+  },
+  {
+   "id": "person:aisha",
+   "name": "Aisha Bello",
+   "role": "Payments Engineer",
+   "email": "aisha@meridian.example",
+   "seniority": "mid",
+   "team": "team:payments"
+  },
+  {
+   "id": "person:liam",
+   "name": "Liam O'Connor",
+   "role": "Growth Engineering Lead",
+   "email": "liam@meridian.example",
+   "seniority": "senior",
+   "team": "team:growth"
+  },
+  {
+   "id": "person:nina",
+   "name": "Nina Petrova",
+   "role": "Frontend Engineer",
+   "email": "nina@meridian.example",
+   "seniority": "mid",
+   "team": "team:growth"
+  },
+  {
+   "id": "person:jake",
+   "name": "Jake Morrison",
+   "role": "Full-Stack Engineer",
+   "email": "jake@meridian.example",
+   "seniority": "mid",
+   "team": "team:growth"
+  },
+  {
+   "id": "person:mei",
+   "name": "Mei Lin",
+   "role": "Product Engineer",
+   "email": "meilin@meridian.example",
+   "seniority": "mid",
+   "team": "team:growth"
+  },
+  {
+   "id": "person:oskar",
+   "name": "Oskar Nowak",
+   "role": "Growth Engineer",
+   "email": "oskar@meridian.example",
+   "seniority": "mid",
+   "team": "team:growth"
+  },
+  {
+   "id": "person:fatima",
+   "name": "Fatima Noor",
+   "role": "Staff Data Engineer",
+   "email": "fatima@meridian.example",
+   "seniority": "staff",
+   "team": "team:data"
+  },
+  {
+   "id": "person:gabriel",
+   "name": "Gabriel Santos",
+   "role": "ML Engineer",
+   "email": "gabriel@meridian.example",
+   "seniority": "senior",
+   "team": "team:data"
+  },
+  {
+   "id": "person:hana",
+   "name": "Hana Kim",
+   "role": "Data Platform Engineer",
+   "email": "hana@meridian.example",
+   "seniority": "senior",
+   "team": "team:data"
+  },
+  {
+   "id": "person:isaac",
+   "name": "Isaac Rosen",
+   "role": "Analytics Engineer",
+   "email": "isaac@meridian.example",
+   "seniority": "mid",
+   "team": "team:data"
+  },
+  {
+   "id": "person:zoe",
+   "name": "Zoe Adeyemi",
+   "role": "ML Engineer",
+   "email": "zoe@meridian.example",
+   "seniority": "mid",
+   "team": "team:data"
+  }
+ ],
+ "SERVICES": [
+  {
+   "id": "service:auth",
+   "name": "auth-service",
+   "tier": "critical",
+   "language": "Go",
+   "description": "Issues and validates session tokens, OAuth providers, and API keys.",
+   "repo": "repo:identity",
+   "owner": "team:platform",
+   "aliases": [
+    "auth",
+    "authentication",
+    "identity provider",
+    "sessions"
+   ]
+  },
+  {
+   "id": "service:api-gateway",
+   "name": "api-gateway",
+   "tier": "critical",
+   "language": "Go",
+   "description": "Edge router: rate limiting, routing, and request telemetry.",
+   "repo": "repo:edge",
+   "owner": "team:platform",
+   "aliases": [
+    "gateway",
+    "edge",
+    "ingress"
+   ]
+  },
+  {
+   "id": "service:payments-api",
+   "name": "payments-api",
+   "tier": "critical",
+   "language": "Python",
+   "description": "Public API for charges, refunds and payment intents.",
+   "repo": "repo:payments",
+   "owner": "team:payments",
+   "aliases": [
+    "payments",
+    "payment api",
+    "charges",
+    "refunds"
+   ]
+  },
+  {
+   "id": "service:ledger",
+   "name": "ledger-service",
+   "tier": "critical",
+   "language": "Java",
+   "description": "Double-entry ledger; the system of record for all money movement.",
+   "repo": "repo:ledger",
+   "owner": "team:payments",
+   "aliases": [
+    "ledger",
+    "book of record",
+    "double entry"
+   ]
+  },
+  {
+   "id": "service:notifications",
+   "name": "notification-service",
+   "tier": "high",
+   "language": "TypeScript",
+   "description": "Email, SMS and push fan-out with per-channel templates.",
+   "repo": "repo:notify",
+   "owner": "team:platform",
+   "aliases": [
+    "notifications",
+    "notify",
+    "notification",
+    "email",
+    "sms",
+    "push"
+   ]
+  },
+  {
+   "id": "service:web-checkout",
+   "name": "web-checkout",
+   "tier": "high",
+   "language": "TypeScript",
+   "description": "Customer-facing checkout SPA.",
+   "repo": "repo:web",
+   "owner": "team:growth",
+   "aliases": [
+    "checkout",
+    "web checkout",
+    "payment page"
+   ]
+  },
+  {
+   "id": "service:search",
+   "name": "search-api",
+   "tier": "medium",
+   "language": "Python",
+   "description": "Product/catalog search over the read replica.",
+   "repo": "repo:search",
+   "owner": "team:growth",
+   "aliases": [
+    "search",
+    "catalog search"
+   ]
+  },
+  {
+   "id": "service:recsys",
+   "name": "recsys",
+   "tier": "medium",
+   "language": "Python",
+   "description": "Recommendation and ranking models served online.",
+   "repo": "repo:recsys",
+   "owner": "team:data",
+   "aliases": [
+    "recommendations",
+    "ranking",
+    "recommender",
+    "ml models"
+   ]
+  },
+  {
+   "id": "service:event-pipeline",
+   "name": "event-pipeline",
+   "tier": "high",
+   "language": "Kotlin",
+   "description": "Kafka ingest plus the warehouse ETL that everything downstream reads.",
+   "repo": "repo:events",
+   "owner": "team:data",
+   "aliases": [
+    "events",
+    "event pipeline",
+    "kafka",
+    "warehouse",
+    "etl",
+    "pipeline"
+   ]
+  },
+  {
+   "id": "service:identity-sync",
+   "name": "identity-sync",
+   "tier": "medium",
+   "language": "Java",
+   "description": "Syncs accounts and entitlements between Meridian and partner IdPs.",
+   "repo": "repo:identity",
+   "owner": "team:platform",
+   "aliases": [
+    "identity sync",
+    "identity",
+    "federation",
+    "entitlements"
+   ]
+  }
+ ],
+ "REPOS": [
+  {
+   "id": "repo:identity",
+   "name": "meridian/identity",
+   "url": "https://git.meridian.example/identity",
+   "language": "Go"
+  },
+  {
+   "id": "repo:edge",
+   "name": "meridian/edge",
+   "url": "https://git.meridian.example/edge",
+   "language": "Go"
+  },
+  {
+   "id": "repo:payments",
+   "name": "meridian/payments-api",
+   "url": "https://git.meridian.example/payments-api",
+   "language": "Python"
+  },
+  {
+   "id": "repo:ledger",
+   "name": "meridian/ledger",
+   "url": "https://git.meridian.example/ledger",
+   "language": "Java"
+  },
+  {
+   "id": "repo:notify",
+   "name": "meridian/notify",
+   "url": "https://git.meridian.example/notify",
+   "language": "TypeScript"
+  },
+  {
+   "id": "repo:web",
+   "name": "meridian/web",
+   "url": "https://git.meridian.example/web",
+   "language": "TypeScript"
+  },
+  {
+   "id": "repo:search",
+   "name": "meridian/search",
+   "url": "https://git.meridian.example/search",
+   "language": "Python"
+  },
+  {
+   "id": "repo:recsys",
+   "name": "meridian/recsys",
+   "url": "https://git.meridian.example/recsys",
+   "language": "Python"
+  },
+  {
+   "id": "repo:events",
+   "name": "meridian/events",
+   "url": "https://git.meridian.example/events",
+   "language": "Kotlin"
+  }
+ ],
+ "KNOWLEDGE": [
+  {
+   "person": "person:priya",
+   "service": "service:auth",
+   "level": "expert"
+  },
+  {
+   "person": "person:priya",
+   "service": "service:identity-sync",
+   "level": "familiar"
+  },
+  {
+   "person": "person:priya",
+   "service": "service:api-gateway",
+   "level": "familiar"
+  },
+  {
+   "person": "person:marcus",
+   "service": "service:auth",
+   "level": "familiar"
+  },
+  {
+   "person": "person:marcus",
+   "service": "service:api-gateway",
+   "level": "expert"
+  },
+  {
+   "person": "person:marcus",
+   "service": "service:event-pipeline",
+   "level": "familiar"
+  },
+  {
+   "person": "person:yuki",
+   "service": "service:auth",
+   "level": "expert"
+  },
+  {
+   "person": "person:yuki",
+   "service": "service:notifications",
+   "level": "familiar"
+  },
+  {
+   "person": "person:sofia",
+   "service": "service:api-gateway",
+   "level": "familiar"
+  },
+  {
+   "person": "person:sofia",
+   "service": "service:event-pipeline",
+   "level": "familiar"
+  },
+  {
+   "person": "person:dan",
+   "service": "service:auth",
+   "level": "expert"
+  },
+  {
+   "person": "person:dan",
+   "service": "service:ledger",
+   "level": "familiar"
+  },
+  {
+   "person": "person:elena",
+   "service": "service:payments-api",
+   "level": "familiar"
+  },
+  {
+   "person": "person:elena",
+   "service": "service:ledger",
+   "level": "familiar"
+  },
+  {
+   "person": "person:ravi",
+   "service": "service:payments-api",
+   "level": "expert"
+  },
+  {
+   "person": "person:ravi",
+   "service": "service:ledger",
+   "level": "familiar"
+  },
+  {
+   "person": "person:chloe",
+   "service": "service:payments-api",
+   "level": "expert"
+  },
+  {
+   "person": "person:chloe",
+   "service": "service:auth",
+   "level": "familiar"
+  },
+  {
+   "person": "person:tomasz",
+   "service": "service:ledger",
+   "level": "expert"
+  },
+  {
+   "person": "person:tomasz",
+   "service": "service:event-pipeline",
+   "level": "familiar"
+  },
+  {
+   "person": "person:aisha",
+   "service": "service:payments-api",
+   "level": "familiar"
+  },
+  {
+   "person": "person:aisha",
+   "service": "service:notifications",
+   "level": "familiar"
+  },
+  {
+   "person": "person:liam",
+   "service": "service:web-checkout",
+   "level": "familiar"
+  },
+  {
+   "person": "person:liam",
+   "service": "service:search",
+   "level": "familiar"
+  },
+  {
+   "person": "person:nina",
+   "service": "service:web-checkout",
+   "level": "expert"
+  },
+  {
+   "person": "person:nina",
+   "service": "service:notifications",
+   "level": "familiar"
+  },
+  {
+   "person": "person:jake",
+   "service": "service:web-checkout",
+   "level": "expert"
+  },
+  {
+   "person": "person:jake",
+   "service": "service:payments-api",
+   "level": "familiar"
+  },
+  {
+   "person": "person:mei",
+   "service": "service:web-checkout",
+   "level": "familiar"
+  },
+  {
+   "person": "person:mei",
+   "service": "service:search",
+   "level": "familiar"
+  },
+  {
+   "person": "person:oskar",
+   "service": "service:search",
+   "level": "expert"
+  },
+  {
+   "person": "person:oskar",
+   "service": "service:recsys",
+   "level": "familiar"
+  },
+  {
+   "person": "person:fatima",
+   "service": "service:event-pipeline",
+   "level": "expert"
+  },
+  {
+   "person": "person:fatima",
+   "service": "service:ledger",
+   "level": "familiar"
+  },
+  {
+   "person": "person:gabriel",
+   "service": "service:recsys",
+   "level": "expert"
+  },
+  {
+   "person": "person:gabriel",
+   "service": "service:event-pipeline",
+   "level": "familiar"
+  },
+  {
+   "person": "person:hana",
+   "service": "service:event-pipeline",
+   "level": "expert"
+  },
+  {
+   "person": "person:hana",
+   "service": "service:search",
+   "level": "familiar"
+  },
+  {
+   "person": "person:isaac",
+   "service": "service:event-pipeline",
+   "level": "familiar"
+  },
+  {
+   "person": "person:isaac",
+   "service": "service:recsys",
+   "level": "familiar"
+  },
+  {
+   "person": "person:zoe",
+   "service": "service:recsys",
+   "level": "expert"
+  }
+ ],
+ "TICKETS": [
+  {
+   "id": "ticket:MER-1001",
+   "title": "Auth v3: migrate sessions to short-lived tokens",
+   "status": "in_progress",
+   "priority": "p0",
+   "service": "service:auth",
+   "assignee": "person:priya",
+   "blocked_by": [],
+   "opened": "2026-07-08",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1002",
+   "title": "Auth v3: backfill legacy refresh tokens",
+   "status": "blocked",
+   "priority": "p0",
+   "service": "service:auth",
+   "assignee": "person:yuki",
+   "blocked_by": [
+    "ticket:MER-1001"
+   ],
+   "opened": "2026-07-10",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1003",
+   "title": "Auth v3: dual-validate window for partner IdPs",
+   "status": "blocked",
+   "priority": "p1",
+   "service": "service:identity-sync",
+   "assignee": "person:yuki",
+   "blocked_by": [
+    "ticket:MER-1001"
+   ],
+   "opened": "2026-07-13",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1004",
+   "title": "Gateway: reject expired tokens during dual-validate window",
+   "status": "blocked",
+   "priority": "p1",
+   "service": "service:api-gateway",
+   "assignee": "person:marcus",
+   "blocked_by": [
+    "ticket:MER-1001"
+   ],
+   "opened": "2026-07-16",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1005",
+   "title": "Ledger: scope-dependent auth in the write path",
+   "status": "blocked",
+   "priority": "p1",
+   "service": "service:ledger",
+   "assignee": "person:tomasz",
+   "blocked_by": [
+    "ticket:MER-1001"
+   ],
+   "opened": "2026-07-18",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1006",
+   "title": "Payments: drop legacy API key auth for internal callers",
+   "status": "blocked",
+   "priority": "p2",
+   "service": "service:payments-api",
+   "assignee": "person:chloe",
+   "blocked_by": [
+    "ticket:MER-1001"
+   ],
+   "opened": "2026-07-20",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1007",
+   "title": "Notifications: unsubscribe tokens must survive token rotation",
+   "status": "blocked",
+   "priority": "p2",
+   "service": "service:notifications",
+   "assignee": "person:aisha",
+   "blocked_by": [
+    "ticket:MER-1001"
+   ],
+   "opened": "2026-07-24",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1008",
+   "title": "Search: reindex sessions after the auth v3 cutover",
+   "status": "blocked",
+   "priority": "p2",
+   "service": "service:search",
+   "assignee": "person:oskar",
+   "blocked_by": [
+    "ticket:MER-1003"
+   ],
+   "opened": "2026-07-27",
+   "blocked_by_decisions": [
+    "decision:auth-v3"
+   ]
+  },
+  {
+   "id": "ticket:MER-1010",
+   "title": "Ledger: event-sourced projections for balance queries",
+   "status": "in_progress",
+   "priority": "p1",
+   "service": "service:ledger",
+   "assignee": "person:tomasz",
+   "blocked_by": [],
+   "opened": "2026-07-29",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1011",
+   "title": "Ledger: reconcile payouts against the partner statement",
+   "status": "open",
+   "priority": "p1",
+   "service": "service:ledger",
+   "assignee": "person:ravi",
+   "blocked_by": [],
+   "opened": "2026-08-03",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1012",
+   "title": "Payments: idempotency keys collide across tenants",
+   "status": "in_progress",
+   "priority": "p0",
+   "service": "service:payments-api",
+   "assignee": "person:ravi",
+   "blocked_by": [],
+   "opened": "2026-08-07",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1013",
+   "title": "Payments: refund webhooks out of order",
+   "status": "open",
+   "priority": "p1",
+   "service": "service:payments-api",
+   "assignee": "person:chloe",
+   "blocked_by": [],
+   "opened": "2026-08-10",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1014",
+   "title": "Ledger: currency rounding in multi-currency accounts",
+   "status": "open",
+   "priority": "p2",
+   "service": "service:ledger",
+   "assignee": "person:tomasz",
+   "blocked_by": [
+    "ticket:MER-1011"
+   ],
+   "opened": "2026-08-12",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1015",
+   "title": "Payments: expose payment intent timeline to support tooling",
+   "status": "done",
+   "priority": "p2",
+   "service": "service:payments-api",
+   "assignee": "person:aisha",
+   "blocked_by": [],
+   "opened": "2026-06-14",
+   "closed": "2026-08-15",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1016",
+   "title": "Ledger: nightly integrity check misses orphaned entries",
+   "status": "done",
+   "priority": "p1",
+   "service": "service:ledger",
+   "assignee": "person:tomasz",
+   "blocked_by": [],
+   "opened": "2026-06-04",
+   "closed": "2026-08-21",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1017",
+   "title": "Payments: reduce p99 charge latency to 300ms",
+   "status": "done",
+   "priority": "p1",
+   "service": "service:payments-api",
+   "assignee": "person:ravi",
+   "blocked_by": [],
+   "opened": "2026-05-25",
+   "closed": "2026-08-28",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1020",
+   "title": "Postmortem follow-up: gateway shed load during auth latency spike",
+   "status": "in_progress",
+   "priority": "p0",
+   "service": "service:api-gateway",
+   "assignee": "person:marcus",
+   "blocked_by": [],
+   "opened": "2026-09-02",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1021",
+   "title": "Add SLO burn alerts for the auth token endpoint",
+   "status": "open",
+   "priority": "p1",
+   "service": "service:auth",
+   "assignee": "person:marcus",
+   "blocked_by": [],
+   "opened": "2026-09-04",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1022",
+   "title": "Gateway: per-tenant rate limits instead of global buckets",
+   "status": "open",
+   "priority": "p2",
+   "service": "service:api-gateway",
+   "assignee": "person:sofia",
+   "blocked_by": [],
+   "opened": "2026-09-08",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1023",
+   "title": "Runbook: automated auth token revocation on breach detection",
+   "status": "open",
+   "priority": "p1",
+   "service": "service:auth",
+   "assignee": "person:priya",
+   "blocked_by": [],
+   "opened": "2026-09-12",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1024",
+   "title": "Chaos test: kill auth replicas during peak checkout",
+   "status": "open",
+   "priority": "p2",
+   "service": "service:auth",
+   "assignee": "person:dan",
+   "blocked_by": [
+    "ticket:MER-1020"
+   ],
+   "opened": "2026-09-16",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1025",
+   "title": "Gateway: drop legacy TLS 1.0 listeners",
+   "status": "done",
+   "priority": "p3",
+   "service": "service:api-gateway",
+   "assignee": "person:sofia",
+   "blocked_by": [],
+   "opened": "2026-05-15",
+   "closed": "2026-09-22",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1030",
+   "title": "Checkout: 3DS challenge loop on Safari",
+   "status": "in_progress",
+   "priority": "p0",
+   "service": "service:web-checkout",
+   "assignee": "person:nina",
+   "blocked_by": [],
+   "opened": "2026-09-06",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1031",
+   "title": "Checkout: A/B test the new express-pay layout",
+   "status": "open",
+   "priority": "p2",
+   "service": "service:web-checkout",
+   "assignee": "person:liam",
+   "blocked_by": [],
+   "opened": "2026-09-14",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1032",
+   "title": "Notifications: retry storm when a provider is down",
+   "status": "in_progress",
+   "priority": "p1",
+   "service": "service:notifications",
+   "assignee": "person:aisha",
+   "blocked_by": [],
+   "opened": "2026-09-18",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1033",
+   "title": "Search: stale index after catalog updates",
+   "status": "open",
+   "priority": "p2",
+   "service": "service:search",
+   "assignee": "person:oskar",
+   "blocked_by": [],
+   "opened": "2026-09-24",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1040",
+   "title": "Event pipeline: exactly-once semantics for ledger events",
+   "status": "in_progress",
+   "priority": "p0",
+   "service": "service:event-pipeline",
+   "assignee": "person:fatima",
+   "blocked_by": [],
+   "opened": "2026-08-29",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1041",
+   "title": "Recsys: retrain ranking model on the new event schema",
+   "status": "blocked",
+   "priority": "p1",
+   "service": "service:recsys",
+   "assignee": "person:gabriel",
+   "blocked_by": [
+    "ticket:MER-1040"
+   ],
+   "opened": "2026-09-10",
+   "blocked_by_decisions": [
+    "decision:kafka"
+   ]
+  },
+  {
+   "id": "ticket:MER-1042",
+   "title": "Warehouse: partition pruning regression on the ledger table",
+   "status": "open",
+   "priority": "p2",
+   "service": "service:event-pipeline",
+   "assignee": "person:hana",
+   "blocked_by": [],
+   "opened": "2026-09-20",
+   "blocked_by_decisions": []
+  },
+  {
+   "id": "ticket:MER-1043",
+   "title": "Analytics: self-serve funnel dashboards for growth",
+   "status": "done",
+   "priority": "p2",
+   "service": "service:event-pipeline",
+   "assignee": "person:isaac",
+   "blocked_by": [],
+   "opened": "2026-06-24",
+   "closed": "2026-09-28",
+   "blocked_by_decisions": []
+  }
+ ],
+ "DOCUMENTS": [
+  {
+   "id": "doc:rfc-001-auth-v3",
+   "title": "RFC-001: Auth v3 token design",
+   "kind": "rfc",
+   "summary": "Short-lived access tokens (15m) plus rotating refresh tokens, replacing long-lived session cookies. Defines the dual-validate window and the partner IdP escape hatch.",
+   "url": "https://wiki.meridian.example/rfc/rfc-001-auth-v3",
+   "author": "person:priya",
+   "services": [
+    "service:auth",
+    "service:identity-sync"
+   ],
+   "date": "2026-07-06"
+  },
+  {
+   "id": "doc:rfc-002-ledger-events",
+   "title": "RFC-002: Event sourcing for the ledger",
+   "kind": "rfc",
+   "summary": "Proposes event sourcing as the source of truth for the ledger with read-only projections. Motivated by audit requirements and the cost of double-entry write contention.",
+   "url": "https://wiki.meridian.example/rfc/rfc-002-ledger-events",
+   "author": "person:tomasz",
+   "services": [
+    "service:ledger"
+   ],
+   "date": "2026-07-14"
+  },
+  {
+   "id": "doc:rfc-003-event-schema",
+   "title": "RFC-003: Canonical event envelope",
+   "kind": "rfc",
+   "summary": "One envelope shape for every event: id, tenant, occurred_at, actor, payload_version. Every producer must emit it for downstream consumers.",
+   "url": "https://wiki.meridian.example/rfc/rfc-003-event-schema",
+   "author": "person:fatima",
+   "services": [
+    "service:event-pipeline",
+    "service:recsys"
+   ],
+   "date": "2026-08-01"
+  },
+  {
+   "id": "doc:design-004-gateway",
+   "title": "Design: API gateway routing and shedding",
+   "kind": "design_doc",
+   "summary": "How the gateway routes, applies per-tenant limits, and sheds load when downstream auth latency crosses the error budget.",
+   "url": "https://wiki.meridian.example/design/gateway-routing",
+   "author": "person:marcus",
+   "services": [
+    "service:api-gateway",
+    "service:auth"
+   ],
+   "date": "2026-08-13"
+  },
+  {
+   "id": "doc:design-005-checkout",
+   "title": "Design: checkout 3DS challenge flow",
+   "kind": "design_doc",
+   "summary": "Client state machine for 3DS challenges, including the Safari redirect edge case and the webhook-driven recovery path.",
+   "url": "https://wiki.meridian.example/design/checkout-3ds",
+   "author": "person:nina",
+   "services": [
+    "service:web-checkout",
+    "service:payments-api"
+   ],
+   "date": "2026-09-04"
+  },
+  {
+   "id": "doc:pm-006-auth-latency",
+   "title": "Postmortem: auth latency spike on Oct 3",
+   "kind": "postmortem",
+   "summary": "A bad connection-pool change tripled token validation latency for 41 minutes. Contributing factors: no SLO burn alert, and the gateway did not shed load.",
+   "url": "https://wiki.meridian.example/postmortems/auth-latency-oct3",
+   "author": "person:marcus",
+   "services": [
+    "service:auth",
+    "service:api-gateway"
+   ],
+   "date": "2026-09-02"
+  },
+  {
+   "id": "doc:pm-007-webhook-retry",
+   "title": "Postmortem: notification retry storm",
+   "kind": "postmortem",
+   "summary": "An SMS provider outage triggered unbounded retries, exhausting the notification connection pool and delaying receipts.",
+   "url": "https://wiki.meridian.example/postmortems/notification-retry-storm",
+   "author": "person:aisha",
+   "services": [
+    "service:notifications",
+    "service:payments-api"
+   ],
+   "date": "2026-09-16"
+  },
+  {
+   "id": "doc:runbook-008-auth",
+   "title": "Runbook: auth token revocation",
+   "kind": "runbook",
+   "summary": "Steps to revoke all tokens for a tenant, expected blast radius, and how to verify that the gateway has picked up the revocation.",
+   "url": "https://wiki.meridian.example/runbooks/auth-revocation",
+   "author": "person:priya",
+   "services": [
+    "service:auth",
+    "service:api-gateway"
+   ],
+   "date": "2026-09-12"
+  },
+  {
+   "id": "doc:adr-009-db",
+   "title": "ADR-009: Primary datastore is PostgreSQL",
+   "kind": "adr",
+   "summary": "We evaluated Postgres, MySQL, Cassandra and CockroachDB. Chose Postgres for transactional guarantees and operational simplicity; shards handled by logical partitioning per tenant.",
+   "url": "https://wiki.meridian.example/adr/009-primary-datastore",
+   "author": "person:dan",
+   "services": [
+    "service:ledger",
+    "service:payments-api",
+    "service:auth"
+   ],
+   "date": "2026-05-15"
+  },
+  {
+   "id": "doc:adr-010-queues",
+   "title": "ADR-010: Kafka as the event backbone",
+   "kind": "adr",
+   "summary": "Kafka over RabbitMQ for the event backbone: replay for audit, and enough throughput for the pipeline. Cost is operational complexity.",
+   "url": "https://wiki.meridian.example/adr/010-event-backbone",
+   "author": "person:fatima",
+   "services": [
+    "service:event-pipeline",
+    "service:recsys"
+   ],
+   "date": "2026-05-25"
+  },
+  {
+   "id": "doc:rfc-011-retention",
+   "title": "RFC-011: Ledger retention and archival",
+   "kind": "rfc",
+   "summary": "Hot/cold split: 13 months hot in Postgres, older partitions archived to object storage and queryable on demand.",
+   "url": "https://wiki.meridian.example/rfc/rfc-011-ledger-retention",
+   "author": "person:tomasz",
+   "services": [
+    "service:ledger",
+    "service:event-pipeline"
+   ],
+   "date": "2026-06-14"
+  },
+  {
+   "id": "doc:design-012-notifications",
+   "title": "Design: notification fan-out",
+   "kind": "design_doc",
+   "summary": "Channel abstraction, per-tenant quotas, exponential backoff with jitter, and a dead-letter queue with replay tooling.",
+   "url": "https://wiki.meridian.example/design/notification-fanout",
+   "author": "person:aisha",
+   "services": [
+    "service:notifications"
+   ],
+   "date": "2026-07-16"
+  },
+  {
+   "id": "doc:design-013-recsys",
+   "title": "Design: online ranking and feature serving",
+   "kind": "design_doc",
+   "summary": "Two-stage ranking: cheap retrieval then a re-ranker. Feature freshness budgets and the fallback when the feature store is unavailable.",
+   "url": "https://wiki.meridian.example/design/recsys-ranking",
+   "author": "person:gabriel",
+   "services": [
+    "service:recsys",
+    "service:search"
+   ],
+   "date": "2026-08-09"
+  },
+  {
+   "id": "doc:rfc-014-identity-sync",
+   "title": "RFC-014: Partner identity federation",
+   "kind": "rfc",
+   "summary": "How partner IdPs map onto Meridian accounts, including entitlement sync and the conflict rule when both sides change within the same hour.",
+   "url": "https://wiki.meridian.example/rfc/rfc-014-identity-federation",
+   "author": "person:yuki",
+   "services": [
+    "service:identity-sync",
+    "service:auth"
+   ],
+   "date": "2026-07-18"
+  },
+  {
+   "id": "doc:runbook-015-incident",
+   "title": "Runbook: Sev-1 payments incident",
+   "kind": "runbook",
+   "summary": "First-response checklist for payment-path incidents: freeze deploys, check ledger integrity, then decide whether to degrade or fail closed.",
+   "url": "https://wiki.meridian.example/runbooks/sev1-payments",
+   "author": "person:elena",
+   "services": [
+    "service:payments-api",
+    "service:ledger"
+   ],
+   "date": "2026-08-21"
+  },
+  {
+   "id": "doc:design-016-search-index",
+   "title": "Design: catalog index refresh",
+   "kind": "design_doc",
+   "summary": "Incremental indexing from the event stream, plus the nightly full rebuild that repairs drift.",
+   "url": "https://wiki.meridian.example/design/search-index-refresh",
+   "author": "person:oskar",
+   "services": [
+    "service:search",
+    "service:event-pipeline"
+   ],
+   "date": "2026-08-27"
+  },
+  {
+   "id": "doc:adr-017-gateway-lang",
+   "title": "ADR-017: Gateway and auth stay in Go",
+   "kind": "adr",
+   "summary": "Keep the request path in Go for tail latency; services stay in their existing languages. Revisit if the polyglot cost becomes the bottleneck.",
+   "url": "https://wiki.meridian.example/adr/017-gateway-language",
+   "author": "person:dan",
+   "services": [
+    "service:api-gateway",
+    "service:auth"
+   ],
+   "date": "2026-06-04"
+  },
+  {
+   "id": "doc:pm-018-checkout",
+   "title": "Postmortem: checkout conversion drop",
+   "kind": "postmortem",
+   "summary": "A gateway rate-limit change throttled checkout for large tenants; conversion fell 4% for two hours before rollback.",
+   "url": "https://wiki.meridian.example/postmortems/checkout-conversion-drop",
+   "author": "person:liam",
+   "services": [
+    "service:web-checkout",
+    "service:api-gateway",
+    "service:payments-api"
+   ],
+   "date": "2026-08-03"
+  },
+  {
+   "id": "doc:rfc-019-observability",
+   "title": "RFC-019: One trace ID across services",
+   "kind": "rfc",
+   "summary": "Propagate a W3C traceparent from the gateway into every downstream call, so a single query can reconstruct a payment's full path.",
+   "url": "https://wiki.meridian.example/rfc/rfc-019-trace-propagation",
+   "author": "person:marcus",
+   "services": [
+    "service:api-gateway",
+    "service:payments-api",
+    "service:ledger"
+   ],
+   "date": "2026-09-08"
+  },
+  {
+   "id": "doc:design-020-recsys-onboarding",
+   "title": "Design: self-serve analytics",
+   "kind": "design_doc",
+   "summary": "Semantic layer and curated marts so growth can answer funnel questions without a data-team ticket.",
+   "url": "https://wiki.meridian.example/design/self-serve-analytics",
+   "author": "person:isaac",
+   "services": [
+    "service:event-pipeline",
+    "service:recsys"
+   ],
+   "date": "2026-09-22"
+  }
+ ],
+ "DECISIONS": [
+  {
+   "id": "decision:auth-v3",
+   "title": "Adopt Auth v3 short-lived tokens",
+   "status": "accepted",
+   "topics": [
+    "auth",
+    "tokens",
+    "security",
+    "migration",
+    "sessions"
+   ],
+   "rationale": "Long-lived sessions were our largest blast radius in the Oct 3 latency incident. 15-minute tokens cap the damage from any token leak, and the dual-validate window lets us migrate partner IdPs without a flag day.",
+   "decided_by": "person:priya",
+   "services": [
+    "service:auth"
+   ],
+   "date": "2026-07-09"
+  },
+  {
+   "id": "decision:postgres",
+   "title": "Use PostgreSQL as the primary datastore",
+   "status": "accepted",
+   "topics": [
+    "database",
+    "datastore",
+    "storage",
+    "postgres"
+   ],
+   "rationale": "Postgres gave us multi-row transactions and mature tooling at the lowest operational cost. Cassandra was faster to scale out but lost us atomic multi-account transfers; CockroachDB cost roughly 3x for features we did not need yet.",
+   "decided_by": "person:dan",
+   "services": [
+    "service:ledger",
+    "service:payments-api"
+   ],
+   "date": "2026-05-17"
+  },
+  {
+   "id": "decision:kafka",
+   "title": "Adopt Kafka as the event backbone",
+   "status": "accepted",
+   "topics": [
+    "events",
+    "queue",
+    "messaging",
+    "kafka"
+   ],
+   "rationale": "Audit replay was the deciding factor: we need to reconstruct any ledger state from scratch. Kafka's retention model fits that; RabbitMQ did not.",
+   "decided_by": "person:fatima",
+   "services": [
+    "service:event-pipeline",
+    "service:recsys"
+   ],
+   "date": "2026-05-27"
+  },
+  {
+   "id": "decision:event-sourcing-ledger",
+   "title": "Make the ledger event-sourced",
+   "status": "accepted",
+   "topics": [
+    "ledger",
+    "event sourcing",
+    "audit"
+   ],
+   "rationale": "Audit asked for the full history of every balance change. Event sourcing with immutable entries gives that for free and turns reconciliation into a replay. The cost is read-model complexity, which we absorb with projections.",
+   "decided_by": "person:tomasz",
+   "services": [
+    "service:ledger"
+   ],
+   "date": "2026-07-16"
+  },
+  {
+   "id": "decision:go-request-path",
+   "title": "Keep the gateway and auth in Go",
+   "status": "accepted",
+   "topics": [
+    "language",
+    "go",
+    "latency",
+    "architecture"
+   ],
+   "rationale": "Tail latency on the request path is a product problem, not just an SRE one. Go gave us predictable p99s with far less tuning than the Python services we benchmarked.",
+   "decided_by": "person:dan",
+   "services": [
+    "service:api-gateway",
+    "service:auth"
+   ],
+   "date": "2026-06-06"
+  },
+  {
+   "id": "decision:fail-open-gateway",
+   "title": "Gateway sheds load rather than failing closed",
+   "status": "proposed",
+   "topics": [
+    "resilience",
+    "gateway",
+    "load shedding",
+    "reliability"
+   ],
+   "rationale": "During the Oct 3 incident the gateway kept sending requests to a degraded auth service and made the outage worse. Proposed fix: shed on auth latency and serve cached session checks for a short grace window.",
+   "decided_by": "person:marcus",
+   "services": [
+    "service:api-gateway",
+    "service:auth"
+   ],
+   "date": "2026-09-06"
+  },
+  {
+   "id": "decision:per-tenant-limits",
+   "title": "Replace global rate limits with per-tenant limits",
+   "status": "accepted",
+   "topics": [
+    "rate limiting",
+    "gateway",
+    "abuse"
+   ],
+   "rationale": "The conversion-drop postmortem showed one large tenant exhausting the shared bucket and starving everyone else. Per-tenant buckets are fairer and make abuse isolation possible.",
+   "decided_by": "person:marcus",
+   "services": [
+    "service:api-gateway"
+   ],
+   "date": "2026-08-07"
+  },
+  {
+   "id": "decision:no-mobile-app",
+   "title": "No first-party mobile app this year",
+   "status": "accepted",
+   "topics": [
+    "mobile",
+    "product",
+    "roadmap"
+   ],
+   "rationale": "Mobile checkout converts at roughly half of web with the current 3DS flow, and fixing that is a prerequisite. We would rather spend the quarter on the web checkout and the auth migration.",
+   "decided_by": "person:elena",
+   "services": [
+    "service:web-checkout",
+    "service:payments-api"
+   ],
+   "date": "2026-06-24"
+  },
+  {
+   "id": "decision:idempotency-scope",
+   "title": "Scope idempotency keys to the tenant",
+   "status": "accepted",
+   "topics": [
+    "payments",
+    "idempotency",
+    "correctness"
+   ],
+   "rationale": "A single global key space let one tenant's retry reject another's request. Tenant-scoped keys plus a 72-hour window removed the collision class entirely.",
+   "decided_by": "person:ravi",
+   "services": [
+    "service:payments-api"
+   ],
+   "date": "2026-08-09"
+  },
+  {
+   "id": "decision:identity-sync-owner",
+   "title": "Identity sync stays owned by Platform, not Payments",
+   "status": "accepted",
+   "topics": [
+    "ownership",
+    "teams",
+    "identity"
+   ],
+   "rationale": "Both teams depend on it, so neither owning it worked. Platform owns it and Payments consumes it as an internal API with an SLA.",
+   "decided_by": "person:dan",
+   "services": [
+    "service:identity-sync",
+    "service:auth"
+   ],
+   "date": "2026-07-24"
+  },
+  {
+   "id": "decision:notify-backoff",
+   "title": "Notifications use exponential backoff with a DLQ",
+   "status": "accepted",
+   "topics": [
+    "notifications",
+    "reliability",
+    "retries"
+   ],
+   "rationale": "The retry storm postmortem showed unbounded retries against a dead provider. Bounded exponential backoff plus a dead-letter queue with replay tooling keeps one provider outage from becoming a pool exhaustion.",
+   "decided_by": "person:aisha",
+   "services": [
+    "service:notifications"
+   ],
+   "date": "2026-09-18"
+  },
+  {
+   "id": "decision:recsys-two-stage",
+   "title": "Two-stage ranking instead of a single deep model",
+   "status": "accepted",
+   "topics": [
+    "ml",
+    "ranking",
+    "latency",
+    "recommendations"
+   ],
+   "rationale": "The deep model added 40ms p99 for a 1.8% lift. Two-stage retrieval plus re-ranking hit most of that gain inside the latency budget, and the cheap stage degrades gracefully when features are missing.",
+   "decided_by": "person:gabriel",
+   "services": [
+    "service:recsys",
+    "service:search"
+   ],
+   "date": "2026-08-13"
+  },
+  {
+   "id": "decision:archive-ledger",
+   "title": "Archive ledger partitions older than 13 months",
+   "status": "accepted",
+   "topics": [
+    "ledger",
+    "storage",
+    "performance"
+   ],
+   "rationale": "Postgres table bloat was the top source of ledger write latency. Moving cold partitions to object storage cut p99 writes by 40%.",
+   "decided_by": "person:tomasz",
+   "services": [
+    "service:ledger",
+    "service:event-pipeline"
+   ],
+   "date": "2026-06-18"
+  },
+  {
+   "id": "decision:trace-propagation",
+   "title": "Standardise on W3C traceparent everywhere",
+   "status": "accepted",
+   "topics": [
+    "observability",
+    "tracing",
+    "debugging"
+   ],
+   "rationale": "Debugging a payment meant correlating four log formats. A single trace id across the gateway, payments and the ledger makes it one query.",
+   "decided_by": "person:marcus",
+   "services": [
+    "service:api-gateway",
+    "service:payments-api",
+    "service:ledger"
+   ],
+   "date": "2026-09-10"
+  },
+  {
+   "id": "decision:self-serve-analytics",
+   "title": "Build a self-serve analytics layer for Growth",
+   "status": "accepted",
+   "topics": [
+    "analytics",
+    "growth",
+    "data"
+   ],
+   "rationale": "Every funnel question became a data-team ticket, and the queue was the bottleneck for the growth experiments. A semantic layer plus curated marts removed the dependency.",
+   "decided_by": "person:fatima",
+   "services": [
+    "service:event-pipeline",
+    "service:recsys"
+   ],
+   "date": "2026-09-26"
+  }
+ ],
+ "MESSAGES": [
+  {
+   "id": "msg:001",
+   "author": "person:priya",
+   "content": "RFC-001 is up for review. The short part: 15 minute access tokens, rotating refresh tokens, and a 6 week dual-validate window.",
+   "channel": "#platform",
+   "timestamp": "2026-07-07T10:07:00+00:00",
+   "discussed_in": "doc:rfc-001-auth-v3",
+   "mentions": [
+    "person:yuki",
+    "service:auth"
+   ]
+  },
+  {
+   "id": "msg:002",
+   "author": "person:dan",
+   "content": "Read it twice. The dual-validate window is what makes this safe \u2014 flag day would have been reckless.",
+   "channel": "#platform",
+   "timestamp": "2026-07-08T11:14:00+00:00",
+   "discussed_in": "doc:rfc-001-auth-v3",
+   "mentions": [
+    "person:priya"
+   ]
+  },
+  {
+   "id": "msg:003",
+   "author": "person:yuki",
+   "content": "Partner IdPs are the hard part. identity-sync needs to accept both token shapes during the window, so MER-1003 is on me.",
+   "channel": "#platform",
+   "timestamp": "2026-07-09T12:21:00+00:00",
+   "discussed_in": "doc:rfc-001-auth-v3",
+   "mentions": [
+    "person:priya",
+    "service:identity-sync"
+   ]
+  },
+  {
+   "id": "msg:004",
+   "author": "person:marcus",
+   "content": "Once auth changes shape, the gateway has to keep validating the old tokens too. That is MER-1004 and it blocks checkout work.",
+   "channel": "#platform",
+   "timestamp": "2026-07-11T13:28:00+00:00",
+   "discussed_in": "ticket:MER-1004",
+   "mentions": [
+    "person:priya"
+   ]
+  },
+  {
+   "id": "msg:005",
+   "author": "person:sofia",
+   "content": "Half of our alerting still keys off the old session header. We will need to update the gateway dashboards too.",
+   "channel": "#platform",
+   "timestamp": "2026-07-12T14:35:00+00:00",
+   "discussed_in": "service:api-gateway",
+   "mentions": [
+    "person:marcus"
+   ]
+  },
+  {
+   "id": "msg:006",
+   "author": "person:tomasz",
+   "content": "Ledger write path depends on the auth scope being present on every entry. Adding scope checks under MER-1005 before the token change lands.",
+   "channel": "#payments",
+   "timestamp": "2026-07-14T15:42:00+00:00",
+   "discussed_in": "ticket:MER-1005",
+   "mentions": [
+    "person:priya"
+   ]
+  },
+  {
+   "id": "msg:007",
+   "author": "person:elena",
+   "content": "Quarterly plan is up. Auth v3 is the spine of the quarter and most of Payments is behind it.",
+   "channel": "#payments",
+   "timestamp": "2026-07-16T16:49:00+00:00",
+   "discussed_in": null,
+   "mentions": [
+    "person:priya",
+    "person:tomasz"
+   ]
+  },
+  {
+   "id": "msg:008",
+   "author": "person:chloe",
+   "content": "internal callers on API keys \u2014 MER-1006 has to land the same week as the cutover or they start 401ing in prod.",
+   "channel": "#payments",
+   "timestamp": "2026-07-17T09:56:00+00:00",
+   "discussed_in": "ticket:MER-1006",
+   "mentions": [
+    "person:priya"
+   ]
+  },
+  {
+   "id": "msg:009",
+   "author": "person:ravi",
+   "content": "Agreed. I would rather do one coordinated cutover with a bake than two.",
+   "channel": "#payments",
+   "timestamp": "2026-07-18T10:03:00+00:00",
+   "discussed_in": null,
+   "mentions": [
+    "person:chloe"
+   ]
+  },
+  {
+   "id": "msg:010",
+   "author": "person:yuki",
+   "content": "Federation RFC draft is out. Conflict rule: if both sides change within an hour, Meridian wins until the partner catches up.",
+   "channel": "#platform",
+   "timestamp": "2026-07-19T11:10:00+00:00",
+   "discussed_in": "doc:rfc-014-identity-sync",
+   "mentions": [
+    "service:identity-sync"
+   ]
+  },
+  {
+   "id": "msg:011",
+   "author": "person:priya",
+   "content": "That is a reasonable default. Please add the retry backoff for the partner side though.",
+   "channel": "#platform",
+   "timestamp": "2026-07-20T12:17:00+00:00",
+   "discussed_in": "doc:rfc-014-identity-sync",
+   "mentions": [
+    "person:yuki"
+   ]
+  },
+  {
+   "id": "msg:012",
+   "author": "person:aisha",
+   "content": "Unsubscribe tokens need to survive rotation or every auth release re-subscribes everyone. MER-1007.",
+   "channel": "#payments",
+   "timestamp": "2026-07-22T13:24:00+00:00",
+   "discussed_in": "ticket:MER-1007",
+   "mentions": [
+    "service:notifications"
+   ]
+  },
+  {
+   "id": "msg:013",
+   "author": "person:nina",
+   "content": "From the checkout side: please do not change the session cookie shape without telling us, the retry path depends on it.",
+   "channel": "#growth",
+   "timestamp": "2026-07-23T14:31:00+00:00",
+   "discussed_in": null,
+   "mentions": [
+    "person:priya"
+   ]
+  },
+  {
+   "id": "msg:014",
+   "author": "person:oskar",
+   "content": "Search caches session-scoped results. After the cutover we will need a reindex, tracked as MER-1008.",
+   "channel": "#growth",
+   "timestamp": "2026-07-25T15:38:00+00:00",
+   "discussed_in": "ticket:MER-1008",
+   "mentions": [
+    "person:yuki"
+   ]
+  },
+  {
+   "id": "msg:015",
+   "author": "person:fatima",
+   "content": "Reminder for everyone: every event now needs the RFC-003 envelope. No envelope, no downstream consumer.",
+   "channel": "#data",
+   "timestamp": "2026-07-26T16:45:00+00:00",
+   "discussed_in": "doc:rfc-003-event-schema",
+   "mentions": [
+    "service:event-pipeline"
+   ]
+  },
+  {
+   "id": "msg:016",
+   "author": "person:gabriel",
+   "content": "That is MER-1041. The ranking retrain is blocked until the pipeline lands exactly-once.",
+   "channel": "#data",
+   "timestamp": "2026-07-28T09:52:00+00:00",
+   "discussed_in": "ticket:MER-1041",
+   "mentions": [
+    "person:fatima"
+   ]
+  },
+  {
+   "id": "msg:017",
+   "author": "person:hana",
+   "content": "Exactly-once on the ledger stream is the hard part. Chained transactions across Postgres and Kafka.",
+   "channel": "#data",
+   "timestamp": "2026-07-29T10:59:00+00:00",
+   "discussed_in": "ticket:MER-1040",
+   "mentions": [
+    "person:fatima"
+   ]
+  },
+  {
+   "id": "msg:018",
+   "author": "person:tomasz",
+   "content": "Ledger projections are landing this sprint. Balance queries stop touching the write tables.",
+   "channel": "#payments",
+   "timestamp": "2026-07-30T11:06:00+00:00",
+   "discussed_in": "ticket:MER-1010",
+   "mentions": [
+    "service:ledger"
+   ]
+  },
+  {
+   "id": "msg:019",
+   "author": "person:ravi",
+   "content": "Payout reconciliation is still manual \u2014 MER-1011. Comparing against the partner statement every month by hand.",
+   "channel": "#payments",
+   "timestamp": "2026-07-31T12:13:00+00:00",
+   "discussed_in": "ticket:MER-1011",
+   "mentions": [
+    "person:tomasz"
+   ]
+  },
+  {
+   "id": "msg:020",
+   "author": "person:elena",
+   "content": "Let us get the replay-based reconciliation from RFC-002 instead of more manual comparison.",
+   "channel": "#payments",
+   "timestamp": "2026-08-02T13:20:00+00:00",
+   "discussed_in": "doc:rfc-002-ledger-events",
+   "mentions": [
+    "person:tomasz"
+   ]
+  },
+  {
+   "id": "msg:021",
+   "author": "person:ravi",
+   "content": "Idempotency collisions are fixed. Tenant-scoped keys, MER-1012 closing today.",
+   "channel": "#payments",
+   "timestamp": "2026-08-03T14:27:00+00:00",
+   "discussed_in": "ticket:MER-1012",
+   "mentions": [
+    "service:payments-api"
+   ]
+  },
+  {
+   "id": "msg:022",
+   "author": "person:chloe",
+   "content": "Confirmed fixed in staging. Two tenants were sharing a key space before, so a retry from one rejected the other.",
+   "channel": "#payments",
+   "timestamp": "2026-08-05T15:34:00+00:00",
+   "discussed_in": null,
+   "mentions": [
+    "person:ravi"
+   ]
+  },
+  {
+   "id": "msg:023",
+   "author": "person:nina",
+   "content": "Out-of-order refund webhooks still bite us \u2014 MER-1013. The UI shows a refunded charge as pending.",
+   "channel": "#growth",
+   "timestamp": "2026-08-06T16:41:00+00:00",
+   "discussed_in": "ticket:MER-1013",
+   "mentions": [
+    "service:payments-api"
+   ]
+  },
+  {
+   "id": "msg:024",
+   "author": "person:liam",
+   "content": "Checkout is our highest-converting surface, so that one matters more than its priority suggests.",
+   "channel": "#growth",
+   "timestamp": "2026-08-08T09:48:00+00:00",
+   "discussed_in": "doc:pm-018-checkout",
+   "mentions": [
+    "person:nina"
+   ]
+  },
+  {
+   "id": "msg:025",
+   "author": "person:dan",
+   "content": "Multi-currency rounding is a correctness bug waiting to happen. MER-1014 should be P1 not P2.",
+   "channel": "#platform",
+   "timestamp": "2026-08-09T10:55:00+00:00",
+   "discussed_in": "ticket:MER-1014",
+   "mentions": [
+    "person:tomasz"
+   ]
+  },
+  {
+   "id": "msg:026",
+   "author": "person:tomasz",
+   "content": "Fair. The rounding happens at the projection edge, so it interacts with the event sourcing work.",
+   "channel": "#payments",
+   "timestamp": "2026-08-10T11:02:00+00:00",
+   "discussed_in": "ticket:MER-1014",
+   "mentions": [
+    "person:dan"
+   ]
+  },
+  {
+   "id": "msg:027",
+   "author": "person:marcus",
+   "content": "Auth latency spike postmortem is published. 41 minutes, 3x token validation p99, and we had no burn alert.",
+   "channel": "#platform",
+   "timestamp": "2026-08-11T12:09:00+00:00",
+   "discussed_in": "doc:pm-006-auth-latency",
+   "mentions": [
+    "person:priya",
+    "service:auth"
+   ]
+  },
+  {
+   "id": "msg:028",
+   "author": "person:dan",
+   "content": "The gateway kept sending traffic to a degraded auth. We need to shed, not queue.",
+   "channel": "#platform",
+   "timestamp": "2026-08-13T13:16:00+00:00",
+   "discussed_in": "doc:pm-006-auth-latency",
+   "mentions": [
+    "service:api-gateway"
+   ]
+  },
+  {
+   "id": "msg:029",
+   "author": "person:marcus",
+   "content": "Filed the proposal for fail-open + load shedding. Short version: shed on auth latency, serve cached checks for a grace window.",
+   "channel": "#platform",
+   "timestamp": "2026-08-15T14:23:00+00:00",
+   "discussed_in": "doc:design-004-gateway",
+   "mentions": [
+    "person:dan"
+   ]
+  },
+  {
+   "id": "msg:030",
+   "author": "person:dan",
+   "content": "Approved with changes \u2014 never serve a cached session check for a write path. Reads only.",
+   "channel": "#platform",
+   "timestamp": "2026-08-17T15:30:00+00:00",
+   "discussed_in": "doc:design-004-gateway",
+   "mentions": [
+    "person:marcus"
+   ]
+  },
+  {
+   "id": "msg:031",
+   "author": "person:marcus",
+   "content": "SLO burn alerts for the token endpoint are in \u2014 MER-1021. We page at 2x burn for 5 minutes.",
+   "channel": "#platform",
+   "timestamp": "2026-08-19T16:37:00+00:00",
+   "discussed_in": "ticket:MER-1021",
+   "mentions": [
+    "service:auth"
+   ]
+  },
+  {
+   "id": "msg:032",
+   "author": "person:sofia",
+   "content": "Per-tenant rate limits are specced. One tenant should not be able to spend everyone else's budget.",
+   "channel": "#platform",
+   "timestamp": "2026-08-20T09:44:00+00:00",
+   "discussed_in": "ticket:MER-1022",
+   "mentions": [
+    "person:marcus"
+   ]
+  },
+  {
+   "id": "msg:033",
+   "author": "person:liam",
+   "content": "That was the conversion drop. We rolled back but the fix is the per-tenant limit.",
+   "channel": "#growth",
+   "timestamp": "2026-08-21T10:51:00+00:00",
+   "discussed_in": "doc:pm-018-checkout",
+   "mentions": [
+    "person:sofia"
+   ]
+  },
+  {
+   "id": "msg:034",
+   "author": "person:priya",
+   "content": "Token revocation runbook is written. Revoke for a tenant, then verify the gateway has picked it up.",
+   "channel": "#platform",
+   "timestamp": "2026-08-23T11:58:00+00:00",
+   "discussed_in": "doc:runbook-008-auth",
+   "mentions": [
+    "person:marcus"
+   ]
+  },
+  {
+   "id": "msg:035",
+   "author": "person:marcus",
+   "content": "Added a check for that to the runbook \u2014 the gateway caches revocation state for 30s.",
+   "channel": "#platform",
+   "timestamp": "2026-08-24T12:05:00+00:00",
+   "discussed_in": "doc:runbook-008-auth",
+   "mentions": [
+    "person:priya"
+   ]
+  },
+  {
+   "id": "msg:036",
+   "author": "person:aisha",
+   "content": "Notification retry storm postmortem. Unbounded retries against a dead SMS provider ate the connection pool.",
+   "channel": "#payments",
+   "timestamp": "2026-08-26T13:12:00+00:00",
+   "discussed_in": "doc:pm-007-webhook-retry",
+   "mentions": [
+    "service:notifications"
+   ]
+  },
+  {
+   "id": "msg:037",
+   "author": "person:ravi",
+   "content": "That storm delayed payment receipts too \u2014 the notification service is on the payments path.",
+   "channel": "#payments",
+   "timestamp": "2026-08-28T14:19:00+00:00",
+   "discussed_in": "doc:pm-007-webhook-retry",
+   "mentions": [
+    "person:aisha"
+   ]
+  },
+  {
+   "id": "msg:038",
+   "author": "person:aisha",
+   "content": "Right, so backoff with jitter plus a DLQ. Decision is accepted, implementation is MER-1032.",
+   "channel": "#payments",
+   "timestamp": "2026-08-29T15:26:00+00:00",
+   "discussed_in": "doc:design-012-notifications",
+   "mentions": [
+    "person:ravi"
+   ]
+  },
+  {
+   "id": "msg:039",
+   "author": "person:nina",
+   "content": "3DS challenge loop on Safari is the top checkout bug. It is MER-1030 and it is a redirect problem, not a payments problem.",
+   "channel": "#growth",
+   "timestamp": "2026-08-31T16:33:00+00:00",
+   "discussed_in": "ticket:MER-1030",
+   "mentions": [
+    "service:web-checkout"
+   ]
+  },
+  {
+   "id": "msg:040",
+   "author": "person:chloe",
+   "content": "Can confirm from the server side: the challenge callback lands, we just never see the result. Webhook timing.",
+   "channel": "#payments",
+   "timestamp": "2026-09-02T09:40:00+00:00",
+   "discussed_in": "doc:design-005-checkout",
+   "mentions": [
+    "person:nina"
+   ]
+  },
+  {
+   "id": "msg:041",
+   "author": "person:dan",
+   "content": "Chaos test on auth during peak checkout is blocked until the load shedding work lands. That is the right order.",
+   "channel": "#platform",
+   "timestamp": "2026-09-03T10:47:00+00:00",
+   "discussed_in": "ticket:MER-1024",
+   "mentions": [
+    "person:marcus"
+   ]
+  },
+  {
+   "id": "msg:042",
+   "author": "person:hana",
+   "content": "Partition pruning regression on the ledger table \u2014 MER-1042. New partition key made the planner re-scan.",
+   "channel": "#data",
+   "timestamp": "2026-09-05T11:54:00+00:00",
+   "discussed_in": "ticket:MER-1042",
+   "mentions": [
+    "service:event-pipeline"
+   ]
+  },
+  {
+   "id": "msg:043",
+   "author": "person:fatima",
+   "content": "Archive job should fix it. Cold partitions off the hot table means the planner has less to reason about.",
+   "channel": "#data",
+   "timestamp": "2026-09-07T12:01:00+00:00",
+   "discussed_in": null,
+   "mentions": [
+    "person:hana"
+   ]
+  },
+  {
+   "id": "msg:044",
+   "author": "person:marcus",
+   "content": "Trace propagation RFC is up. W3C traceparent from the gateway into every downstream call.",
+   "channel": "#platform",
+   "timestamp": "2026-09-09T13:08:00+00:00",
+   "discussed_in": "doc:rfc-019-observability",
+   "mentions": [
+    "service:api-gateway"
+   ]
+  },
+  {
+   "id": "msg:045",
+   "author": "person:ravi",
+   "content": "Please include the ledger write path. Reconciling four log formats by hand is how we found the refund ordering bug.",
+   "channel": "#payments",
+   "timestamp": "2026-09-10T14:15:00+00:00",
+   "discussed_in": "doc:rfc-019-observability",
+   "mentions": [
+    "person:marcus",
+    "service:ledger"
+   ]
+  },
+  {
+   "id": "msg:046",
+   "author": "person:gabriel",
+   "content": "Two-stage ranking is the call. Deep model was 40ms p99 for a 1.8% lift \u2014 not worth it in checkout.",
+   "channel": "#data",
+   "timestamp": "2026-09-12T15:22:00+00:00",
+   "discussed_in": "doc:design-013-recsys",
+   "mentions": [
+    "service:recsys"
+   ]
+  },
+  {
+   "id": "msg:047",
+   "author": "person:zoe",
+   "content": "Agreed, and the retrieval stage degrades gracefully when the feature store is cold, which happens at peak.",
+   "channel": "#data",
+   "timestamp": "2026-09-13T16:29:00+00:00",
+   "discussed_in": "doc:design-013-recsys",
+   "mentions": [
+    "person:gabriel"
+   ]
+  },
+  {
+   "id": "msg:048",
+   "author": "person:isaac",
+   "content": "Self-serve analytics is live. Growth can answer funnel questions without a data ticket now.",
+   "channel": "#data",
+   "timestamp": "2026-09-15T09:36:00+00:00",
+   "discussed_in": "doc:design-020-recsys-onboarding",
+   "mentions": [
+    "person:liam",
+    "service:event-pipeline"
+   ]
+  },
+  {
+   "id": "msg:049",
+   "author": "person:liam",
+   "content": "That unblocks us. Ask and you shall receive, without waiting a sprint.",
+   "channel": "#growth",
+   "timestamp": "2026-09-17T10:43:00+00:00",
+   "discussed_in": "doc:design-020-recsys-onboarding",
+   "mentions": [
+    "person:isaac"
+   ]
+  },
+  {
+   "id": "msg:050",
+   "author": "person:elena",
+   "content": "Reminder: Sev-1 payments runbook assumes deploy freeze first, then ledger integrity, then degrade or fail closed. Read it before your next on-call.",
+   "channel": "#payments",
+   "timestamp": "2026-09-19T11:50:00+00:00",
+   "discussed_in": "doc:runbook-015-incident",
+   "mentions": [
+    "service:payments-api",
+    "service:ledger"
+   ]
+  }
+ ],
+ "DEPENDENCIES": [
+  {
+   "from": "service:api-gateway",
+   "to": "service:auth"
+  },
+  {
+   "from": "service:payments-api",
+   "to": "service:auth"
+  },
+  {
+   "from": "service:payments-api",
+   "to": "service:ledger"
+  },
+  {
+   "from": "service:payments-api",
+   "to": "service:notifications"
+  },
+  {
+   "from": "service:ledger",
+   "to": "service:auth"
+  },
+  {
+   "from": "service:notifications",
+   "to": "service:auth"
+  },
+  {
+   "from": "service:web-checkout",
+   "to": "service:api-gateway"
+  },
+  {
+   "from": "service:web-checkout",
+   "to": "service:payments-api"
+  },
+  {
+   "from": "service:web-checkout",
+   "to": "service:notifications"
+  },
+  {
+   "from": "service:search",
+   "to": "service:auth"
+  },
+  {
+   "from": "service:recsys",
+   "to": "service:search"
+  },
+  {
+   "from": "service:recsys",
+   "to": "service:event-pipeline"
+  },
+  {
+   "from": "service:event-pipeline",
+   "to": "service:auth"
+  },
+  {
+   "from": "service:event-pipeline",
+   "to": "service:ledger"
+  },
+  {
+   "from": "service:event-pipeline",
+   "to": "service:payments-api"
+  },
+  {
+   "from": "service:identity-sync",
+   "to": "service:auth"
+  }
+ ],
+ "DECISION_DISCUSSION": {
+  "decision:auth-v3": [
+   "msg:001",
+   "msg:002",
+   "msg:003"
+  ],
+  "decision:identity-sync-owner": [
+   "msg:003",
+   "msg:010",
+   "msg:011"
+  ],
+  "decision:fail-open-gateway": [
+   "msg:027",
+   "msg:028",
+   "msg:029",
+   "msg:030"
+  ],
+  "decision:per-tenant-limits": [
+   "msg:032",
+   "msg:033"
+  ],
+  "decision:idempotency-scope": [
+   "msg:021",
+   "msg:022"
+  ],
+  "decision:notify-backoff": [
+   "msg:036",
+   "msg:037",
+   "msg:038"
+  ],
+  "decision:kafka": [
+   "msg:015",
+   "msg:016",
+   "msg:017"
+  ],
+  "decision:event-sourcing-ledger": [
+   "msg:018",
+   "msg:019",
+   "msg:020"
+  ],
+  "decision:archive-ledger": [
+   "msg:042",
+   "msg:043"
+  ],
+  "decision:trace-propagation": [
+   "msg:044",
+   "msg:045"
+  ],
+  "decision:recsys-two-stage": [
+   "msg:046",
+   "msg:047"
+  ],
+  "decision:self-serve-analytics": [
+   "msg:048",
+   "msg:049"
+  ],
+  "decision:no-mobile-app": [
+   "msg:039",
+   "msg:040"
+  ]
+ },
+ "EXPECTED": {
+  "teams": 4,
+  "people": 20,
+  "services": 10,
+  "repos": 9,
+  "tickets": 30,
+  "documents": 20,
+  "decisions": 15,
+  "messages": 50,
+  "dependencies": 16,
+  "knowledge_edges": 41
+ },
+ "EXPECTED_EDGES": {
+  "MEMBER_OF": 20,
+  "DEPENDS_ON": 16,
+  "OWNS": 10,
+  "IN_REPO": 40,
+  "KNOWS_ABOUT": 41,
+  "ASSIGNED_TO": 30,
+  "BLOCKED_BY": 18,
+  "DECIDED_BY": 15,
+  "AUTHORED": 85,
+  "DISCUSSED_IN": 78,
+  "MENTIONS": 57,
+  "RELATES_TO": 97
+ }
+}

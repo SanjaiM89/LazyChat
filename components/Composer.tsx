@@ -55,6 +55,12 @@ const TOOL_BUTTONS: {
     icon: <Monitor size={15} />,
     tooltip: "Let the model drive the shared Chromium computer anytime (recorded, you can take over)",
   },
+  {
+    id: "companyBrain",
+    label: "Brain",
+    icon: <Brain size={15} />,
+    tooltip: "Company Brain: FalkorDB knowledge graph (people, services, tickets, decisions) plus memory of earlier Omnia conversations",
+  },
 ];
 
 function ToolToggle({

@@ -128,6 +128,19 @@ export async function buildLanguageModel(opts: BuildModelOptions): Promise<Langu
       });
       return client(model);
     }
+    case "sarvam": {
+      if (!resolvedKey) {
+        throw new Error(
+          `Sarvam is not configured. Paste a key via the 🔑 button in the header, or set ${cfg.keyEnv} in .env.local`,
+        );
+      }
+      const client = createOpenAICompatible({
+        name: "sarvam",
+        baseURL: baseUrl as string,
+        apiKey: resolvedKey,
+      });
+      return client(model);
+    }
     case "lmstudio": {
       const client = createOpenAICompatible({
         name: "lmstudio",

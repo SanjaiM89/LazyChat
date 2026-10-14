@@ -1,5 +1,11 @@
 import { App } from "@/components/App";
 
-export default function Home() {
-  return <App />;
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
+  const initialView = view === "brain" ? "brain" : view === "chat" ? "chat" : undefined;
+  return <App initialView={initialView} />;
 }

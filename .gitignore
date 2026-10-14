@@ -43,3 +43,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Hackathon backend
+backend/.venv/
+backend/.uv-cache/
+backend/.env
+__pycache__/
+
+# secrets
+.env
+.env.*
+!.env.example
