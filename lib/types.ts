@@ -2,6 +2,7 @@ export type BuiltinProviderId =
   | "anthropic"
   | "openai"
   | "google"
+  | "sarvam"
   | "ollama"
   | "lmstudio"
   | "opencode";
@@ -71,12 +72,12 @@ export interface ChatSettings {
 }
 
 export const DEFAULT_SETTINGS: ChatSettings = {
-  provider: "anthropic",
-  model: "claude-sonnet-5",
+  provider: "sarvam",
+  model: "sarvam-105b",
   thinking: true,
   temperature: 0.7,
   maxSteps: 14,
-  tools: ["webSearch", "createArtifact", "runAgentTask", "computerUse"],
+  tools: ["webSearch", "createArtifact", "runAgentTask", "computerUse", "companyBrain"],
 };
 
 

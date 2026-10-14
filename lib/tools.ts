@@ -57,6 +57,44 @@ export const webSearchTool = tool({
   },
 });
 
+function buildCompanyBrainTool(opts: {
+  conversationId?: string;
+}) {
+  return tool({
+    description: `Ask the Company Brain — a FalkorDB-backed engineering knowledge graph (people, teams, services, tickets, decisions, chat) with its own agentic researcher. Use for questions about the Meridian engineering org: who knows a service, what breaks if a service fails, what is blocked, why a decision was made, bottlenecks, dependencies. It can also ACT on the graph: file/assign/update tickets, record decisions, note expertise, map open facts. Returns a grounded answer with cited node ids. The brain also remembers earlier Omnia conversations.`,
+    inputSchema: z.object({
+      question: z.string().describe("The question for the Company Brain, phrased concretely"),
+    }),
+    execute: async ({ question }) => {
+      const { askAgent } = await import("@/lib/brain/agent");
+      const result = await askAgent(question, {
+        sessionId: opts.conversationId ? `omnia:${opts.conversationId}` : null,
+        userId: "omnia",
+      });
+      // Threshold consolidation so tool-driven turns also build durable memory
+      // (otherwise their Turns would be write-only and recall would miss them).
+      if (opts.conversationId) {
+        void (async () => {
+          try {
+            const { FalkorClient } = await import("@/lib/brain/graph");
+            const { consolidateSession } = await import("@/lib/brain/memory/consolidation");
+            const client = await FalkorClient.get();
+            await consolidateSession(client, `omnia:${opts.conversationId}`, "omnia", {});
+          } catch {
+            // memory must never fail an answer
+          }
+        })();
+      }
+      return {
+        answer: result.answer,
+        sources: result.sources,
+        agents: result.agents_involved,
+        tool_calls: result.tool_count,
+      };
+    },
+  });
+}
+
 function buildCreateArtifactTool(conversationId?: string) {
   return tool({
     description: `Create a rich, standalone artifact (rendered in the side panel) — code, markdown doc, HTML page, SVG diagram, mermaid diagram, or table. Use for anything that deserves its own window rather than chat text.`,
@@ -384,6 +422,7 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
     webSearch: webSearchTool,
     createArtifact: buildCreateArtifactTool(opts.conversationId),
     runAgentTask: buildRunAgentTaskTool(opts),
+    companyBrain: buildCompanyBrainTool(opts),
   };
   const out: Record<string, any> = {};
   for (const n of names) {

@@ -139,6 +139,30 @@ export const PROVIDERS: Record<BuiltinProviderId, ProviderConfig> = {
     providerOptionsKey: "google",
   },
 
+  sarvam: {
+    id: "sarvam",
+    name: "Sarvam",
+    tagline: "Sarvam-105b — OpenAI-compatible chat/completions endpoint",
+    glyph: "◐",
+    keyEnv: "SARVAM_API_KEY",
+    requiresKey: true,
+    baseUrlEnv: "SARVAM_BASE_URL",
+    defaultBaseUrl: "https://api.sarvam.ai/v1",
+    models: [
+      {
+        id: "sarvam-105b",
+        name: "Sarvam 105b",
+        supportsThinking: false,
+        supportsVision: false,
+        context: 32_768,
+        maxOutput: 8192,
+        category: "reasoning",
+        default: true,
+      },
+    ],
+    providerOptionsKey: "openai",
+  },
+
   ollama: {
     id: "ollama",
     name: "Ollama (local)",

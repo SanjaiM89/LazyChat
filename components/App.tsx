@@ -11,6 +11,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { ChatHeader } from "@/components/ChatHeader";
 import { ChatView } from "@/components/ChatView";
 import { Composer } from "@/components/Composer";
+import { BrainApp } from "@/components/brain/BrainApp";
 import { SubchatPanel } from "@/components/SubchatPanel";
 import { RightPanel } from "@/components/RightPanel";
 import { SkillsDialog } from "@/components/dialogs/SkillsDialog";
@@ -18,8 +19,9 @@ import { ConnectionsDialog } from "@/components/dialogs/ConnectionsDialog";
 import { SearchProvidersDialog } from "@/components/dialogs/SearchProvidersDialog";
 
 
-export function App() {
+export function App({ initialView }: { initialView?: "chat" | "brain" }) {
   const theme = useAppStore((s) => s.theme);
+  const mainView = useAppStore((s) => s.mainView);
   const display = useAppStore((s) => s.display) ?? DEFAULT_DISPLAY;
   const subchatOpen = useAppStore((s) => s.subchatOpen);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
@@ -42,6 +44,14 @@ export function App() {
   useEffect(() => {
     void useAppStore.getState().loadCustomProviders();
     void useAppStore.getState().loadProviderKeys();
+  }, []);
+
+  // Deep link: /?view=brain opens the Company Brain inside this same shell.
+  useEffect(() => {
+    if (initialView === "brain" || initialView === "chat") {
+      useAppStore.getState().setMainView(initialView);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const subchatClearRef = useRef(subchat.clear);
@@ -72,14 +82,22 @@ export function App() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <ChatHeader chat={chat} />
-        <main className="flex min-h-0 flex-1 overflow-hidden">
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            <ChatView chat={chat} />
-            <Composer chat={chat} />
-          </div>
-          {subchatOpen && <SubchatPanel subchat={subchat} />}
-        </main>
+        {mainView === "brain" ? (
+          <main className="flex min-h-0 flex-1 overflow-hidden">
+            <BrainApp />
+          </main>
+        ) : (
+          <>
+            <ChatHeader chat={chat} />
+            <main className="flex min-h-0 flex-1 overflow-hidden">
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <ChatView chat={chat} />
+                <Composer chat={chat} />
+              </div>
+              {subchatOpen && <SubchatPanel subchat={subchat} />}
+            </main>
+          </>
+        )}
       </div>
 
       <RightPanel />

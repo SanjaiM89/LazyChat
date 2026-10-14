@@ -7,6 +7,8 @@ import {
   Plus,
   Trash2,
   MessageSquare,
+  MessageCircle,
+  Brain,
   BookOpen,
   Plug,
   PanelLeft,
@@ -53,6 +55,8 @@ export function Sidebar({
   const loadConversations = useAppStore((s) => s.loadConversations);
   const deleteConversation = useAppStore((s) => s.deleteConversation);
   const runs = useAppStore((s) => s.runs);
+  const mainView = useAppStore((s) => s.mainView);
+  const setMainView = useAppStore((s) => s.setMainView);
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId,
   );
@@ -108,15 +112,44 @@ export function Sidebar({
             </div>
 
             <div className="px-3 pb-2">
-              <button
-                onClick={() => chat.startNew()}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 text-[13.5px] font-medium text-fg hover:border-accent/40 hover:bg-bg-hover transition-colors"
-              >
-                <Plus size={15} />
-                New chat
-              </button>
+              <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl border border-border bg-bg-subtle p-1">
+                <button
+                  onClick={() => setMainView("chat")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+                    mainView === "chat"
+                      ? "bg-bg-elevated text-fg shadow-sm"
+                      : "text-fg-muted hover:text-fg-secondary",
+                  )}
+                >
+                  <MessageCircle size={14} />
+                  Chat
+                </button>
+                <button
+                  onClick={() => setMainView("brain")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+                    mainView === "brain"
+                      ? "bg-bg-elevated text-fg shadow-sm"
+                      : "text-fg-muted hover:text-fg-secondary",
+                  )}
+                >
+                  <Brain size={14} />
+                  Brain
+                </button>
+              </div>
+              {mainView === "chat" && (
+                <button
+                  onClick={() => chat.startNew()}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 text-[13.5px] font-medium text-fg hover:border-accent/40 hover:bg-bg-hover transition-colors"
+                >
+                  <Plus size={15} />
+                  New chat
+                </button>
+              )}
             </div>
 
+            {mainView === "chat" && (
             <div className="flex-1 overflow-y-auto px-2 py-1">
               {conversations.length === 0 && (
                 <p className="px-3 pt-4 text-[12px] text-fg-muted">
@@ -181,6 +214,16 @@ export function Sidebar({
                 );
               })}
             </div>
+            )}
+            {mainView === "brain" && (
+              <div className="flex-1 overflow-y-auto px-4 py-3">
+                <p className="text-[12px] leading-relaxed text-fg-muted">
+                  The Company Brain answers from the FalkorDB knowledge graph —
+                  people, services, tickets, decisions — and remembers earlier
+                  sessions. Its own past sessions live in the Brain panel.
+                </p>
+              </div>
+            )}
 
             <div className="border-t border-border p-2.5 space-y-0.5">
               <button

@@ -24,6 +24,7 @@ import { getOpencodeTransport } from "@/lib/models";
 import { enabledTools } from "@/lib/tools";
 import { buildMCPToolSet } from "@/lib/mcp";
 import { buildSystemPrompt } from "@/lib/system";
+import { captureOmniaMemory, messageText, recallForOmnia, recordOmniaTurn } from "@/lib/brain/omnia-memory";
 import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
 import { getConversation, saveConversation } from "@/lib/store";
 
@@ -293,6 +294,12 @@ async function pump(run: ChatRunRecord) {
       model: settings.model,
     });
 
+    // FalkorDB memory: what earlier Omnia conversations established about this
+    // question rides in the system prompt. Never throws; empty when unknown.
+    const lastUserMessage = [...run.requestMessages].reverse().find((m) => m.role === "user");
+    const remembered = lastUserMessage ? await recallForOmnia(messageText(lastUserMessage)) : "";
+    const systemWithMemory = remembered ? system + remembered : system;
+
     const useThinking = settings.thinking;
     const providerOptions = thinkingProviderOptions(
       settings.provider,
@@ -310,7 +317,7 @@ async function pump(run: ChatRunRecord) {
 
     const result = streamText({
       model,
-      system,
+      system: systemWithMemory,
       messages: await convertToModelMessages(
         await inlineLocalAttachments(run.requestMessages),
       ),
@@ -470,6 +477,24 @@ async function persistRun(run: ChatRunRecord) {
     model: run.settings.model,
     messages,
   });
+  // Mirror the turn into FalkorDB so Omnia remembers across conversations.
+  // Fire-and-forget: memory must never fail a chat.
+  void recordOmniaMemory(run.conversationId, messages).catch(() => {});
+}
+
+async function recordOmniaMemory(conversationId: string, messages: UIMessage[]): Promise<void> {
+  const userMessages = messages.filter((m) => m.role === "user");
+  const lastUser = userMessages[userMessages.length - 1];
+  const assistants = messages.filter((m) => m.role === "assistant");
+  const lastAssistant = assistants[assistants.length - 1];
+  if (lastUser && lastAssistant && messages.indexOf(lastAssistant) > messages.indexOf(lastUser)) {
+    const userText = messageText(lastUser);
+    await recordOmniaTurn(conversationId, "user", userText);
+    await recordOmniaTurn(conversationId, "assistant", messageText(lastAssistant));
+    // Automatic capture: durable facts land in SemanticMemory whether or not
+    // the user said "remember this".
+    await captureOmniaMemory(conversationId, userText);
+  }
 }
 
 function deriveTitle(messages: UIMessage[]): string {

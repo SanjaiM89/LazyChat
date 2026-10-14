@@ -422,7 +422,7 @@ export function useChatController() {
     regenerate,
     stop,
     activeConversationId,
-    loadingConversation: loadingConversationId === activeConversationId,
+    loadingConversation: loadingConversationId !== null && loadingConversationId === activeConversationId,
     conversationLoadError,
     reloadConversation: () => {
       const cid = cidRef.current;
