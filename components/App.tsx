@@ -12,7 +12,6 @@ import { ChatHeader } from "@/components/ChatHeader";
 import { ChatView } from "@/components/ChatView";
 import { Composer } from "@/components/Composer";
 import { BrainApp } from "@/components/brain/BrainApp";
-import { WorkspaceView } from "@/components/workspace/WorkspaceView";
 import { SubchatPanel } from "@/components/SubchatPanel";
 import { RightPanel } from "@/components/RightPanel";
 import { SkillsDialog } from "@/components/dialogs/SkillsDialog";
@@ -85,11 +84,7 @@ export function App({ initialView }: { initialView?: MainView }) {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {mainView === "workspace" ? (
-          <main className="flex min-h-0 flex-1 overflow-hidden">
-            <WorkspaceView />
-          </main>
-        ) : mainView === "brain" ? (
+        {mainView === "brain" ? (
           <main className="flex min-h-0 flex-1 overflow-hidden">
             <BrainApp />
           </main>

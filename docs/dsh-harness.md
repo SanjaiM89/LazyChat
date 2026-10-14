@@ -1,9 +1,25 @@
 # DeepSeek Harness workspace environment
 
-Omnia's chat UI is untouched. Around it, this repo now hosts a harness-powered
-workspace environment: project workspaces, headless agent runs with live
-execution UI, and durable workspace + shared memory — all on the FalkorDB we
-already run.
+Omnia's chat UI keeps its components untouched. Workspace capability is
+integrated *into chat itself*: the sidebar + button opens a **New chat / New
+workspace** menu; New workspace opens an attach dialog (existing workspaces,
+or create by browsing server folders under the home directory / typing a
+path); the fresh chat is bound to that folder. The header shows a workspace
+chip (click = files panel, × = detach), and the right panel gains a Files tab.
+
+```
+Omnia shell (Chat | Brain tabs — ChatView/Composer byte-identical)
+  Sidebar [+] → New chat | New workspace → AttachWorkspaceDialog
+  ChatHeader workspace chip → RightPanel "files" tab (FileExplorer)
+  use-chat send() threads workspaceId → POST /api/chat → createChatRun
+  pump(): memory briefing prepended to system + ws_* tools merged in
+
+Native tools (lib/dsh/workspace-tools.ts) — the harness capability set
+ported into our own loop, no subprocess:
+  ws_list / ws_read / ws_write / ws_shell (cwd=root, 120s cap, truncated,
+  remembered) / ws_todo / ws_remember — all confined to the workspace root
+  (traversal, absolute escapes and symlink-out rejected; tested).
+```
 
 ## Setup / run
 
@@ -28,14 +44,12 @@ auto-generated) points harness at Sarvam via `SARVAM_API_KEY` in `.env.local`
 ## Architecture
 
 ```
-Omnia shell (Chat | Brain | Workspace tabs — chat components untouched)
-  └─ components/workspace/WorkspaceView.tsx
-       ├─ workspaces/sessions  →  /api/dsh/workspaces/*  → lib/dsh/workspaces.ts
-       ├─ Run agent button     →  POST /api/dsh/runs     → lib/dsh/runner.ts
-       │     spawns: dsh --profile headless --patch <overlay> --session-id … --json <task>
-       │     cwd = workspace path; stdout JSONL polled into tool timeline + output
-       ├─ files/memory/todos/history tabs → /api/dsh/… → lib/dsh/memory.ts
-       └─ status bar           →  /api/dsh/status
+Omnia shell (Chat | Brain tabs — chat components untouched)
+  ├─ conversation ↔ workspace binding (persisted per conversation id)
+  ├─ ws_* tools + memory briefing injected per run (chat-runs pump)
+  └─ components/workspace/: AttachWorkspaceDialog, FileExplorer
+  └─ dsh headless fallback: POST /api/dsh/runs spawns the vendored binary
+       with cwd + overlay (proven: adopted session, file created, exit 0)
 FalkorDB (same instance as Company Brain)
   ├─ (:Workspace)-[:IN_WORKSPACE]-records (plans, decisions, diffs, commands,
   │   errors, deps, todos, prefs, links, summaries) + (:AgentSession)

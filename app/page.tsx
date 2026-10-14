@@ -6,7 +6,6 @@ export default async function Home({
   searchParams: Promise<{ view?: string }>;
 }) {
   const { view } = await searchParams;
-  const initialView =
-    view === "brain" ? "brain" : view === "workspace" ? "workspace" : view === "chat" ? "chat" : undefined;
+  const initialView = view === "brain" ? "brain" : view === "chat" ? "chat" : undefined;
   return <App initialView={initialView} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { PanelLeft, FileText, Monitor, Bot, KeyRound, Settings2 } from "lucide-react";
+import { PanelLeft, FileText, Monitor, Bot, FolderOpen, KeyRound, Settings2, X } from "lucide-react";
 import { IconButton, Tooltip } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { ChatController } from "@/lib/use-chat";
@@ -37,6 +37,12 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
   const panel = useAppStore((s) => s.panel);
   const setPanel = useAppStore((s) => s.setPanel);
   const title = useTitle(chat);
+  const activeConversationId = useAppStore((s) => s.activeConversationId);
+  const attached = useAppStore((s) =>
+    activeConversationId ? s.conversationWorkspaces[activeConversationId] : undefined,
+  );
+  const setConversationWorkspace = useAppStore((s) => s.setConversationWorkspace);
+  const openFiles = useAppStore((s) => s.setPanel);
 
   const opencodeReady = providerKeyStatus.opencode?.configured ?? false;
 
@@ -44,6 +50,7 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
     { id: "artifacts" as const, label: "Artifacts", icon: <FileText size={16} /> },
     { id: "sandbox" as const, label: "Chromium", icon: <Monitor size={16} /> },
     { id: "agents" as const, label: "Agents", icon: <Bot size={16} /> },
+    ...(attached ? [{ id: "files" as const, label: "Workspace files", icon: <FolderOpen size={16} /> }] : []),
   ];
 
   return (
@@ -59,6 +66,34 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-[14px] font-semibold text-fg">{title}</h1>
       </div>
+      {attached && activeConversationId && (
+        <Tooltip text={`Workspace folder: ${attached.path} — click to open files, × to detach`}>
+          <button
+            onClick={() => openFiles("files")}
+            className="hidden items-center gap-1.5 rounded-full border border-border bg-bg-elevated px-2.5 py-1 text-[11.5px] text-fg-secondary hover:border-accent/40 sm:inline-flex"
+          >
+            <FolderOpen size={13} className="text-accent" />
+            <span className="max-w-40 truncate">{attached.name}</span>
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setConversationWorkspace(activeConversationId, null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  setConversationWorkspace(activeConversationId, null);
+                }
+              }}
+              className="rounded-full p-0.5 hover:bg-bg-hover"
+            >
+              <X size={12} />
+            </span>
+          </button>
+        </Tooltip>
+      )}
 
       <div className="flex items-center gap-1">
         {PANELS.map((p) => (

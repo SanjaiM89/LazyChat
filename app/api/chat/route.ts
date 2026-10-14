@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       conversationId:
         typeof body.conversationId === "string" ? body.conversationId : undefined,
       trigger: body.trigger,
+      workspaceId: typeof body.workspaceId === "string" ? body.workspaceId : undefined,
     });
 
     after(run.done);
