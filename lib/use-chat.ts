@@ -40,6 +40,7 @@ export function useChatController() {
 
   const attachRef = useRef<AttachTarget | null>(null);
   const attachingRef = useRef(false);
+  const compactingRef = useRef(false);
   const sawRunRef = useRef(false);
   const conversationRequestRef = useRef(0);
   const observedConversationRef = useRef<string | null | undefined>(undefined);
@@ -131,12 +132,88 @@ export function useChatController() {
         await loadConversationsRef.current();
         if (cid) await loadArtifactsRef.current(cid);
         await refreshRuns();
+        // Token bar + auto-compact live here: usage settles with the run.
+        if (cid) void syncUsageAndCompactRef.current(cid, true);
       } catch {
       }
     },
     onError: (e) => {
       console.error("[chat]", e?.message || e);
     },
+  });
+
+  /**
+   * Pull settled token accounting into the store, then auto-compact when the
+   * last request crossed 80% of the model window (dsh-compaction-basic
+   * trigger). Runs once per finished turn; never throws into the chat loop.
+   */
+  const syncUsageAndCompact = useCallback(
+    async (cid: string, allowCompact: boolean) => {
+      try {
+        const load = async () => {
+          const res = await fetch(`/api/conversations/${cid}/usage`, { cache: "no-store" });
+          if (!res.ok) return null;
+          return res.json();
+        };
+        let data = await load();
+        if (!data) return;
+        // The client often outruns the server persist — one delayed retry
+        // before concluding there is nothing new.
+        if (!data.lastRun && !data.usage?.inputTokens && !data.usage?.outputTokens) {
+          await new Promise((r) => setTimeout(r, 4000));
+          data = (await load()) ?? data;
+        }
+        const prev = useAppStore.getState().usageByConversation[cid];
+        let speed = prev?.speed;
+        if (data.lastRun?.outputTokens > 0 && data.lastRun?.decodeMs > 0) {
+          speed = data.lastRun.outputTokens / (data.lastRun.decodeMs / 1000);
+        }
+        useAppStore.getState().setUsage(cid, {
+          inputTokens: data.usage?.inputTokens ?? 0,
+          outputTokens: data.usage?.outputTokens ?? 0,
+          speed,
+          lastInput: data.lastRun?.inputTokens ?? prev?.lastInput,
+          at: Date.now(),
+        });
+
+        const st = useAppStore.getState();
+        if (
+          !allowCompact ||
+          st.settings.autoCompact === false ||
+          compactingRef.current ||
+          st.activeConversationId !== cid
+        ) {
+          return;
+        }
+        const window = data.contextWindow ?? 128_000;
+        const pressure = (data.lastRun?.inputTokens ?? 0) / window;
+        const busy =
+          apiRef.current != null &&
+          (apiRef.current.chat.status === "submitted" || apiRef.current.chat.status === "streaming");
+        if (pressure < 0.8 || busy || (apiRef.current?.chat.messages.length ?? 0) <= 10) return;
+        compactingRef.current = true;
+        try {
+          const cres = await fetch(`/api/conversations/${cid}/compact`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const cdata = await cres.json();
+          if (cdata?.compacted && Array.isArray(cdata.messages)) {
+            apiRef.current?.chat.setMessages(cdata.messages);
+          }
+        } finally {
+          compactingRef.current = false;
+        }
+      } catch {
+        compactingRef.current = false;
+      }
+    },
+    [],
+  );
+  const syncUsageAndCompactRef = useRef(syncUsageAndCompact);
+  useEffect(() => {
+    syncUsageAndCompactRef.current = syncUsageAndCompact;
   });
 
   const attachToRun = useCallback(
@@ -208,6 +285,7 @@ export function useChatController() {
         if (!messages) throw new Error("Conversation could not be loaded.");
         chat.setMessages(messages);
         chat.clearError();
+        void syncUsageAndCompactRef.current(cid, false);
       } catch (error) {
         if (requestId === conversationRequestRef.current && cidRef.current === cid) {
           setConversationLoadError(error instanceof Error ? error.message : "Conversation could not be loaded.");
