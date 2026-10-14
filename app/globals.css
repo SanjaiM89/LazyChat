@@ -212,6 +212,22 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* dsh run-state dot: a quiet full ring behind a breathing arc while the glyph
+   rotates. Both animations share one period so they stay in step. */
+@keyframes dsh-state-dot-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes dsh-state-dot-dash {
+  0% { stroke-dasharray: 12 150; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 24 150; stroke-dashoffset: -6; }
+  100% { stroke-dasharray: 12 150; stroke-dashoffset: 0; }
+}
+/* dsh running-row shimmer: a masked highlight sweeps across an inert copy of
+   the row text, leaving the real text selectable at full opacity. */
+@keyframes dsh-row-shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.2; }

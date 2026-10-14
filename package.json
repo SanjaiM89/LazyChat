@@ -10,7 +10,8 @@
     "sandbox:up": "node scripts/sandbox-up.mjs",
     "sandbox": "node sandbox/server.mjs",
     "sandbox:build": "docker build -t omnia-sandbox:latest sandbox/container",
-    "test:brain": "tsx --test tests/brain/intent.test.ts && tsx --test tests/brain/actions.test.ts && tsx --test tests/brain/capture.test.ts && tsx --test tests/dsh/memory.test.ts && tsx --test tests/dsh/workspace-tools.test.ts && tsx --test tests/dsh/capture.test.ts"
+    "test:brain": "tsx --test tests/brain/intent.test.ts && tsx --test tests/brain/actions.test.ts && tsx --test tests/brain/capture.test.ts && tsx --test tests/dsh/memory.test.ts && tsx --test tests/dsh/workspace-tools.test.ts && tsx --test tests/dsh/capture.test.ts",
+    "test:ui": "tsx --test tests/ui/tool-view.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.48",
@@ -21,6 +22,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/ws": "^8.18.1",
     "ai": "^7.0.90",
+    "anser": "^2.3.5",
     "clsx": "^2.1.1",
     "docx-preview": "^0.4.0",
     "duck-duck-scrape": "^2.2.7",

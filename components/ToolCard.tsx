@@ -23,6 +23,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
+import { TerminalBlock } from "@/components/dsh/TerminalBlock";
+import { terminalCardModel, terminalFailed } from "@/components/dsh/terminal-card-model";
+import { TextShimmer } from "@/components/dsh/TextShimmer";
 
 
 export function ToolCard({
@@ -384,18 +387,24 @@ function ComputerCard({
  * from the arguments, and an expandable input/output body. MCP-namespaced
  * tools (`server__tool`) additionally show their server. This is that system,
  * adapted to our tool names — no more blanket "MCP" badge on everything.
+ *
+ * The row geometry is dsh's too: a flat 24px line (no card border, no fill)
+ * whose leading icon crossfades into a chevron on hover, with the summary
+ * ellipsized into the space that remains to its right — not pushed to the far
+ * edge as a monospace tail. Shell results render through `TerminalBlock`
+ * rather than as a JSON dump.
  */
 type ToolVariant = "search" | "read" | "bash" | "write" | "edit" | "code" | "others";
-type ToolState = "running" | "ok" | "error";
+type ToolState = "preparing" | "running" | "ok" | "error" | "stopped";
 
 const VARIANT_ICON: Record<ToolVariant, React.ReactNode> = {
-  search: <Search size={11} />,
-  read: <FileText size={11} />,
-  bash: <SquareTerminal size={11} />,
-  write: <FilePlus size={11} />,
-  edit: <Pencil size={11} />,
-  code: <FileCode2 size={11} />,
-  others: <Boxes size={11} />,
+  search: <Search size={14} />,
+  read: <FileText size={14} />,
+  bash: <SquareTerminal size={14} />,
+  write: <FilePlus size={14} />,
+  edit: <Pencil size={14} />,
+  code: <FileCode2 size={14} />,
+  others: <Boxes size={14} />,
 };
 
 /** Tool-owned titles that refine the generic variant (cf. dsh TOOL_TITLE_KEYS). */
@@ -476,7 +485,9 @@ function argSummary(tool: string, args?: Record<string, any>): string {
     case "ws_write":
       return str(args.path);
     case "ws_shell":
-      return str(args.command);
+      // A shell summary is the command's first line; the terminal card below
+      // carries the whole command verbatim, so repeating it here is noise.
+      return str(String(args.command ?? "").split("\n")[0]);
     case "ws_todo":
       return [args.op, args.text ?? args.id].filter(Boolean).join(" ").slice(0, 80);
     case "ws_remember":
@@ -550,6 +561,30 @@ function classifyToolCall(
   };
 }
 
+/**
+ * Flatten a tool result to the text dsh's Output section shows: a string
+ * result is already text; an object result is pretty-printed rather than
+ * stringified on one line, so a JSON result is readable in the terminal card.
+ */
+function resultText(result: unknown, errorText?: string): string | null {
+  if (errorText) return errorText;
+  if (typeof result === "string") return result;
+  if (result === undefined || result === null) return null;
+  if (typeof result === "object") {
+    try {
+      return JSON.stringify(result, null, 1);
+    } catch {
+      return String(result);
+    }
+  }
+  return String(result);
+}
+
+/** An interrupted run settles as an error whose text names the interruption. */
+function isInterrupted(errorText?: string): boolean {
+  return !!errorText && /abort|cancel|stopp?ed|interrupt/i.test(errorText);
+}
+
 function ToolRow({
   toolName,
   args,
@@ -565,61 +600,174 @@ function ToolRow({
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const classified = React.useMemo(() => classifyToolCall(toolName, args), [toolName, args]);
-  const state: ToolState = errorText ? "error" : streaming ? "running" : "ok";
 
-  const resultText =
-    errorText ??
-    (typeof result === "string"
-      ? result
-      : result && typeof result === "object"
-        ? JSON.stringify(result).slice(0, 1000)
-        : "");
-  const shownSummary = state === "error" ? errorText ?? "" : classified.summary;
+  // The attached workspace root is the shell's working directory, which is
+  // what dsh renders in the terminal prompt label.
+  const workspaceRoot = useAppStore((s) => {
+    const cid = s.activeConversationId;
+    return cid ? (s.conversationWorkspaces[cid]?.path ?? undefined) : undefined;
+  });
+
+  const terminal = React.useMemo(
+    () => terminalCardModel(toolName, args, result, errorText, workspaceRoot),
+    [toolName, args, result, errorText, workspaceRoot],
+  );
+
+  const state: ToolState = errorText
+    ? isInterrupted(errorText)
+      ? "stopped"
+      : "error"
+    : streaming
+      ? classified.summary
+        ? "running"
+        : "preparing"
+      : "ok";
+
+  // dsh treats a failing exit status as the terminal card's own error signal
+  // even though the call settled ok, so the collapsed row turns red without
+  // the reader having to expand it.
+  const settledState: ToolState =
+    state === "ok" && terminal && terminalFailed(terminal) ? "error" : state;
+
+  const output = React.useMemo(
+    () => (terminal ? null : resultText(result, errorText)),
+    [terminal, result, errorText],
+  );
+  const inputRaw = React.useMemo(
+    () => (args && Object.keys(args).length > 0 ? JSON.stringify(args, null, 1) : null),
+    [args],
+  );
+
+  const expandable = settledState !== "preparing" && (inputRaw !== null || output !== null || terminal !== null);
+  const open = expanded && expandable;
+  const running = settledState === "running" || settledState === "preparing";
+
+  const normalSummary = terminal?.description ?? classified.summary;
+  const summaryText = settledState === "error" ? (output?.split("\n")[0] ?? normalSummary) : normalSummary;
+
+  const onToggle = React.useCallback(() => {
+    if (expandable) setExpanded((v) => !v);
+  }, [expandable]);
+  const onKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!expandable || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      onToggle();
+    },
+    [expandable, onToggle],
+  );
+
+  const statusLabel =
+    settledState === "preparing"
+      ? "Preparing"
+      : settledState === "running"
+        ? "Running"
+        : settledState === "error"
+          ? "Failed"
+          : settledState === "stopped"
+            ? "Stopped"
+            : null;
 
   return (
-    <div
-      className={`rounded-xl border bg-bg-elevated px-4 py-3 mb-2 animate-fade-in-up ${
-        state === "error" ? "border-danger/50" : "border-border"
-      }`}
-    >
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2.5 text-left">
-        {state === "running" ? (
-          <Loader2 size={14} className="text-accent animate-spin shrink-0" />
-        ) : (
+    <div className="my-1 animate-fade-in-up" data-variant={classified.variant} data-state={settledState}>
+      {statusLabel && <span className="sr-only">{statusLabel}</span>}
+      <div
+        role={expandable ? "button" : undefined}
+        tabIndex={expandable ? 0 : undefined}
+        aria-expanded={expandable ? open : undefined}
+        onClick={expandable ? onToggle : undefined}
+        onKeyDown={expandable ? onKeyDown : undefined}
+        className={`group flex min-w-0 items-center text-fg-muted transition-colors hover:text-fg-secondary ${
+          expandable ? "cursor-pointer" : ""
+        }`}
+      >
+        {/* Leading: the variant icon, crossfading into a chevron on hover when
+            the row opens a body — dsh's affordance, no row fill. */}
+        <span className="relative mr-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center">
           <span
-            className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
-              state === "error" ? "bg-danger-soft text-danger" : "bg-info-soft text-info"
+            className={`inline-flex transition-opacity duration-100 ${
+              expandable ? "opacity-100 group-hover:opacity-0" : ""
             }`}
           >
             {VARIANT_ICON[classified.variant]}
           </span>
+          {expandable && (
+            <ChevronDown
+              size={14}
+              className="absolute inset-0 m-auto opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+            />
+          )}
+        </span>
+
+        <TextShimmer active={running} className="shrink-0 text-[13px] leading-6 text-fg">
+          {classified.title}
+        </TextShimmer>
+
+        {/* An empty summary drops the separator with it — a row that is only
+            its title shows no trailing dot. */}
+        {summaryText && (
+          <>
+            <span aria-hidden className="mx-2 h-[2px] w-[2px] shrink-0 rounded-full bg-fg-muted" />
+            <TextShimmer
+              active={running}
+              className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] leading-6 ${
+                settledState === "error"
+                  ? "text-danger"
+                  : settledState === "stopped"
+                    ? "text-warning"
+                    : "text-fg-muted"
+              }`}
+            >
+              {summaryText}
+            </TextShimmer>
+          </>
         )}
-        <span className="text-[13px] font-medium text-fg shrink-0">{classified.title}</span>
         {classified.server && (
-          <Badge tone="info" className="ml-1">
+          <Badge tone="info" className="ml-1.5 shrink-0">
             {classified.server}
           </Badge>
         )}
-        {shownSummary && (
-          <span className="ml-auto text-[11px] text-fg-muted truncate max-w-[45%] font-mono">
-            {shownSummary}
-          </span>
-        )}
-      </button>
-      {expanded && args && Object.keys(args).length > 0 && (
-        <pre className="mt-2 text-[11px] text-fg-muted whitespace-pre-wrap bg-bg-subtle rounded-lg p-2.5 max-h-40 overflow-y-auto">
-          {JSON.stringify(args, null, 1)}
-        </pre>
-      )}
-      {resultText && expanded && (
-        <pre className="mt-2 text-[11.5px] text-fg-secondary whitespace-pre-wrap bg-bg-subtle rounded-lg p-2.5 max-h-48 overflow-y-auto">
-          {resultText}
-        </pre>
-      )}
-      {(resultText || (args && Object.keys(args).length > 0)) && !expanded && (
-        <button onClick={() => setExpanded(true)} className="mt-1 text-[11px] text-fg-muted hover:text-fg-secondary">
-          {resultText ? "Show result" : "Show input"}
-        </button>
+      </div>
+
+      {open && (
+        <div className="mt-1 flex flex-col">
+          {terminal ? (
+            <TerminalBlock
+              command={terminal.command}
+              cwd={terminal.cwd}
+              output={terminal.output}
+              exitCode={terminal.exitCode}
+              signal={terminal.signal}
+              running={terminal.running}
+              maxLines={Number.POSITIVE_INFINITY}
+              className="mx-0 my-1 ml-1 rounded-[var(--radius)] border border-border"
+            />
+          ) : (
+            (inputRaw !== null || output !== null) && (
+              <div className="mx-0 my-1 ml-1 flex flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-bg-subtle font-mono text-[13px]">
+                {inputRaw !== null && (
+                  <div className="grid max-h-[150px] grid-cols-[max-content_1fr] items-baseline gap-x-3.5 overflow-y-auto px-4 py-3">
+                    <span className="sticky top-0 self-start text-[13px] text-fg-muted">Input</span>
+                    <span className="min-w-0 break-words whitespace-pre-wrap text-fg-secondary">{inputRaw}</span>
+                  </div>
+                )}
+                {inputRaw !== null && output !== null && <span aria-hidden className="h-px w-full bg-border/60" />}
+                {output !== null && (
+                  <div className="grid max-h-[150px] grid-cols-[max-content_1fr] items-baseline gap-x-3.5 overflow-y-auto px-4 py-3">
+                    <span className="sticky top-0 self-start text-[13px] text-fg-muted">Output</span>
+                    <span
+                      className={`min-w-0 break-words whitespace-pre-wrap ${
+                        settledState === "error" ? "text-danger" : "text-fg-secondary"
+                      }`}
+                    >
+                      {output}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+        </div>
       )}
     </div>
   );
