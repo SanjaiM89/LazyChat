@@ -9,6 +9,7 @@ import {
   MessageSquare,
   MessageCircle,
   Brain,
+  Briefcase,
   BookOpen,
   Plug,
   PanelLeft,
@@ -112,7 +113,7 @@ export function Sidebar({
             </div>
 
             <div className="px-3 pb-2">
-              <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl border border-border bg-bg-subtle p-1">
+              <div className="mb-2 grid grid-cols-3 gap-1 rounded-xl border border-border bg-bg-subtle p-1">
                 <button
                   onClick={() => setMainView("chat")}
                   className={cn(
@@ -136,6 +137,18 @@ export function Sidebar({
                 >
                   <Brain size={14} />
                   Brain
+                </button>
+                <button
+                  onClick={() => setMainView("workspace")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+                    mainView === "workspace"
+                      ? "bg-bg-elevated text-fg shadow-sm"
+                      : "text-fg-muted hover:text-fg-secondary",
+                  )}
+                >
+                  <Briefcase size={14} />
+                  Workspace
                 </button>
               </div>
               {mainView === "chat" && (
@@ -221,6 +234,15 @@ export function Sidebar({
                   The Company Brain answers from the FalkorDB knowledge graph —
                   people, services, tickets, decisions — and remembers earlier
                   sessions. Its own past sessions live in the Brain panel.
+                </p>
+              </div>
+            )}
+            {mainView === "workspace" && (
+              <div className="flex-1 overflow-y-auto px-4 py-3">
+                <p className="text-[12px] leading-relaxed text-fg-muted">
+                  DeepSeek Harness-powered agent workspaces. Create a project
+                  directory, run agents in it, and every plan, command, error
+                  and fix is remembered — per workspace plus shared globally.
                 </p>
               </div>
             )}

@@ -35,6 +35,8 @@
     "Desktop",
     "hyperframes",
     "hyperframes/**",
+    "harness",
+    "harness/**",
     "compositions",
     ".bun",
     ".npm",

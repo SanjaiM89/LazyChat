@@ -433,6 +433,12 @@ components/brain/  BrainApp · GraphCanvas · Panels
 lib/brainApi.ts  typed client (same-origin fetch + SSE)
 scripts/brain-seed.ts  dataset loader (idempotent MERGE + verify)
 tests/brain/   intent.test.ts (node:test, live graph)
+tests/dsh/     memory.test.ts (workspace registry + durable memory)
+harness/       vendored DeepSeek Harness checkout (git-ignored; see docs/dsh-harness.md)
+lib/dsh/       harness bridge: workspaces, memory, runner, overlay, typed client
+app/api/dsh/   workspaces, runs, memory (+MCP), files, commands, status routes
+components/workspace/  WorkspaceView (list, execution, files, memory, todos, history)
+docs/dsh-harness.md  setup, architecture, memory schema/API, plugins, limitations
 phases.md      living phase tracker
 ```
 

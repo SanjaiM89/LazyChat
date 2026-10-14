@@ -16,6 +16,7 @@ import path from "node:path";
  */
 const vendoredTrees: Array<string | RegExp> = [
   /[\\/]hyperframes[\\/]/, // the HyperFrames checkout
+  /[\\/]harness[\\/]/, // vendored DeepSeek Harness checkout
   /[\\/]\.bun[\\/]/, // bun install cache
   /[\\/]\.npm[\\/]/, // npm cache (cacache)
   /[\\/]compositions[\\/]/, // HTML compositions, not part of the Next.js build
@@ -62,7 +63,7 @@ const nextConfig: NextConfig = {
     // NOTE: `watchOptions.ignored` accepts a single glob string (or RegExp).
     config.watchOptions = {
       ...config.watchOptions,
-      ignored: "**/{hyperframes,.bun,.npm,compositions}/**",
+      ignored: "**/{hyperframes,.bun,.npm,compositions,harness}/**",
     };
 
     // --- 3. Do not follow symlinks inside those trees ---------------------
