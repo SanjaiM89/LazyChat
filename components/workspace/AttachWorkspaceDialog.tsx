@@ -23,6 +23,9 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
   const [dirs, setDirs] = React.useState<string[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // Once the user types their own name the folder default stops overwriting it,
+  // so picking another folder cannot discard what they chose.
+  const [nameTouched, setNameTouched] = React.useState(false);
 
   React.useEffect(() => {
     void dshApi.workspaces().then((r) => setExisting(r.workspaces)).catch(() => {});
@@ -56,6 +59,18 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
     onClose();
   }
 
+  /**
+   * Point the dialog at a folder. The name follows the folder's own basename
+   * unless the user already named the workspace themselves — a project folder
+   * is what the workspace is, and the name stays editable either way.
+   */
+  function pickFolder(next: string) {
+    setPath(next);
+    if (nameTouched) return;
+    const base = next.replace(/[/\\]+$/, "").split(/[/\\]/).pop() ?? "";
+    setName(base);
+  }
+
   async function create() {
     const target = path.trim();
     if (!target) {
@@ -65,6 +80,8 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
     setBusy(true);
     setError(null);
     try {
+      // An empty name falls through to the folder basename server-side too, so
+      // the default holds even if this dialog is bypassed.
       const r = await dshApi.createWorkspace({ name: name.trim(), path: target });
       await attach({ id: r.workspace.id, name: r.workspace.name, path: r.workspace.path });
     } catch (e) {
@@ -110,14 +127,17 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
           </p>
           <input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setNameTouched(true);
+            }}
             placeholder="Name (defaults to folder name)"
             className="mb-2 w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] outline-none focus:border-accent"
           />
           <div className="mb-2 flex gap-2">
             <input
               value={path}
-              onChange={(e) => setPath(e.target.value)}
+              onChange={(e) => pickFolder(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void create()}
               placeholder="/absolute/path/to/project"
               className="min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-[12px] outline-none focus:border-accent"
@@ -136,7 +156,7 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
               <button
                 key={d}
                 onClick={() => {
-                  setPath(`${cwd}/${d}`);
+                  pickFolder(`${cwd}/${d}`);
                   void nav(`${cwd}/${d}`);
                 }}
                 className="block w-full truncate px-3 py-1.5 text-left font-mono text-[12px] hover:bg-bg-hover"

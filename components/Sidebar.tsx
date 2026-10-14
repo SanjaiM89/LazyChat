@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Sparkles,
   Plus,
@@ -14,9 +14,14 @@ import {
   Plug,
   PanelLeft,
   Globe,
+  Folder,
+  Pencil,
 } from "lucide-react";
 import { cn, Tooltip } from "@/components/ui";
 import { AttachWorkspaceDialog } from "@/components/workspace/AttachWorkspaceDialog";
+import { RenameWorkspaceDialog } from "@/components/workspace/RenameWorkspaceDialog";
+import { dshApi } from "@/lib/dsh/client";
+import type { Workspace } from "@/lib/dsh/types";
 import {
   useAppStore,
   modelLabel,
@@ -25,6 +30,36 @@ import {
 } from "@/lib/app-store";
 import type { ChatController } from "@/lib/use-chat";
 
+
+/**
+ * A section heading in the sidebar. The count and the optional trailing action
+ * keep the two lists (Chats, Workspaces) legible as separate things rather than
+ * one undifferentiated feed of rows.
+ */
+function SectionHeader({
+  label,
+  count,
+  action,
+  children,
+}: {
+  label: string;
+  count?: number;
+  action?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 px-3 pb-1 pt-4">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
+        {label}
+      </span>
+      {count !== undefined && count > 0 && (
+        <span className="text-[11px] text-fg-muted/70">{count}</span>
+      )}
+      {children}
+      {action && <span className="ml-auto">{action}</span>}
+    </div>
+  );
+}
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -52,12 +87,18 @@ export function Sidebar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
+  // Selecting a workspace narrows the Chats list to the chats bound to it.
+  // Null means "all chats" — the unfiltered default, not an empty state.
+  const [workspaceFilterId, setWorkspaceFilterId] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [renaming, setRenaming] = useState<Workspace | null>(null);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
   const conversations = useAppStore((s) => s.conversations);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
   const loadConversations = useAppStore((s) => s.loadConversations);
   const deleteConversation = useAppStore((s) => s.deleteConversation);
+  const conversationWorkspaces = useAppStore((s) => s.conversationWorkspaces);
   const runs = useAppStore((s) => s.runs);
   const mainView = useAppStore((s) => s.mainView);
   const setMainView = useAppStore((s) => s.setMainView);
@@ -65,9 +106,35 @@ export function Sidebar({
     (c) => c.id === activeConversationId,
   );
 
+  const refreshWorkspaces = useCallback(async () => {
+    try {
+      const r = await dshApi.workspaces();
+      setWorkspaces(r.workspaces);
+    } catch {
+      setWorkspaces([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+  useEffect(() => {
+    void refreshWorkspaces();
+  }, [refreshWorkspaces]);
+
+  const workspaceFilter = useMemo(
+    () => workspaces.find((w) => w.id === workspaceFilterId) ?? null,
+    [workspaces, workspaceFilterId],
+  );
+  const visibleConversations = useMemo(
+    () =>
+      workspaceFilterId
+        ? conversations.filter(
+            (c) => conversationWorkspaces[c.id]?.id === workspaceFilterId,
+          )
+        : conversations,
+    [conversations, conversationWorkspaces, workspaceFilterId],
+  );
 
   return (
     <>
@@ -190,20 +257,53 @@ export function Sidebar({
                 </div>
               )}
               {attachOpen && (
-                <AttachWorkspaceDialog chat={chat} onClose={() => setAttachOpen(false)} />
+                <AttachWorkspaceDialog
+                  chat={chat}
+                  onClose={() => {
+                    setAttachOpen(false);
+                    void refreshWorkspaces();
+                  }}
+                />
+              )}
+              {renaming && (
+                <RenameWorkspaceDialog
+                  workspace={renaming}
+                  onClose={() => setRenaming(null)}
+                  onRenamed={refreshWorkspaces}
+                />
               )}
             </div>
 
             {mainView === "chat" && (
-            <div className="flex-1 overflow-y-auto px-2 py-1">
-              {conversations.length === 0 && (
-                <p className="px-3 pt-4 text-[12px] text-fg-muted">
-                  No conversations yet. Start a new chat to get going.
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+              {/* Chats and workspaces are separate lists, not one mixed feed:
+                  a workspace is a project folder, a chat is a conversation, and
+                  binding one to the other is an explicit choice made in the
+                  header chip — so the sidebar shows that relationship instead of
+                  flattening it. */}
+              <SectionHeader label="Chats" count={visibleConversations.length}>
+                {workspaceFilter && (
+                  <button
+                    onClick={() => setWorkspaceFilterId(null)}
+                    className="ml-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent hover:opacity-80"
+                    title="Show all chats"
+                  >
+                    {workspaceFilter.name} ✕
+                  </button>
+                )}
+              </SectionHeader>
+
+              {visibleConversations.length === 0 && (
+                <p className="px-3 py-2 text-[12px] text-fg-muted">
+                  {workspaceFilter
+                    ? `No chats in ${workspaceFilter.name} yet.`
+                    : "No conversations yet. Start a new chat to get going."}
                 </p>
               )}
-              {conversations.map((c) => {
+              {visibleConversations.map((c) => {
                 const active = c.id === activeConversationId;
                 const live = activeRunFor(runs, c.id);
+                const bound = conversationWorkspaces[c.id];
                 return (
                   <div
                     key={c.id}
@@ -235,11 +335,16 @@ export function Sidebar({
                       <p className="truncate text-[13px] font-medium text-fg">
                         {c.title}
                       </p>
-                      <p className="truncate text-[10.5px] text-fg-muted">
+                      <p className="flex items-center gap-1 truncate text-[10.5px] text-fg-muted">
+                        {bound && (
+                          <Folder size={10} className="shrink-0 text-fg-muted/80" />
+                        )}
                         {live ? (
-                          <span className="font-medium text-accent">
+                          <span className="truncate font-medium text-accent">
                             {live.activity}
                           </span>
+                        ) : bound ? (
+                          <span className="truncate">{bound.name}</span>
                         ) : (
                           timeAgo(c.updatedAt)
                         )}
@@ -254,6 +359,72 @@ export function Sidebar({
                       title="Delete conversation"
                     >
                       <Trash2 size={13} />
+                    </button>
+                  </div>
+                );
+              })}
+
+              <SectionHeader
+                label="Workspaces"
+                count={workspaces.length}
+                action={
+                  <Tooltip text="New workspace">
+                    <button
+                      onClick={() => setAttachOpen(true)}
+                      className="flex h-5 w-5 items-center justify-center rounded-md text-fg-muted hover:bg-bg-hover hover:text-fg transition-colors"
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </Tooltip>
+                }
+              />
+
+              {workspaces.length === 0 && (
+                <p className="px-3 py-2 text-[12px] text-fg-muted">
+                  No workspaces. Add a project folder to give a chat its own
+                  files, shell, and memory.
+                </p>
+              )}
+              {workspaces.map((w) => {
+                const selected = workspaceFilterId === w.id;
+                return (
+                  <div
+                    key={w.id}
+                    className={cn(
+                      "group relative mb-0.5 flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 transition-colors",
+                      selected ? "bg-accent-soft/70" : "hover:bg-bg-hover",
+                    )}
+                    onClick={() => setWorkspaceFilterId(selected ? null : w.id)}
+                  >
+                    <Folder
+                      size={14}
+                      className={cn(
+                        "shrink-0",
+                        selected ? "text-accent" : "text-fg-muted",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={cn(
+                          "truncate text-[13px] font-medium",
+                          selected ? "text-fg" : "text-fg-secondary",
+                        )}
+                      >
+                        {w.name}
+                      </p>
+                      <p className="truncate font-mono text-[10.5px] text-fg-muted">
+                        {w.path}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenaming(w);
+                      }}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md text-fg-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-fg focus-visible:opacity-100"
+                      title="Rename workspace"
+                    >
+                      <Pencil size={12} />
                     </button>
                   </div>
                 );
