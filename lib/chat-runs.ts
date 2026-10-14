@@ -85,6 +85,13 @@ export interface ChatRunRecord {
   updatedAt: number;
   error?: string;
   aborted?: boolean;
+  /** First response token arrival (for tokens/sec). */
+  firstTokenAt?: number;
+  /** Raw char counts as a fallback when the provider reports no usage. */
+  inputChars?: number;
+  outputChars?: number;
+  /** Settled model usage for the finished run. */
+  usage?: { inputTokens: number; outputTokens: number; totalTokens: number };
   lastCheckpoint: number;
   writeChain: Promise<void>;
   replayable: boolean;
@@ -355,18 +362,22 @@ async function pump(run: ChatRunRecord) {
         ? undefined
         : settings.temperature;
 
+    const modelMessages = await convertToModelMessages(
+      await inlineLocalAttachments(run.requestMessages),
+    );
     const result = streamText({
       model,
       system: systemWithMemory,
-      messages: await convertToModelMessages(
-        await inlineLocalAttachments(run.requestMessages),
-      ),
+      messages: modelMessages,
       tools,
       stopWhen: isStepCount(settings.maxSteps ?? 14),
       temperature,
       providerOptions: providerOptions as any,
       abortSignal: run.abort.signal,
     });
+    // Char counts backstop the provider usage payload (some OpenAI-compatible
+    // endpoints never send it) — ~4 chars/token.
+    run.inputChars = systemWithMemory.length + JSON.stringify(modelMessages).length;
 
     const stream = toUIMessageStream({
       stream: result.stream,
@@ -398,6 +409,7 @@ async function pump(run: ChatRunRecord) {
       : run.error
         ? "failed"
         : "done";
+    await captureUsage(run, result);
     await finishRun(run, status, run.error);
   } catch (e: any) {
     const aborted = run.aborted || e?.name === "AbortError";
@@ -421,6 +433,12 @@ function pushChunk(run: ChatRunRecord, chunk: UIMessageChunk) {
   if (chunk.type === "abort") run.aborted = true;
   if (chunk.type === "start-step") run.step += 1;
   if (chunk.type === "error") run.error = chunk.errorText;
+  if (!run.firstTokenAt && (chunk.type === "text-delta" || chunk.type === "reasoning-delta")) {
+    run.firstTokenAt = Date.now();
+  }
+  if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
+    run.outputChars = (run.outputChars ?? 0) + (chunk as { delta: string }).delta.length;
+  }
 
   run.chunks.push(chunk);
   const next = activityFor(run, chunk);
@@ -429,6 +447,41 @@ function pushChunk(run: ChatRunRecord, chunk: UIMessageChunk) {
   if (Date.now() - run.lastCheckpoint > CHECKPOINT_MS) void checkpoint(run, true);
 
   emit(run);
+}
+
+/**
+ * Settle per-run token accounting (dsh token-meter equivalent).
+ *
+ * Provider-reported usage wins; when the endpoint never sends it (common on
+ * OpenAI-compatible gateways), fall back to ~4 chars/token measured from the
+ * actual wire messages and streamed output. Never throws — usage is telemetry,
+ * and a missing payload must not fail a run that already produced its answer.
+ */
+async function captureUsage(
+  run: ChatRunRecord,
+  result: { usage?: PromiseLike<{ inputTokens?: number; outputTokens?: number; totalTokens?: number }> },
+): Promise<void> {
+  let inputTokens = 0;
+  let outputTokens = 0;
+  try {
+    const usage = await result.usage;
+    inputTokens = usage?.inputTokens ?? 0;
+    outputTokens = usage?.outputTokens ?? 0;
+  } catch {
+    // fall through to the estimate
+  }
+  if (inputTokens <= 0 && (run.inputChars ?? 0) > 0) {
+    inputTokens = Math.round((run.inputChars ?? 0) / 4);
+  }
+  if (outputTokens <= 0 && (run.outputChars ?? 0) > 0) {
+    outputTokens = Math.round((run.outputChars ?? 0) / 4);
+  }
+  if (inputTokens <= 0 && outputTokens <= 0) return;
+  run.usage = {
+    inputTokens,
+    outputTokens,
+    totalTokens: inputTokens + outputTokens,
+  };
 }
 
 function activityFor(run: ChatRunRecord, chunk: UIMessageChunk): string | null {
@@ -516,6 +569,18 @@ async function persistRun(run: ChatRunRecord) {
     provider: run.settings.provider,
     model: run.settings.model,
     messages,
+    usage: {
+      inputTokens: (existing?.usage?.inputTokens ?? 0) + (run.usage?.inputTokens ?? 0),
+      outputTokens: (existing?.usage?.outputTokens ?? 0) + (run.usage?.outputTokens ?? 0),
+    },
+    lastRun: run.usage
+      ? {
+          inputTokens: run.usage.inputTokens,
+          outputTokens: run.usage.outputTokens,
+          decodeMs: run.firstTokenAt ? Math.max(0, Date.now() - run.firstTokenAt) : 0,
+          at: Date.now(),
+        }
+      : existing?.lastRun,
   });
   // Mirror the turn into FalkorDB so Omnia remembers across conversations.
   // Fire-and-forget: memory must never fail a chat.
