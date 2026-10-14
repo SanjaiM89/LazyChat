@@ -69,6 +69,8 @@ export interface ChatSettings {
   temperature: number;
   maxSteps: number;
   tools: string[];
+  /** Auto-compact at 80% context pressure (dsh-compaction-basic default). */
+  autoCompact?: boolean;
 }
 
 export const DEFAULT_SETTINGS: ChatSettings = {
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: ChatSettings = {
   temperature: 0.7,
   maxSteps: 14,
   tools: ["webSearch", "createArtifact", "runAgentTask", "computerUse", "companyBrain"],
+  autoCompact: true,
 };
 
 

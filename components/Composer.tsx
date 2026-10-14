@@ -21,6 +21,7 @@ import { modelSupportsThinking } from "@/lib/models";
 import type { ChatController } from "@/lib/use-chat";
 import { activeRunFor } from "@/lib/app-store";
 import { ModelPicker } from "@/components/ModelPicker";
+import { ComposerStats } from "@/components/ComposerStats";
 import { SandboxMini } from "@/components/SandboxMini";
 import { BackgroundRunBar } from "@/components/BackgroundRunBar";
 
@@ -372,6 +373,8 @@ export function Composer({
             </div>
           </div>
         </div>
+
+        <ComposerStats chat={chat} />
 
         <p className="mt-1.5 text-center text-[11px] text-fg-muted/80">
           Claude Code can make mistakes. Check important info.

@@ -27,6 +27,16 @@ import {
 
 
 export type PanelTab = "artifacts" | "sandbox" | "agents" | "files" | null;
+
+export interface UsageSnapshot {
+  inputTokens: number;
+  outputTokens: number;
+  /** Tokens/sec of the last finished run (decode). */
+  speed?: number;
+  /** Input tokens of the last finished run (context pressure numerator). */
+  lastInput?: number;
+  at: number;
+}
 export type ThemeMode = "system" | "light" | "dark";
 /** Top-level view inside the single Omnia shell: chat, or the Company Brain. */
 export type MainView = "chat" | "brain";
@@ -54,6 +64,10 @@ interface AppStore {
   /** Workspace attached per conversation: {workspaceId, name, path}. */
   conversationWorkspaces: Record<string, { id: string; name: string; path: string }>;
   setConversationWorkspace: (cid: string, ws: { id: string; name: string; path: string } | null) => void;
+
+  /** Token accounting per conversation (dsh usage-pill source). */
+  usageByConversation: Record<string, UsageSnapshot>;
+  setUsage: (cid: string, u: UsageSnapshot) => void;
 
   artifacts: ArtifactMeta[];
   openArtifactId: string | null;
@@ -164,6 +178,9 @@ export const useAppStore = create<AppStore>()(
           else delete map[cid];
           return { conversationWorkspaces: map };
         }),
+      usageByConversation: {},
+      setUsage: (cid, u) =>
+        set((s) => ({ usageByConversation: { ...s.usageByConversation, [cid]: u } })),
       deleteConversation: async (id) => {
         await fetch(`/api/conversations/${id}`, { method: "DELETE" });
         set({
