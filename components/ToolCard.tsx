@@ -16,7 +16,10 @@ import {
   Presentation,
   FileCode2,
   File,
+  FilePlus,
   Monitor,
+  Pencil,
+  Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
@@ -80,7 +83,7 @@ export function ToolCard({
     );
   }
   return (
-    <MCPToolCard
+    <ToolRow
       toolName={toolName}
       args={args}
       result={result}
@@ -372,7 +375,182 @@ function ComputerCard({
   );
 }
 
-function MCPToolCard({
+/**
+ * Generic tool row, marked the way DeepSeek Harness marks tool calls.
+ *
+ * dsh classifies every call into a variant (search | read | bash | write |
+ * edit | code | others) with variant icon/title, a lifecycle state
+ * (preparing | running | ok | error | stopped), a one-line summary derived
+ * from the arguments, and an expandable input/output body. MCP-namespaced
+ * tools (`server__tool`) additionally show their server. This is that system,
+ * adapted to our tool names — no more blanket "MCP" badge on everything.
+ */
+type ToolVariant = "search" | "read" | "bash" | "write" | "edit" | "code" | "others";
+type ToolState = "running" | "ok" | "error";
+
+const VARIANT_ICON: Record<ToolVariant, React.ReactNode> = {
+  search: <Search size={11} />,
+  read: <FileText size={11} />,
+  bash: <SquareTerminal size={11} />,
+  write: <FilePlus size={11} />,
+  edit: <Pencil size={11} />,
+  code: <FileCode2 size={11} />,
+  others: <Boxes size={11} />,
+};
+
+/** Tool-owned titles that refine the generic variant (cf. dsh TOOL_TITLE_KEYS). */
+const TOOL_TITLES: Record<string, string> = {
+  ws_list: "List files",
+  ws_read: "Read file",
+  ws_write: "Write file",
+  ws_shell: "Run command",
+  ws_todo: "Todo",
+  ws_remember: "Remember",
+  companyBrain: "Company Brain",
+  find_experts: "Find experts",
+  trace_dependencies: "Trace dependencies",
+  impact_of_failure: "Blast radius",
+  get_decision_context: "Decision context",
+  tickets_blocked_by: "Blocked tickets",
+  tickets_for_service: "Service tickets",
+  find_people: "Find people",
+  shortest_path: "Shortest path",
+  pagerank: "PageRank",
+  bridge_services: "Bridges",
+  find_bottlenecks: "Bottlenecks",
+  central_services: "Central services",
+  team_clusters: "Team clusters",
+  graph_context: "Graph context",
+  run_cypher: "Run Cypher",
+  create_ticket: "Create ticket",
+  update_ticket: "Update ticket",
+  record_decision: "Record decision",
+  note_knowledge: "Note expertise",
+  remember_fact: "Remember fact",
+};
+
+const VARIANT_BY_TOOL: Record<string, ToolVariant> = {
+  ws_list: "read",
+  ws_read: "read",
+  ws_write: "write",
+  ws_shell: "bash",
+  ws_todo: "others",
+  ws_remember: "others",
+  companyBrain: "others",
+  find_experts: "others",
+  trace_dependencies: "others",
+  impact_of_failure: "others",
+  get_decision_context: "read",
+  tickets_blocked_by: "others",
+  tickets_for_service: "search",
+  find_people: "search",
+  shortest_path: "others",
+  pagerank: "others",
+  bridge_services: "others",
+  find_bottlenecks: "others",
+  central_services: "others",
+  team_clusters: "others",
+  graph_context: "read",
+  run_cypher: "code",
+  create_ticket: "write",
+  update_ticket: "edit",
+  record_decision: "write",
+  note_knowledge: "write",
+  remember_fact: "write",
+};
+
+function humanize(name: string): string {
+  return name
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function argSummary(tool: string, args?: Record<string, any>): string {
+  if (!args) return "";
+  const str = (v: unknown, n = 80) => String(v ?? "").slice(0, n);
+  switch (tool) {
+    case "ws_list":
+      return (args.path as string) || ".";
+    case "ws_read":
+    case "ws_write":
+      return str(args.path);
+    case "ws_shell":
+      return str(args.command);
+    case "ws_todo":
+      return [args.op, args.text ?? args.id].filter(Boolean).join(" ").slice(0, 80);
+    case "ws_remember":
+      return [args.kind, str(args.text, 60)].filter(Boolean).join(": ");
+    case "companyBrain":
+      return str(args.question, 100);
+    case "find_experts":
+    case "impact_of_failure":
+    case "trace_dependencies":
+    case "tickets_for_service":
+      return str(args.service);
+    case "tickets_blocked_by":
+    case "get_decision_context":
+      return str(args.topic);
+    case "find_people":
+      return str(args.name);
+    case "shortest_path":
+      return args.from_service || args.to_service
+        ? `${str(args.from_service, 30)} → ${str(args.to_service, 30)}`
+        : "";
+    case "create_ticket":
+    case "update_ticket":
+      return str(args.key ?? args.title);
+    case "record_decision":
+      return str(args.title);
+    case "note_knowledge":
+      return args.person && args.service ? `${str(args.person, 30)} → ${str(args.service, 30)}` : "";
+    case "remember_fact":
+      return [args.subject, args.predicate, args.object].filter(Boolean).join(" ").slice(0, 80);
+    default: {
+      for (const v of Object.values(args)) {
+        if (typeof v === "string" && v.trim()) return v.trim().slice(0, 80);
+      }
+      return JSON.stringify(args).slice(0, 80);
+    }
+  }
+}
+
+function classifyToolCall(
+  rawName: string,
+  args?: Record<string, any>,
+): { variant: ToolVariant; title: string; summary: string; server?: string; tool: string } {
+  // MCP-namespaced tools (`server__tool`, the dsh convention): show the
+  // server, classify by the tool suffix.
+  const segments = rawName.split("__");
+  if (segments.length > 1) {
+    const server = segments[0];
+    const tool = segments.slice(1).join("__");
+    const lower = tool.toLowerCase();
+    let variant: ToolVariant = "others";
+    if (/search|find|list|query|grep|glob/.test(lower)) variant = "search";
+    else if (/read|get|fetch|show|open/.test(lower)) variant = "read";
+    else if (/bash|shell|command|exec|terminal/.test(lower)) variant = "bash";
+    else if (/write|create|save|store|put/.test(lower)) variant = "write";
+    else if (/edit|update|patch|delete|remove/.test(lower)) variant = "edit";
+    else if (/code|run|query|sql|cypher/.test(lower)) variant = "code";
+    return {
+      variant,
+      title: TOOL_TITLES[tool] ?? humanize(tool),
+      summary: TOOL_TITLES[tool] ? argSummary(tool, args) : argSummary("__other__", { ...args, tool }),
+      server,
+      tool,
+    };
+  }
+  const title = TOOL_TITLES[rawName] ?? humanize(rawName);
+  return {
+    variant: VARIANT_BY_TOOL[rawName] ?? "others",
+    title,
+    summary: argSummary(rawName, args),
+    tool: rawName,
+  };
+}
+
+function ToolRow({
   toolName,
   args,
   result,
@@ -386,47 +564,61 @@ function MCPToolCard({
   errorText?: string;
 }) {
   const [expanded, setExpanded] = React.useState(false);
-  const isMCP = toolName.includes("__") || true;
-  void isMCP;
+  const classified = React.useMemo(() => classifyToolCall(toolName, args), [toolName, args]);
+  const state: ToolState = errorText ? "error" : streaming ? "running" : "ok";
 
-  const label = toolName.split("__").pop() || toolName;
   const resultText =
     errorText ??
     (typeof result === "string"
       ? result
       : result && typeof result === "object"
-        ? JSON.stringify(result).slice(0, 400)
+        ? JSON.stringify(result).slice(0, 1000)
         : "");
+  const shownSummary = state === "error" ? errorText ?? "" : classified.summary;
 
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3 mb-2 animate-fade-in-up">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2.5 text-left"
-      >
-        {streaming ? (
-          <Loader2 size={14} className="text-accent animate-spin" />
+    <div
+      className={`rounded-xl border bg-bg-elevated px-4 py-3 mb-2 animate-fade-in-up ${
+        state === "error" ? "border-danger/50" : "border-border"
+      }`}
+    >
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center gap-2.5 text-left">
+        {state === "running" ? (
+          <Loader2 size={14} className="text-accent animate-spin shrink-0" />
         ) : (
-          <span className="w-5 h-5 rounded bg-info-soft text-info flex items-center justify-center shrink-0">
-            <Boxes size={11} />
+          <span
+            className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
+              state === "error" ? "bg-danger-soft text-danger" : "bg-info-soft text-info"
+            }`}
+          >
+            {VARIANT_ICON[classified.variant]}
           </span>
         )}
-        <span className="text-[13px] font-medium text-fg">{label}</span>
-        <Badge tone="info" className="ml-1">MCP</Badge>
-        {args && Object.keys(args).length > 0 && (
-          <span className="ml-auto text-[11px] text-fg-muted truncate max-w-[40%]">
-            {JSON.stringify(args).slice(0, 80)}
+        <span className="text-[13px] font-medium text-fg shrink-0">{classified.title}</span>
+        {classified.server && (
+          <Badge tone="info" className="ml-1">
+            {classified.server}
+          </Badge>
+        )}
+        {shownSummary && (
+          <span className="ml-auto text-[11px] text-fg-muted truncate max-w-[45%] font-mono">
+            {shownSummary}
           </span>
         )}
       </button>
+      {expanded && args && Object.keys(args).length > 0 && (
+        <pre className="mt-2 text-[11px] text-fg-muted whitespace-pre-wrap bg-bg-subtle rounded-lg p-2.5 max-h-40 overflow-y-auto">
+          {JSON.stringify(args, null, 1)}
+        </pre>
+      )}
       {resultText && expanded && (
         <pre className="mt-2 text-[11.5px] text-fg-secondary whitespace-pre-wrap bg-bg-subtle rounded-lg p-2.5 max-h-48 overflow-y-auto">
           {resultText}
         </pre>
       )}
-      {resultText && !expanded && (
+      {(resultText || (args && Object.keys(args).length > 0)) && !expanded && (
         <button onClick={() => setExpanded(true)} className="mt-1 text-[11px] text-fg-muted hover:text-fg-secondary">
-          Show result
+          {resultText ? "Show result" : "Show input"}
         </button>
       )}
     </div>

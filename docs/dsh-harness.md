@@ -19,6 +19,9 @@ ported into our own loop, no subprocess:
   ws_list / ws_read / ws_write / ws_shell (cwd=root, 120s cap, truncated,
   remembered) / ws_todo / ws_remember — all confined to the workspace root
   (traversal, absolute escapes and symlink-out rejected; tested).
+Tool calls render dsh-style: variant icon/title (search/read/bash/write/edit/
+code/others), lifecycle state, arg-derived summary, expandable input/output —
+MCP badge only for true `server__tool` names.
 ```
 
 ## Setup / run
