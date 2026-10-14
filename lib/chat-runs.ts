@@ -53,7 +53,10 @@ async function withWorkspaceBriefing(run: ChatRunRecord, system: string): Promis
       system +
       "\n\n## Attached workspace\n" +
       brief.briefing +
-      "\nPrefer the ws_* tools for anything involving the project files or commands."
+      "\nPrefer the ws_* tools for anything involving the project files or commands." +
+      "\nAs you work, keep the workspace memory current without being asked: " +
+      "record key decisions and error fixes with ws_remember, and track multi-step " +
+      "work with ws_todo (add/list/done). Shell runs and file writes are recorded automatically."
     );
   } catch {
     return system;
@@ -585,6 +588,35 @@ async function persistRun(run: ChatRunRecord) {
   // Mirror the turn into FalkorDB so Omnia remembers across conversations.
   // Fire-and-forget: memory must never fail a chat.
   void recordOmniaMemory(run.conversationId, messages).catch(() => {});
+  // Workspace-bound runs also leave an AgentSession row (goal + status), so
+  // the workspace remembers its sessions even when the model never calls a
+  // memory tool explicitly.
+  void recordWorkspaceSession(run).catch(() => {});
+}
+
+/**
+ * Upsert the AgentSession for a workspace-bound chat run (idempotent MERGE).
+ * Runs in persistRun's fire-and-forget chain; failures are swallowed.
+ */
+async function recordWorkspaceSession(run: ChatRunRecord): Promise<void> {
+  if (!run.workspaceId || !run.conversationId) return;
+  const { FalkorClient } = await import("@/lib/brain/graph");
+  const client = await FalkorClient.get();
+  const existing = await getConversation(run.conversationId);
+  const sid = `chatsession:${run.conversationId}`;
+  await client.write(
+    "MERGE (s:AgentSession {id: $sid}) ON CREATE SET s.started_at = $ts " +
+      "SET s.workspace_id = $wid, s.goal = $goal, " +
+      "    s.status = $status, s.hidden = false, s.ended_at = $ts " +
+      "WITH s MATCH (w:Workspace {id: $wid}) MERGE (s)-[:IN_WORKSPACE]->(w)",
+    {
+      sid,
+      wid: run.workspaceId,
+      goal: (existing?.title || "Chat session").slice(0, 200),
+      status: run.status === "failed" ? "failed" : "ended",
+      ts: new Date().toISOString(),
+    },
+  );
 }
 
 async function recordOmniaMemory(conversationId: string, messages: UIMessage[]): Promise<void> {
