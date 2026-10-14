@@ -15,7 +15,8 @@ import {
 import type { ChatController } from "@/lib/use-chat";
 import { MessageItem } from "@/components/MessageItem";
 import { SubchatOpenerButton } from "@/components/SubchatPanel";
-import { useAppStore } from "@/lib/app-store";
+import { useAppStore, activeRunFor } from "@/lib/app-store";
+import { RunningStatus } from "@/components/dsh/RunningStatus";
 import { DEFAULT_DISPLAY } from "@/lib/display";
 
 
@@ -54,6 +55,11 @@ export function ChatView({ chat }: { chat: ChatController }) {
   const messages = chat.messages;
   const streaming =
     chat.status === "submitted" || chat.status === "streaming";
+  // The running clock needs the turn's start, which lives in the run record
+  // rather than the chat status (the status only says a run is in flight).
+  const runStartedAt = useAppStore(
+    (s) => activeRunFor(s.runs, s.activeConversationId ?? "")?.startedAt,
+  );
   const contentWidth = useAppStore((s) => s.display?.contentWidth) ?? DEFAULT_DISPLAY.contentWidth;
 
   const [menu, setMenu] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -233,6 +239,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
             </button>
           </div>
         )}
+        {streaming && <RunningStatus startTime={runStartedAt} />}
       </div>
       <div className="h-8" />
     </div>

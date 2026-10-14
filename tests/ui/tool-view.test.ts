@@ -1,6 +1,6 @@
 /**
- * Tool-view parity tests: the dsh-port ANSI parser, height cap, and terminal
- * card derivation. Pure functions, no browser and no graph.
+ * Tool-view parity tests: the dsh-port ANSI parser, height cap, terminal card
+ * derivation, and run-clock formatting. Pure functions, no browser and no graph.
  *
  * Run: `npm run test:ui`
  */
@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 
 import { parseAnsiLines } from "../../components/dsh/ansi";
 import { headTailCap } from "../../components/dsh/head-tail-cap";
+import { formatRunDuration } from "../../components/dsh/RunningStatus";
 import {
   terminalCardModel,
   terminalFailed,
@@ -167,5 +168,24 @@ describe("terminalCardModel", () => {
       "/w/app",
     );
     assert.equal(model?.cwd, "src");
+  });
+});
+describe("formatRunDuration", () => {
+  it("reads seconds under a minute, never a bare zero", () => {
+    assert.equal(formatRunDuration(0), "1s");
+    assert.equal(formatRunDuration(999), "1s");
+    assert.equal(formatRunDuration(4000), "4s");
+    assert.equal(formatRunDuration(59_000), "59s");
+  });
+
+  it("reads minutes and seconds, dropping a zero remainder", () => {
+    assert.equal(formatRunDuration(60_000), "1m");
+    assert.equal(formatRunDuration(90_000), "1m 30s");
+    assert.equal(formatRunDuration(125_000), "2m 5s");
+  });
+
+  it("reads hours past an hour, dropping a zero remainder", () => {
+    assert.equal(formatRunDuration(3_600_000), "1h");
+    assert.equal(formatRunDuration(5_400_000), "1h 30m");
   });
 });

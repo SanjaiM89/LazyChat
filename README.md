@@ -431,6 +431,7 @@ Harness' client primitives, restyled onto Omnia tokens:
 | `TextShimmer.tsx` | `ui-primitives/src/TextShimmer.tsx` | masked sweep over an inert copy of running row text |
 | `TerminalBlock.tsx` | `ui-primitives/src/TerminalBlock.tsx` | the terminal surface: `$ cwd` prompt, exit-status pill, copy control, colored output |
 | `terminal-card-model.ts` | `ui-tool/.../terminal-card-model.ts` | derives a terminal card from a shell call, or `null` for the generic card |
+| `RunningStatus.tsx` | `ui-chat/src/client/chat/RunningStatus.tsx` | the live run clock under the transcript |
 
 The row itself (`ToolRow` in `components/ToolCard.tsx`) keeps dsh's geometry: a
 flat 24px line — no card border or fill — whose leading icon crossfades into a
@@ -444,13 +445,44 @@ Not ported: dsh's interactive PTY terminal sidebar
 (`ui-sidebar-terminal`), which needs persistent process sessions rather than
 one-shot `bash -lc` results.
 
+### The run clock
+
+dsh labels a running turn **"Deep diving"**; Omnia says **"Working"**. The rest
+is the same surface: a hairline divider above the transcript tail, an animated
+glyph, and shimmering text with a tabular-nums clock — `Working for 12s ···` —
+that repaints once a second from the run's own `startedAt`. A visually-hidden
+`role="status"` region carries the state for screen readers, so the ticking
+label is never announced tick by tick.
+
+---
+
+## Sidebar: Chats and Workspaces
+
+The two are separate lists, not one mixed feed, because they are different
+things:
+
+- **Chats** — conversations. A chat bound to a workspace shows a folder glyph
+  and the workspace name in place of its timestamp.
+- **Workspaces** — project folders (`~/Projects/chess`), each with a `+` to add
+  and a hover pencil to rename.
+
+Selecting a workspace filters the Chats list to the chats bound to it, with a
+removable `name ✕` chip in the Chats header. The binding itself lives on the
+chat (set in the attach dialog, removable from the header chip), so the sidebar
+shows that relationship rather than flattening it.
+
+**Naming.** A new workspace is named after its folder by default — picking
+`~/Projects/chess` fills the name with `chess`, and the field stays editable.
+Once you type your own name, further folder picks stop overwriting it, and the
+server falls back to the folder basename when the field is empty.
+
 ---
 
 ## Testing
 
 ```bash
 npm run test:brain   # 55 passed (intent, actions, memory, dsh capture; live graph)
-npm run test:ui      # 20 passed (ANSI parsing, height cap, terminal derivation)
+npm run test:ui      # 23 passed (ANSI parsing, height cap, terminal derivation, run clock)
 ```
 
 | File | Covers |
