@@ -49,6 +49,7 @@ export function resilientSse(first: Response, opts: ResilientOptions): Response 
       let finished = false;
       let attempt = 0;
 
+
       while (!finished && !cancelled && !opts.signal?.aborted) {
         if (res?.body) {
           const dec = new TextDecoder();
@@ -75,6 +76,7 @@ export function resilientSse(first: Response, opts: ResilientOptions): Response 
                 if (!f.data || f.data.includes('"data-heartbeat"')) continue;
                 const id = f.id !== undefined ? Number(f.id) : undefined;
                 if (id !== undefined && Number.isFinite(id)) cursor = id;
+
                 out(formatFrame(f.data, id));
                 attempt = 0; // progress resets the retry budget
               }

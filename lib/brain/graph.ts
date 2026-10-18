@@ -188,6 +188,7 @@ export class FalkorClient {
       const db = await FalkorDB.connect({
         host: falkordb.host,
         port: falkordb.port,
+        username: falkordb.username || undefined,
         password: falkordb.password || undefined,
       });
       return new FalkorClient(db, falkordb.graphName);
