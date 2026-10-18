@@ -60,18 +60,19 @@ export function RenameWorkspaceDialog({
   // Portal to document.body: the sidebar's transform would otherwise trap
   // `fixed` positioning and squeeze the dialog into the sidebar column.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[6px] [animation:overlay-in_0.3s_ease_both]" onClick={onClose}>
       <div
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-bg-elevated shadow-soft"
+        className="relative w-full max-w-sm overflow-hidden rounded-lg border border-border-strong bg-bg-overlay shadow-pop animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="text-[14px] font-semibold">Rename workspace</h2>
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent" />
+        <div className="border-b border-border px-5 py-3.5">
+          <h2 className="text-[15px] font-medium tracking-tight">Rename workspace</h2>
           <p className="mt-0.5 truncate font-mono text-[11px] text-fg-muted">
             {workspace.path}
           </p>
         </div>
-        <div className="px-4 py-3">
+        <div className="px-5 py-4">
           <input
             autoFocus
             value={name}
@@ -80,21 +81,21 @@ export function RenameWorkspaceDialog({
               if (e.key === "Enter") void save();
               if (e.key === "Escape") onClose();
             }}
-            className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] outline-none focus:border-accent"
+            className="w-full rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-2 text-[13px] focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
           />
-          {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
+          {error && <p className="mt-2 rounded-md border border-danger/30 bg-danger-soft px-2.5 py-1.5 text-[12px] text-danger animate-fade-in-up">{error}</p>}
         </div>
-        <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+        <div className="flex justify-end gap-2 border-t border-border bg-bg-surface-100 px-5 py-3">
           <button
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-[13px] text-fg-secondary hover:bg-bg-hover"
+            className="h-8 rounded-md border border-border-strong bg-bg-control px-3 text-[13px] text-fg transition-colors hover:bg-bg-surface-300"
           >
             Cancel
           </button>
           <button
             onClick={() => void save()}
             disabled={busy || !name.trim()}
-            className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className={"btn-sheen inline-flex items-center justify-center rounded-md border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)] font-medium transition-[filter,box-shadow] duration-200 hover:brightness-110 hover:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-45 disabled:pointer-events-none h-8 px-3 text-[13px]"}
           >
             {busy ? "Saving…" : "Save"}
           </button>

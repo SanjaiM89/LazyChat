@@ -45,13 +45,19 @@ function rowToWorkspace(r: Record<string, unknown>): Workspace {
   };
 }
 
-export async function listWorkspaces(client: FalkorClient, includeArchived = false): Promise<Workspace[]> {
-  const where = includeArchived ? "" : "WHERE w.status <> 'archived'";
+export async function listWorkspaces(
+  client: FalkorClient,
+  includeArchived = false,
+  ownerId?: string,
+): Promise<Workspace[]> {
+  const conds = [includeArchived ? "" : "w.status <> 'archived'", ownerId ? "w.owner = $owner" : ""].filter(Boolean);
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
   const rows = await client.query(
     `MATCH (w:Workspace) ${where} RETURN w.id AS id, w.name AS name, w.path AS path, ` +
       `w.description AS description, w.owner AS owner, w.tags AS tags, w.status AS status, ` +
       `w.position AS position, w.created_at AS created_at, w.updated_at AS updated_at ` +
       `ORDER BY w.position ASC, w.updated_at DESC`,
+    ownerId ? { owner: ownerId } : undefined,
   );
   return rows.map(rowToWorkspace);
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
@@ -9,10 +10,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Memory panel: this user's episodic and semantic memory nodes. */
-export async function GET(request: Request, { params }: { params: Promise<{ userId: string }> }) {
+export const GET = authed<{ userId: string }>(async (request, user, { params }) => {
   await ensureReady();
   const { userId } = await params;
-  const uid = decodeURIComponent(userId);
+  const uid = user.uid;
+  if (decodeURIComponent(userId) !== uid) return NextResponse.json({ detail: "not found" }, { status: 404 });
   const q = new URL(request.url).searchParams.get("q") ?? "";
   try {
     const client = await FalkorClient.get();
@@ -28,4 +30,4 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     }
     throw err;
   }
-}
+});

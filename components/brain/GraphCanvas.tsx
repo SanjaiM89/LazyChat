@@ -8,7 +8,7 @@ import type { GraphEdge, GraphNode, SubGraph } from "@/lib/brainApi";
 // the server bundle.
 const ForceGraph2D = dynamic(
   () => import("react-force-graph-2d") as unknown as Promise<React.ComponentType<any>>,
-  { ssr: false, loading: () => <div className="h-full w-full animate-pulse bg-bg-inset" /> },
+  { ssr: false, loading: () => <div className="skeleton h-full w-full !rounded-none" /> },
 );
 
 type FgNode = GraphNode & { x?: number; y?: number; fx?: number; fy?: number };
@@ -22,15 +22,48 @@ type Props = {
   showLabels?: boolean;
 };
 
-const REL_COLORS: Record<string, string> = {
-  DEPENDS_ON: "#ef4444",
-  BLOCKED_BY: "#f97316",
-  KNOWS_ABOUT: "#0ea5e9",
-  RELATES_TO: "#64748b",
-  AUTHORED: "#a855f7",
-  MENTIONS: "#94a3b8",
-  DISCUSSED_IN: "#94a3b8",
+// Omnia palette: brand greens for the core entities, neutral greys for supporting records, and a few muted
+// semantic accents (amber tickets, red findings). All mid-luminance so they read on #121212 and #fcfcfc alike.
+const NODE_COLORS: Record<string, string> = {
+  Person: "#3ecf8e",
+  Team: "#0f9d63",
+  Service: "#8fe5bc",
+  Repo: "#5ec4a0",
+  Ticket: "#f1a10d",
+  Decision: "#52a9ff",
+  Document: "#9ca3af",
+  Message: "#7c7c7c",
+  Session: "#a3a3a3",
+  Turn: "#8a8a8a",
+  EpisodicMemory: "#34d399",
+  SemanticMemory: "#10b981",
+  ProceduralMemory: "#059669",
+  Finding: "#f56e4e",
+  AgentHandoff: "#b4b4b4",
 };
+
+/** Brand-palette color for a node label, falling back to the server-provided color. */
+export function nodeColor(label: string | undefined, fallback?: string): string {
+  return (label && NODE_COLORS[label]) || fallback || "#898989";
+}
+
+const REL_COLORS: Record<string, string> = {
+  DEPENDS_ON: "#3ecf8e",
+  BLOCKED_BY: "#f1a10d",
+  KNOWS_ABOUT: "#00c573",
+  RELATES_TO: "#898989",
+  AUTHORED: "#8fe5bc",
+  MENTIONS: "#707070",
+  DISCUSSED_IN: "#707070",
+};
+
+/** Theme colors read from CSS variables so canvas text follows light/dark. */
+function readTheme() {
+  if (typeof window === "undefined") return { text: "#ededed", muted: "#898989", line: "rgba(137,137,137,0.25)" };
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n: string, f: string) => cs.getPropertyValue(n).trim() || f;
+  return { text: v("--text-secondary", "#b4b4b4"), muted: v("--text-faint", "#4d4d4d"), line: "rgba(137,137,137,0.25)" };
+}
 
 export function GraphCanvas({
   data,
@@ -43,6 +76,23 @@ export function GraphCanvas({
   const [size, setSize] = useState({ w: 600, h: 400 });
   const [pulseIndex, setPulseIndex] = useState(-1);
   const graphRef = useRef<any>(null);
+  const themeRef = useRef(readTheme());
+
+  // Re-read theme colors whenever the palette changes (data-theme flip or system preference).
+  useEffect(() => {
+    const refresh = () => {
+      themeRef.current = readTheme();
+      graphRef.current?.refresh?.();
+    };
+    const mo = new MutationObserver(refresh);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", refresh);
+    return () => {
+      mo.disconnect();
+      mq.removeEventListener("change", refresh);
+    };
+  }, []);
 
   // react-force-graph mutates the node objects it is given; clone so the
   // caller's state is not corrupted across renders.
@@ -90,6 +140,7 @@ export function GraphCanvas({
     if (!fg) return;
     const ctx = fg?.ctx?.();
     if (!ctx) return;
+    const theme = themeRef.current;
 
     // Edges
     const links = graphData.links as any[];
@@ -101,7 +152,7 @@ export function GraphCanvas({
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
       ctx.lineTo(t.x, t.y);
-      ctx.strokeStyle = active ? REL_COLORS[link.type] ?? "#94a3b8" : "rgba(148,163,184,0.28)";
+      ctx.strokeStyle = active ? REL_COLORS[link.type] ?? "#898989" : theme.line;
       ctx.lineWidth = active ? 1.9 : 0.8;
       ctx.stroke();
     }
@@ -117,22 +168,22 @@ export function GraphCanvas({
       if (pulsing) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, r + 6, 0, 2 * Math.PI);
-        ctx.fillStyle = "rgba(250, 204, 21, 0.22)";
+        ctx.fillStyle = "rgba(62, 207, 142, 0.25)";
         ctx.fill();
       }
       ctx.beginPath();
       ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = dim ? "rgba(100,116,139,0.35)" : node.color || "#64748b";
+      ctx.fillStyle = dim ? "rgba(137,137,137,0.3)" : nodeColor(node.label, node.color);
       ctx.fill();
       if (highlight?.has(node.id) && !dim) {
-        ctx.strokeStyle = "#fbbf24";
+        ctx.strokeStyle = "#3ecf8e";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
 
       if (showLabels && (!dim || size.w > 520)) {
-        ctx.font = "10px ui-monospace, monospace";
-        ctx.fillStyle = dim ? "rgba(148,163,184,0.5)" : "rgba(30,41,59,0.9)";
+        ctx.font = "10px 'JetBrains Mono', ui-monospace, monospace";
+        ctx.fillStyle = dim ? theme.muted : theme.text;
         ctx.fillText(String(node.name).slice(0, 22), node.x + r + 3, node.y + 3);
       }
     });
@@ -140,8 +191,13 @@ export function GraphCanvas({
 
   if (data.nodes.length === 0) {
     return (
-      <div className="flex h-full w-full items-center justify-center text-sm text-fg-muted">
-        No contributing subgraph yet — ask a question to populate it.
+      <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+        <div className="hero-backdrop" aria-hidden>
+          <div className="hero-grid" />
+        </div>
+        <p className="relative z-10 rounded-md border border-dashed border-border-strong bg-bg-surface-100/80 px-4 py-2.5 text-[13px] text-fg-muted backdrop-blur animate-fade-in">
+          No contributing subgraph yet — ask a question to populate it.
+        </p>
       </div>
     );
   }
@@ -155,7 +211,7 @@ export function GraphCanvas({
         graphData={graphData}
         backgroundColor="rgba(0,0,0,0)"
         nodeRelSize={4}
-        linkColor={() => "rgba(148,163,184,0.3)"}
+        linkColor={() => "rgba(137,137,137,0.3)"}
         linkWidth={1}
         cooldownTicks={90}
         d3AlphaDecay={0.04}
@@ -188,15 +244,15 @@ export function Legend({
         <button
           key={l.label}
           onClick={() => onToggle?.(l.label)}
-          className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition ${
+          className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10.5px] transition-all duration-200 ${
             active && active.size > 0 && !active.has(l.label)
-              ? "border-border opacity-40"
-              : "border-border bg-bg-elevated"
+              ? "border-border text-fg-muted opacity-40 hover:opacity-70"
+              : "border-border-strong bg-bg-surface-200 text-fg-secondary hover:border-border-stronger hover:text-fg"
           }`}
         >
           <span
             className="h-2 w-2 rounded-full"
-            style={{ background: l.color }}
+            style={{ background: nodeColor(l.label, l.color), boxShadow: `0 0 6px ${nodeColor(l.label, l.color)}` }}
             aria-hidden
           />
           {l.label}

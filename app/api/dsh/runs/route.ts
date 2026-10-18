@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { ownedWorkspace } from "@/lib/dsh/access";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
@@ -8,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Start an agent run inside a workspace. */
-export async function POST(request: Request) {
+export const POST = authed(async (request, user) => {
   await ensureReady();
   let body: { workspace_id?: string; task?: string; session_id?: string };
   try {
@@ -21,6 +23,9 @@ export async function POST(request: Request) {
   }
   try {
     const client = await FalkorClient.get();
+    if (!(await ownedWorkspace(client, body.workspace_id, user))) {
+      return NextResponse.json({ detail: "unknown workspace" }, { status: 404 });
+    }
     const { run } = await spawnAgentRun(client, body.workspace_id, body.task, {
       sessionId: body.session_id,
     });
@@ -29,4 +34,4 @@ export async function POST(request: Request) {
     if (err instanceof GraphError) return NextResponse.json({ detail: err.message }, { status: 503 });
     return NextResponse.json({ detail: (err as Error).message }, { status: 400 });
   }
-}
+});

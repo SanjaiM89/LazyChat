@@ -1,27 +1,22 @@
-import { NextRequest } from "next/server";
+import { authed } from "@/lib/auth/context";
 import { getConversation, deleteConversation } from "@/lib/store";
 import { activeChatRuns, stopChatRun } from "@/lib/chat-runs";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const GET = authed<{ id: string }>(async (_req, user, { params }) => {
   const { id } = await params;
-  const conv = await getConversation(id);
+  const conv = await getConversation(id, user.uid);
   if (!conv) return Response.json({ error: "not found" }, { status: 404 });
   return Response.json(conv);
-}
+});
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const DELETE = authed<{ id: string }>(async (_req, user, { params }) => {
   const { id } = await params;
+  if (!(await getConversation(id, user.uid))) return Response.json({ ok: true });
   for (const run of activeChatRuns(id)) {
     await stopChatRun(run.id);
   }
-  await deleteConversation(id);
+  await deleteConversation(id, user.uid);
   return Response.json({ ok: true });
-}
+});

@@ -10,6 +10,8 @@
 import * as React from "react";
 import { useAppStore } from "@/lib/app-store";
 import { dshApi, type FileEntry } from "@/lib/dsh/client";
+import { Folder, FolderOpen, CornerLeftUp, X } from "lucide-react";
+import { FileIcon } from "@/components/brand/FileIcon";
 
 export function FileExplorer() {
   const activeConversationId = useAppStore((s) => s.activeConversationId);
@@ -43,18 +45,23 @@ export function FileExplorer() {
     if (attached) void load("");
   }, [attached, load]);
 
-  if (!attached) return <p className="p-4 text-[12px] text-fg-muted">No workspace attached to this chat.</p>;
+  if (!attached) return <p className="m-4 rounded-lg border border-dashed border-border p-4 text-center text-[12px] text-fg-muted">No workspace attached to this chat.</p>;
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="text-[13px] font-semibold">Workspace files</h2>
-        <p className="mt-0.5 truncate font-mono text-[10.5px] text-fg-muted">{attached.path}</p>
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">
+          <FolderOpen size={14} />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-medium">Workspace files</h2>
+          <p className="truncate font-mono text-[10.5px] text-fg-muted">{attached.path}{dir ? `/${dir}` : ""}</p>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {dir && (
-          <button onClick={() => void load(dir.split("/").slice(0, -1).join("/"))} className="mb-1 px-2 text-[12px] text-accent">
-            ↑ up
+          <button onClick={() => void load(dir.split("/").slice(0, -1).join("/"))} className="mb-1 inline-flex items-center gap-1 rounded px-2 py-0.5 text-[12px] text-brand-link transition-colors hover:bg-bg-hover">
+            <CornerLeftUp size={12} /> up
           </button>
         )}
         {files.map((f) => (
@@ -72,20 +79,31 @@ export function FileExplorer() {
                 }
               }
             }}
-            className="block w-full truncate rounded px-2 py-1 text-left font-mono text-[12px] hover:bg-bg-hover"
+            className="group flex w-full items-center gap-2 truncate rounded-md px-2 py-1 text-left font-mono text-[12px] text-fg-secondary transition-colors hover:bg-bg-hover hover:text-fg"
           >
-            {f.dir ? "📁" : "📄"} {f.name}
+            {f.dir ? (
+              <Folder size={14} className="shrink-0 text-fg-muted transition-colors group-hover:text-accent" />
+            ) : (
+              <FileIcon type={f.name} size={16} />
+            )}
+            <span className="truncate">{f.name}</span>
             {!f.dir && f.size !== undefined && (
-              <span className="ml-1 text-[10px] text-fg-muted">{(f.size / 1024).toFixed(1)}k</span>
+              <span className="ml-auto shrink-0 pl-2 text-[10px] text-fg-faint tabular-nums">{(f.size / 1024).toFixed(1)}k</span>
             )}
           </button>
         ))}
-        {files.length === 0 && !error && <p className="px-2 text-[12px] text-fg-muted">Empty folder.</p>}
+        {files.length === 0 && !error && <p className="m-2 rounded-md border border-dashed border-border p-3 text-center text-[12px] text-fg-muted">Empty folder.</p>}
         {error && <p className="px-2 text-[12px] text-danger">{error}</p>}
         {preview && (
-          <div className="mt-2 rounded-lg border border-border bg-bg p-2">
-            <p className="mb-1 font-mono text-[11px] font-medium">{preview.name}</p>
-            <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap text-[11px]">{preview.content}</pre>
+          <div className="mt-2 overflow-hidden rounded-lg border border-border bg-bg-surface-100 animate-fade-in-up">
+            <p className="flex items-center gap-2 border-b border-border bg-bg-surface-200 px-2.5 py-1.5 font-mono text-[11px] font-medium">
+              <FileIcon type={preview.name} size={14} />
+              <span className="flex-1 truncate">{preview.name}</span>
+              <button onClick={() => setPreview(null)} className="rounded p-0.5 text-fg-muted hover:bg-bg-hover hover:text-fg" title="Close preview">
+                <X size={12} />
+              </button>
+            </p>
+            <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap p-2.5 font-mono text-[11px] leading-relaxed">{preview.content}</pre>
           </div>
         )}
       </div>

@@ -5,6 +5,7 @@ import { KeyRound, Trash2 } from "lucide-react";
 import { Modal, Button, IconButton, Spinner } from "@/components/ui";
 import { PROVIDER_LIST } from "@/lib/models";
 import { useAppStore } from "@/lib/app-store";
+import { BrandTile, providerIconKey } from "@/components/brand/BrandIcon";
 
 
 const HELP_LINKS: Record<string, { label: string; href: string }> = {
@@ -170,7 +171,7 @@ export function ApiKeysDialog() {
       subtitle="Keys are stored on this server only (data/provider-keys.json) and take priority over env vars. Nothing secret is ever sent to the browser."
       width="max-w-lg"
     >
-      <ul className="flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-2.5 stagger [--stagger:50ms]">
         {keyed.map((p) => {
           const st = status[p.id];
           const configured = st?.configured ?? false;
@@ -180,15 +181,13 @@ export function ApiKeysDialog() {
           return (
             <li
               key={p.id}
-              className="rounded-xl border border-border bg-bg-subtle/50 px-3.5 py-3"
+              className="group rounded-lg border border-border bg-bg-surface-100 px-3.5 py-3 transition-colors duration-200 hover:border-border-strong"
             >
               <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-bg-inset text-[14px] text-accent">
-                  {p.glyph}
-                </span>
+                <BrandTile name={providerIconKey(p.id)} size={32} glow fallback={<span className="text-[14px] text-accent">{p.glyph}</span>} />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13.5px] font-medium text-fg">{p.name}</p>
-                  <p className="truncate text-[11px] text-fg-muted">
+                  <p className="truncate font-mono text-[11px] text-fg-muted">
                     {p.keyEnv}
                     {help ? (
                       <>
@@ -197,7 +196,7 @@ export function ApiKeysDialog() {
                           href={help.href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-accent hover:underline"
+                          className="font-sans text-brand-link hover:underline"
                         >
                           {help.label}
                         </a>
@@ -208,8 +207,8 @@ export function ApiKeysDialog() {
                 <span
                   className={
                     configured
-                      ? "shrink-0 rounded-full bg-success-soft px-2 py-0.5 text-[11px] font-medium text-success"
-                      : "shrink-0 rounded-full bg-bg-inset px-2 py-0.5 text-[11px] font-medium text-fg-muted"
+                      ? "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand/30 bg-success-soft px-2 h-5 text-[10.5px] font-medium text-success"
+                      : "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border-strong bg-bg-surface-200 px-2 h-5 text-[10.5px] font-medium text-fg-muted"
                   }
                   title={
                     stored
@@ -219,7 +218,8 @@ export function ApiKeysDialog() {
                         : "No key configured"
                   }
                 >
-                  {configured ? (stored ? "● saved" : "● via env") : "○ missing"}
+                  <span className={configured ? "h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_6px_var(--brand)]" : "h-1.5 w-1.5 rounded-full border border-fg-muted"} />
+                  {configured ? (stored ? "saved" : "via env") : "missing"}
                 </span>
               </div>
               <div className="mt-2.5 flex items-center gap-1.5">
@@ -239,14 +239,14 @@ export function ApiKeysDialog() {
                   }
                   spellCheck={false}
                   autoComplete="off"
-                  className="flex-1 rounded-lg border border-border bg-bg-subtle px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+                  className="flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-3 py-2 text-[13px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                 />
                 <Button
                   variant="primary"
                   onClick={() => void save(p.id)}
                   disabled={busy === p.id || !(drafts[p.id] || "").trim()}
                 >
-                  {busy === p.id ? <Spinner size={13} className="text-white" /> : <KeyRound size={14} />}
+                  {busy === p.id ? <Spinner size={13} /> : <KeyRound size={14} />}
                   Save
                 </Button>
                 {stored && (
@@ -260,8 +260,8 @@ export function ApiKeysDialog() {
                 )}
               </div>
 
-              <div className="mt-2.5 rounded-lg border border-border/70 bg-bg-elevated/60 px-2.5 py-2">
-                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-fg-muted">
+              <div className="mt-2.5 rounded-md border border-border-muted bg-bg-elevated px-2.5 py-2">
+                <p className="mb-1.5 eyebrow !text-[10px]">
                   Models — rename or add ids
                 </p>
                 <div className="flex flex-col gap-1">
@@ -269,7 +269,7 @@ export function ApiKeysDialog() {
                     const ed = editing[p.id];
                     const isEd = ed?.oldId === m.id;
                     return (
-                      <div key={m.id} className="flex items-center gap-1.5">
+                      <div key={m.id} className="group/m flex items-center gap-1.5 rounded px-1 -mx-1 transition-colors hover:bg-bg-hover">
                         {isEd ? (
                           <>
                             <input
@@ -282,7 +282,7 @@ export function ApiKeysDialog() {
                               }
                               placeholder="model id"
                               spellCheck={false}
-                              className="min-w-0 flex-1 rounded-md border border-border bg-bg-subtle px-2 py-1 font-mono text-[12px] text-fg focus:outline-none focus:border-accent/50"
+                              className="min-w-0 flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2 py-1 font-mono text-[12px] text-fg focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                             />
                             <input
                               value={ed.name}
@@ -294,7 +294,7 @@ export function ApiKeysDialog() {
                               }
                               placeholder="label (optional)"
                               spellCheck={false}
-                              className="min-w-0 flex-1 rounded-md border border-border bg-bg-subtle px-2 py-1 text-[12px] text-fg focus:outline-none focus:border-accent/50"
+                              className="min-w-0 flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2 py-1 text-[12px] text-fg focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                             />
                             <Button
                               variant="primary"
@@ -364,7 +364,7 @@ export function ApiKeysDialog() {
                     }}
                     placeholder="Add model id (e.g. gemini-3.5-flash-lite)"
                     spellCheck={false}
-                    className="min-w-0 flex-1 rounded-md border border-border bg-bg-subtle px-2 py-1 font-mono text-[12px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+                    className="min-w-0 flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2 py-1 font-mono text-[12px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                   />
                   <input
                     value={newModel[p.id]?.name || ""}
@@ -379,7 +379,7 @@ export function ApiKeysDialog() {
                     }}
                     placeholder="Label (optional)"
                     spellCheck={false}
-                    className="w-28 rounded-md border border-border bg-bg-subtle px-2 py-1 text-[12px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+                    className="w-28 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2 py-1 text-[12px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                   />
                   <Button
                     variant="outline"
@@ -397,7 +397,7 @@ export function ApiKeysDialog() {
       </ul>
       {err && <p className="mt-3 text-[12.5px] text-danger">{err}</p>}
       <p className="mt-3 text-[11.5px] leading-relaxed text-fg-muted">
-        Tip: keys in <span className="font-mono">.env</span> keep working — a key
+        Tip: keys in <span className="kbd">.env</span> keep working — a key
         saved here simply overrides them. Restarting is never required.
       </p>
     </Modal>

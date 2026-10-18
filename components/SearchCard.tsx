@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Globe, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/components/ui";
+import { SiteFavicon } from "@/components/brand/BrandIcon";
 
 
 interface SearchResult {
@@ -32,10 +33,10 @@ export function SearchCard({
 
   if (streaming) {
     return (
-      <div className="flex flex-col gap-1 rounded-xl border border-border bg-bg-elevated px-4 py-3 mb-2 animate-fade-in-up">
+      <div className="beam-border mb-2 flex flex-col gap-2 rounded-lg border border-border bg-bg-surface-100 px-4 py-3 animate-fade-in-up">
         <div className="flex items-center gap-2 text-[13px] text-fg-secondary">
-          <Search size={14} className="text-accent" />
-          <span className="font-medium">
+          <Search size={14} className="text-accent animate-pulse" />
+          <span className="text-shine font-medium">
             Searching the web{query ? ` for “${query}”` : "…"}
           </span>
           <span className="ml-1 flex gap-1">
@@ -44,15 +45,15 @@ export function SearchCard({
             <span className="thinking-dot" />
           </span>
         </div>
-        <div className="shimmer h-2 w-3/4 rounded-full" />
-        <div className="shimmer h-2 w-1/2 rounded-full" />
+        <div className="skeleton h-2 w-3/4 rounded-full" />
+        <div className="skeleton h-2 w-1/2 rounded-full" />
       </div>
     );
   }
 
   if (!results || !results.length) {
     return (
-      <div className="rounded-xl border border-border bg-bg-elevated px-4 py-3 mb-2 text-[13px] text-fg-muted">
+      <div className="mb-2 rounded-lg border border-border bg-bg-surface-100 px-4 py-3 text-[13px] text-fg-muted">
         <div className="flex items-center gap-2">
           <Search size={14} />
           <span>No results for “{query}”</span>
@@ -62,21 +63,28 @@ export function SearchCard({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated mb-2 overflow-hidden animate-fade-in-up">
+    <div className="mb-2 overflow-hidden rounded-lg border border-border bg-bg-surface-100 animate-fade-in-up">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-bg-hover transition-colors"
+        className="flex w-full items-center gap-2 border-b border-border px-4 py-2.5 transition-colors hover:bg-bg-hover"
       >
         <Globe size={14} className="text-accent" />
+        <span className="flex -space-x-1">
+          {results.slice(0, 4).map((r, i) => (
+            <span key={i} className="flex h-4 w-4 items-center justify-center rounded-full border border-border bg-bg-surface-300 ring-2 ring-bg-surface-100">
+              <SiteFavicon hostname={r.hostname} size={10} />
+            </span>
+          ))}
+        </span>
         <span className="text-[13px] font-medium text-fg-secondary">
           Searched the web{query ? ` for “${query}”` : ""}
         </span>
-        <span className="ml-auto text-[11px] text-fg-muted">
+        <span className="ml-auto rounded-full border border-border px-1.5 font-mono text-[10.5px] text-fg-muted">
           {results.length} results
         </span>
       </button>
       {expanded && (
-        <div className="grid gap-1.5 px-3 pb-3 sm:grid-cols-2">
+        <div className="grid gap-1.5 p-2 sm:grid-cols-2 stagger [--stagger:35ms]">
           {results.slice(0, 8).map((r, i) => {
             const n = r.n ?? baseIndex + i + 1;
             const active = selected === n;
@@ -95,25 +103,20 @@ export function SearchCard({
               }}
               title={`${r.title}\n${r.url}\n\nClick to open · Alt-click to highlight where the answer references it.`}
               className={cn(
-                "group rounded-lg p-2.5 hover:bg-bg-hover transition-colors flex flex-col gap-1 scroll-mt-24",
-                active && "bg-accent-soft/60 ring-1 ring-accent/50",
+                "group flex scroll-mt-24 flex-col gap-1 rounded-md border border-transparent p-2.5 transition-colors hover:border-border hover:bg-bg-surface-200",
+                active && "border-brand/50 bg-accent-soft",
               )}
             >
               <span className="flex items-center gap-2 min-w-0">
                 <span
                   className={cn(
                     "flex h-4 min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-bold shrink-0",
-                    active ? "bg-accent text-white" : "bg-bg-inset text-fg-muted",
+                    active ? "bg-brand text-[#0b2e1e]" : "border border-border bg-bg-surface-300 text-fg-muted",
                   )}
                 >
                   {n}
                 </span>
-                <img
-                  src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(r.hostname || "")}&sz=32`}
-                  alt=""
-                  className="w-4 h-4 rounded shrink-0"
-                  onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-                />
+                <SiteFavicon hostname={r.hostname} size={14} />
                 <span className="text-[11px] text-fg-muted truncate">{r.hostname}</span>
                 <ExternalLink size={11} className="ml-auto text-fg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
               </span>

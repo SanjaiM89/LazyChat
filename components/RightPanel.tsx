@@ -17,13 +17,13 @@ export function RightPanel() {
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/30 md:hidden"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] animate-fade-in md:hidden"
         onClick={() => useAppStore.getState().setPanel(null)}
       />
       <aside
         className={cn(
-          "z-50 fixed inset-y-0 right-0 w-[min(92vw,480px)] border-l border-border bg-bg-elevated/60 backdrop-blur",
-          "md:static md:w-[430px] md:bg-transparent md:backdrop-blur-none",
+          "glass z-50 fixed inset-y-0 right-0 w-[min(92vw,480px)] border-l border-border shadow-pop animate-slide-in-right",
+          "md:static md:w-[430px] md:bg-bg-alternative md:shadow-none md:backdrop-blur-none",
         )}
       >
         {panel === "artifacts" && <ArtifactPanel />}

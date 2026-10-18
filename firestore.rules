@@ -1,0 +1,98 @@
+rules_version = '2';
+
+// Omnia: users, organizations and invites. Everything else is denied.
+// Super admin is identified by sign-in email, so register that account FIRST (npm run seed:admin).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isSuper() {
+      return signedIn() && request.auth.token.email == 'super@admin.com';
+    }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function myOrg() { return hasProfile() ? me().orgId : null; }
+    function isOrgAdminOf(orgId) {
+      return hasProfile() && orgId != null && me().orgId == orgId && me().orgRole in ['owner', 'admin'];
+    }
+    function hasOrg() { return hasProfile() && me().orgId != null; }
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    match /users/{uid} {
+      allow read: if isSuper()
+                  || request.auth.uid == uid
+                  || (resource.data.orgId != null && isOrgAdminOf(resource.data.orgId))
+                  || (resource.data.orgId != null && myOrg() == resource.data.orgId);
+
+      allow create: if isSuper()
+                    || (request.auth.uid == uid
+                        && request.resource.data.orgId == null
+                        && request.resource.data.orgRole == null
+                        && request.resource.data.status == 'active'
+                        && request.resource.data.email == request.auth.token.email.lower());
+
+      allow update: if isSuper()
+        // self: rename
+        || (request.auth.uid == uid && changedOnly(['displayName']))
+        // self: become owner of an org I just created
+        || (request.auth.uid == uid && resource.data.orgId == null && changedOnly(['orgId', 'orgRole'])
+            && request.resource.data.orgRole == 'owner'
+            && getAfter(/databases/$(database)/documents/orgs/$(request.resource.data.orgId)).data.ownerUid == uid)
+        // self: join via invite for my email
+        || (request.auth.uid == uid && resource.data.orgId == null && changedOnly(['orgId', 'orgRole'])
+            && exists(/databases/$(database)/documents/invites/$(request.auth.token.email.lower()))
+            && get(/databases/$(database)/documents/invites/$(request.auth.token.email.lower())).data.orgId == request.resource.data.orgId
+            && get(/databases/$(database)/documents/invites/$(request.auth.token.email.lower())).data.orgRole == request.resource.data.orgRole)
+        // org owner/admin: change role of / remove non-owner members
+        || (resource.data.orgId != null && isOrgAdminOf(resource.data.orgId) && request.auth.uid != uid
+            && resource.data.orgRole != 'owner' && changedOnly(['orgRole', 'orgId'])
+            && (request.resource.data.orgId == null || request.resource.data.orgId == resource.data.orgId)
+            && request.resource.data.orgRole in [null, 'admin', 'member']);
+
+      allow delete: if isSuper();
+    }
+
+    match /orgs/{orgId} {
+      allow read: if isSuper() || myOrg() == orgId;
+      allow create: if isSuper()
+                    || (signedIn()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.status == 'active'
+                    && !hasOrg());
+      allow update: if isSuper()
+                    || (isOrgAdminOf(orgId) && changedOnly(['name']));
+      allow delete: if isSuper();
+    }
+
+    match /invites/{email} {
+      allow read: if isSuper()
+                  || (signedIn() && request.auth.token.email.lower() == email)
+                  || isOrgAdminOf(resource.data.orgId);
+      allow create, update: if isSuper()
+                  || (isOrgAdminOf(request.resource.data.orgId)
+                      && request.resource.data.orgRole in ['admin', 'member']
+                      && request.resource.data.invitedBy == request.auth.uid);
+      allow delete: if isSuper()
+                    || isOrgAdminOf(resource.data.orgId)
+                    || (signedIn() && request.auth.token.email.lower() == email);
+    }
+
+    // Chats are private to their owner (not even org admins or the super admin can read them).
+    match /conversations/{cid} {
+      allow read, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid
+                    && request.resource.data.ownerId == request.auth.uid;
+
+      match /messages/{mid} {
+        // getAfter: the first batch creates the parent and its messages together.
+        allow create, update: if signedIn()
+          && getAfter(/databases/$(database)/documents/conversations/$(cid)).data.ownerId == request.auth.uid;
+        allow read, delete: if signedIn()
+          && get(/databases/$(database)/documents/conversations/$(cid)).data.ownerId == request.auth.uid;
+      }
+    }
+  }
+}

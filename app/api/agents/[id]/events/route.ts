@@ -1,15 +1,12 @@
-import { NextRequest } from "next/server";
+import { authed } from "@/lib/auth/context";
 import { getAgent, subscribeAgent } from "@/lib/agents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const GET = authed<{ id: string }>(async (_req, user, { params }) => {
   const { id } = await params;
-  const agent = getAgent(id);
+  const agent = getAgent(id, user.uid);
   if (!agent) {
     return Response.json({ error: "not found" }, { status: 404 });
   }
@@ -81,4 +78,4 @@ export async function GET(
       "x-accel-buffering": "no",
     },
   });
-}
+});

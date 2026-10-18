@@ -1,7 +1,7 @@
 import "server-only";
 
 import { nanoid } from "nanoid";
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
 
 
 export type SearchProviderKind =
@@ -79,7 +79,7 @@ function normKind(k: unknown): SearchProviderKind {
 }
 
 export async function listSearchProviders(): Promise<SearchProviderDef[]> {
-  const raw = await readJSON<unknown>(FILE, []);
+  const raw = await readScoped<unknown>(FILE, []);
   if (!Array.isArray(raw)) return [];
   return raw.filter(isDef).map((p) => ({ ...p, kind: normKind(p.kind) }));
 }
@@ -123,13 +123,13 @@ export async function saveSearchProvider(
   const idx = all.findIndex((p) => p.id === clean.id);
   if (idx >= 0) all[idx] = clean;
   else all.unshift(clean);
-  await writeJSON(FILE, all);
+  await writeScoped(FILE, all);
   return all;
 }
 
 export async function deleteSearchProvider(id: string): Promise<void> {
   const all = await listSearchProviders();
-  await writeJSON(
+  await writeScoped(
     FILE,
     all.filter((p) => p.id !== id),
   );

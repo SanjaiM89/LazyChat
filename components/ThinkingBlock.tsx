@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp, Brain } from "lucide-react";
+import { ChevronDown, Brain } from "lucide-react";
 import { cn } from "@/components/ui";
 
 
@@ -33,9 +33,9 @@ export function ThinkingBlock({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "group flex items-center gap-2 text-[12.5px] transition-colors",
+          "group inline-flex items-center gap-2 rounded-full border border-border bg-bg-surface-100 py-1 pl-2 pr-2.5 text-[12px] transition-colors",
           text
-            ? "text-fg-muted hover:text-fg-secondary"
+            ? "text-fg-muted hover:border-border-strong hover:text-fg-secondary"
             : "text-fg-muted cursor-default",
         )}
         disabled={!text}
@@ -45,8 +45,8 @@ export function ThinkingBlock({
           size={13}
           className={cn("shrink-0", streaming ? "text-accent animate-pulse" : "text-accent/70")}
         />
-        <span className="flex items-center gap-1 font-medium">
-          Thinking
+        <span className={cn("flex items-center gap-1 font-medium", streaming && "text-shine")}>
+          {streaming ? "Thinking" : "Thought"}
           {streaming && (
             <>
               <span className="thinking-dot" />
@@ -60,13 +60,13 @@ export function ThinkingBlock({
             {Math.max(1, Math.round(elapsed))}s
           </span>
         )}
-        {text && !streaming && (open ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+        {text && !streaming && <ChevronDown size={12} className={cn("transition-transform duration-300", open && "rotate-180")} />}
       </button>
 
-      {streaming && <div className="thinking-bar mt-1 w-32" />}
+      {streaming && <div className="thinking-bar ml-3 mt-1.5 w-32" />}
 
       {showText && (
-        <div className="mt-1.5 rounded-lg border border-border bg-bg-subtle/60 px-3 py-2 text-[13px] leading-relaxed text-fg-secondary">
+        <div className="mt-2 rounded-lg border border-border border-l-2 border-l-brand/60 bg-bg-surface-100 px-3.5 py-2.5 text-[13px] leading-relaxed text-fg-secondary animate-fade-in-up">
           <p className="whitespace-pre-wrap">{text}</p>
         </div>
       )}

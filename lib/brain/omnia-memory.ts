@@ -6,13 +6,17 @@
  * capability the app previously lacked. All calls are fire-and-forget safe:
  * a down or slow graph must never break a chat.
  */
+import { currentUser } from "@/lib/auth/context";
 import { askAgent } from "@/lib/brain/agent";
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient } from "@/lib/brain/graph";
 import { factId, normalizeFact } from "@/lib/brain/memory/consolidation";
 import { ensureSession, recallMemories, recordTurn } from "@/lib/brain/memory/session";
 
-const OMNIA_USER = "omnia";
+/** Memory is per signed-in user; "omnia" is only the legacy single-user fallback. */
+function omniaUser(): string {
+  return currentUser()?.uid ?? "omnia";
+}
 
 function sessionFor(conversationId: string): string {
   return `omnia:${conversationId}`;
@@ -37,7 +41,7 @@ export async function recallForOmnia(question: string, limit = 4): Promise<strin
   try {
     const client = await brainClient();
     if (!client) return "";
-    const memories = await recallMemories(client, OMNIA_USER, question, limit);
+    const memories = await recallMemories(client, omniaUser(), question, limit);
     if (memories.length === 0) return "";
     const lines = memories.map((m) => `- [${m.kind}] ${m.summary.slice(0, 200)}`);
     return (
@@ -63,7 +67,7 @@ export async function recordOmniaTurn(
   try {
     const client = await brainClient();
     if (!client) return;
-    const sid = await ensureSession(client, OMNIA_USER, sessionFor(conversationId));
+    const sid = await ensureSession(client, omniaUser(), sessionFor(conversationId));
     await recordTurn(client, sid, role, text.slice(0, 4000));
   } catch (err) {
     console.warn(`[omnia-memory] record failed: ${(err as Error).message}`);
@@ -246,7 +250,7 @@ export async function writeSemanticFact(
 export async function captureOmniaMemory(
   conversationId: string,
   userText: string,
-  userId: string = OMNIA_USER,
+  userId: string = omniaUser(),
 ): Promise<void> {
   const text = (userText ?? "").trim();
   if (!conversationId) return;

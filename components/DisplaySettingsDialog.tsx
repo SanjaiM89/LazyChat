@@ -37,23 +37,23 @@ export function DisplaySettingsDialog() {
     >
       <div className="flex flex-col gap-5">
         <div>
-          <label className="mb-1.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-fg-muted">
+          <label className="eyebrow mb-1.5 flex items-center gap-1.5">
             <Type size={13} /> Font
           </label>
-          <div className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto rounded-xl border border-border bg-bg-subtle/40 p-1.5">
+          <div className="grid max-h-56 grid-cols-1 gap-0.5 overflow-y-auto rounded-lg border border-border bg-bg-surface-100 p-1">
             {DISPLAY_FONTS.map((f) => {
               const active = display.font === f.id;
               return (
                 <button
                   key={f.id}
                   onClick={() => setDisplay({ font: f.id })}
-                  className={`flex items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
+                  className={`relative flex items-center justify-between rounded-md border px-3 py-2 text-left transition-colors duration-200 ${
                     active
-                      ? "bg-accent-soft text-accent"
-                      : "text-fg-secondary hover:bg-bg-hover hover:text-fg"
+                      ? "border-brand/40 bg-accent-soft text-accent"
+                      : "border-transparent text-fg-secondary hover:bg-bg-hover hover:text-fg"
                   }`}
                 >
-                  <span className="text-[11px] font-medium uppercase tracking-wide opacity-70">
+                  <span className="font-mono text-[10.5px] uppercase tracking-wider opacity-80">
                     {f.name}
                   </span>
                   <span
@@ -70,10 +70,10 @@ export function DisplaySettingsDialog() {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-[12px] font-semibold uppercase tracking-wide text-fg-muted">
+            <label className="eyebrow">
               Font size
             </label>
-            <span className="rounded-md bg-bg-inset px-2 py-0.5 font-mono text-[12px] text-fg-secondary">
+            <span className="rounded-md border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[11.5px] text-fg-secondary tabular-nums">
               {display.fontSize}px
             </span>
           </div>
@@ -86,13 +86,13 @@ export function DisplaySettingsDialog() {
               step={1}
               value={display.fontSize}
               onChange={(e) => setDisplay({ fontSize: Number(e.target.value) })}
-              className="flex-1 accent-[var(--accent)]"
+              className="flex-1 accent-[var(--brand)]"
               aria-label="Font size"
             />
             <span className="text-[16px] text-fg-muted">A</span>
           </div>
           <p
-            className="mt-2 rounded-lg border border-border bg-bg-subtle/50 px-3 py-2 text-fg-secondary"
+            className="mt-2 rounded-lg border border-border bg-bg-surface-100 px-3 py-2 text-fg-secondary"
             style={{
               fontFamily: fontStack(display.font),
               fontSize: display.fontSize,
@@ -104,10 +104,10 @@ export function DisplaySettingsDialog() {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-[12px] font-semibold uppercase tracking-wide text-fg-muted">
+            <label className="eyebrow">
               Text width
             </label>
-            <span className="rounded-md bg-bg-inset px-2 py-0.5 font-mono text-[12px] text-fg-secondary">
+            <span className="rounded-md border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[11.5px] text-fg-secondary tabular-nums">
               {display.contentWidth}px
             </span>
           </div>
@@ -118,12 +118,12 @@ export function DisplaySettingsDialog() {
             step={10}
             value={display.contentWidth}
             onChange={(e) => setDisplay({ contentWidth: Number(e.target.value) })}
-            className="w-full accent-[var(--accent)]"
+            className="w-full accent-[var(--brand)]"
             aria-label="Text width"
           />
           <div className="mt-2 flex justify-center">
             <div
-              className="rounded-lg border border-dashed border-border-strong bg-bg-subtle/50 py-2 text-center text-[11px] text-fg-muted transition-all"
+              className="rounded-md border border-dashed border-brand/40 bg-accent-soft py-2 text-center font-mono text-[11px] text-accent transition-all duration-300"
               style={{ width: `${(display.contentWidth / MAX_WIDTH) * 100}%` }}
             >
               {display.contentWidth}px wide

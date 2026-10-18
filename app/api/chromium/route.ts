@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import {
   chromiumClick,
@@ -24,7 +25,7 @@ function bad(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
 
-export async function GET(req: NextRequest) {
+async function GET_impl(req: NextRequest) {
   const q = req.nextUrl.searchParams;
   try {
     if (q.get("timeline") === "1") {
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   let body: any = {};
   try {
     body = await req.json();
@@ -105,7 +106,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE() {
+async function DELETE_impl() {
   await clearTimeline();
   return Response.json({ ok: true });
 }
+
+export const GET = scoped(GET_impl);
+export const POST = scoped(POST_impl);
+export const DELETE = scoped(DELETE_impl);

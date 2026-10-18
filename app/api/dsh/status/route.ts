@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
 
 import { FalkorClient } from "@/lib/brain/graph";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Sandbox/resource status: dsh CLI, FalkorDB, workspace roots. */
-export async function GET() {
+export const GET = authed(async (_req, user) => {
   const bin = path.resolve(process.cwd(), "harness/deepseek-harness/apps/cli/lib/bin.js");
   const dshBuilt = fs.existsSync(bin);
   let dshVersion: string | null = null;
@@ -32,8 +33,8 @@ export async function GET() {
     falkordb = { reachable: false, error: (err as Error).message };
   }
   return NextResponse.json({
-    dsh: { built: dshBuilt, version: dshVersion, bin: dshBuilt ? bin : null },
+    dsh: { built: dshBuilt, version: dshVersion, bin: dshBuilt && user.isSuper ? bin : null },
     falkordb,
     node: process.version,
   });
-}
+});

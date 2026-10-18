@@ -65,7 +65,7 @@ export function ComposerStats({ chat }: { chat: ChatController }) {
 
   return (
     <div className="mx-auto w-full">
-      <div className="flex items-center justify-between gap-2 px-1 pt-1.5 text-[11px] text-fg-muted">
+      <div className="flex items-center justify-between gap-2 px-1 pt-1.5 font-mono text-[10.5px] text-fg-muted [font-variant-numeric:tabular-nums]">
         <div className="flex min-w-0 items-center gap-3">
           <Tooltip text={usage ? `Last run decode speed` : "Speed appears after the first reply"}>
             <span className="inline-flex items-center gap-1">
@@ -82,6 +82,15 @@ export function ComposerStats({ chat }: { chat: ChatController }) {
           <Tooltip text={`Last request used ${formatTokens(usage?.lastInput ?? 0)} of ${formatTokens(window)} context tokens`}>
             <span className="inline-flex items-center gap-1">
               <Brain size={12} className="text-accent" />
+              <span className="relative inline-block h-1 w-10 overflow-hidden rounded-full bg-bg-surface-300">
+                <span
+                  className={cn(
+                    "absolute inset-y-0 left-0 rounded-full transition-[width] duration-700 [transition-timing-function:var(--ease-out)]",
+                    pressure > 0.8 ? "bg-danger" : pressure > 0.6 ? "bg-warning" : "bg-brand",
+                  )}
+                  style={{ width: `${Math.min(100, Math.max(2, pressure * 100))}%` }}
+                />
+              </span>
               {(pressure * 100).toFixed(0)}% ctx
             </span>
           </Tooltip>
@@ -96,10 +105,10 @@ export function ComposerStats({ chat }: { chat: ChatController }) {
             <button
               onClick={() => setSettings({ autoCompact: settings.autoCompact === false })}
               className={cn(
-                "rounded-md px-1.5 py-0.5 text-[10.5px] font-medium transition-colors",
+                "rounded-full border px-1.5 py-px font-mono text-[10px] uppercase tracking-wider transition-colors",
                 settings.autoCompact !== false
-                  ? "bg-accent-soft text-accent"
-                  : "text-fg-muted hover:bg-bg-hover",
+                  ? "border-brand/30 bg-accent-soft text-accent"
+                  : "border-border text-fg-muted hover:bg-bg-hover",
               )}
             >
               Auto
@@ -109,7 +118,7 @@ export function ComposerStats({ chat }: { chat: ChatController }) {
             <button
               onClick={() => void compact(true)}
               disabled={!activeConversationId || compacting}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-fg-secondary hover:bg-bg-hover disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-full border border-border px-1.5 py-px font-mono text-[10px] uppercase tracking-wider text-fg-secondary transition-colors hover:border-border-strong hover:bg-bg-hover disabled:opacity-40"
             >
               <Minimize2 size={12} />
               {compacting ? "Compacting…" : "Compact"}

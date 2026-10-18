@@ -3,14 +3,11 @@
 import * as React from "react";
 import { useEffect, useRef, useState } from "react";
 import {
-  Sparkles,
-  FileSearch,
-  FileSpreadsheet,
-  Code2,
-  BrainCircuit,
   MessagesSquare,
   Copy,
   LoaderCircle,
+  ArrowUpRight,
+  RotateCw,
 } from "lucide-react";
 import type { ChatController } from "@/lib/use-chat";
 import { MessageItem } from "@/components/MessageItem";
@@ -18,29 +15,37 @@ import { SubchatOpenerButton } from "@/components/SubchatPanel";
 import { useAppStore, activeRunFor } from "@/lib/app-store";
 import { RunningStatus } from "@/components/dsh/RunningStatus";
 import { DEFAULT_DISPLAY } from "@/lib/display";
+import { SpotlightCard } from "@/components/ui";
+import { OmniaMark } from "@/components/brand/OmniaLogo";
+import { BrandIcon } from "@/components/brand/BrandIcon";
+import { FileIcon } from "@/components/brand/FileIcon";
 
 
 const SUGGESTIONS = [
   {
-    icon: <FileSearch size={17} />,
+    icon: <BrandIcon name="chrome" size={18} />,
+    tag: "Research",
     title: "Research a topic",
     prompt:
       "Run deep research on a topic of your choice with the runAgentTask sandbox agent — enable its research mode (research: true, live Chromium browser). Have the agent search the web, actually open and read at least 3 real pages, cross-check facts across sources, then save a detailed briefing with a Sources section to /workspace/out/briefing.md. Then give me a concise summary of the key findings and link the briefing file.",
   },
   {
-    icon: <FileSpreadsheet size={17} />,
+    icon: <FileIcon type="xlsx" size={20} />,
+    tag: "Documents",
     title: "Generate a spreadsheet",
     prompt:
       "Create an XLSX spreadsheet in a Docker sandbox with a sample sales dataset (20 rows, 5 columns: region, product, units, price, revenue) plus a summary sheet with totals.",
   },
   {
-    icon: <Code2 size={17} />,
+    icon: <BrandIcon name="html" size={18} />,
+    tag: "Artifacts",
     title: "Build something",
     prompt:
       "Create a code artifact: a small interactive HTML page that visualizes the Fibonacci sequence with an animated bar chart.",
   },
   {
-    icon: <BrainCircuit size={17} />,
+    icon: <BrandIcon name="docker" size={18} />,
+    tag: "Agents",
     title: "Plan with an agent",
     prompt:
       "Deploy an agent in a Docker sandbox to write a markdown project plan for launching a SaaS product, and save the plan to /workspace/out as a .md file.",
@@ -102,21 +107,27 @@ export function ChatView({ chat }: { chat: ChatController }) {
   if (messages.length === 0) {
     if (chat.loadingConversation) {
       return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-fg-muted" role="status" aria-live="polite">
-          <LoaderCircle size={22} className="animate-spin text-accent" />
-          <p className="text-[13px]">Loading conversation…</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 text-fg-muted animate-fade-in" role="status" aria-live="polite">
+          <div className="relative">
+            <OmniaMark size={36} animated />
+            <LoaderCircle size={56} strokeWidth={1} className="absolute -inset-[10px] animate-spin text-brand/50" />
+          </div>
+          <p className="text-shine text-[13px]">Loading conversation…</p>
         </div>
       );
     }
 
     if (chat.conversationLoadError) {
       return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <p className="text-[13px] text-danger">{chat.conversationLoadError}</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center animate-fade-in-up">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger">
+            {chat.conversationLoadError}
+          </div>
           <button
             onClick={chat.reloadConversation}
-            className="rounded-lg border border-border px-3 py-1.5 text-[12px] text-fg-secondary hover:bg-bg-hover"
+            className="group inline-flex items-center gap-1.5 rounded-md border border-border-strong bg-bg-control px-3 py-1.5 text-[12px] text-fg-secondary transition-colors hover:bg-bg-surface-300 hover:text-fg"
           >
+            <RotateCw size={12} className="transition-transform duration-500 group-hover:rotate-180" />
             Try again
           </button>
         </div>
@@ -125,34 +136,67 @@ export function ChatView({ chat }: { chat: ChatController }) {
 
     return (
       <div className="relative flex flex-1 flex-col items-center justify-center overflow-y-auto px-6 pb-10">
-        <SubchatOpenerButton />
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-soft to-accent/20 text-accent mb-5 animate-fade-in-up">
-          <Sparkles size={22} />
+        <div className="hero-backdrop" aria-hidden>
+          <div className="hero-grid" />
+          <div className="hero-aurora" />
+          <span className="hero-beam" style={{ top: "18%", animationDelay: "0.5s" }} />
+          <span className="hero-beam" style={{ top: "54%", animationDelay: "3.8s", animationDuration: "9s" }} />
+          <span className="hero-beam-v" style={{ left: "22%", animationDelay: "1.6s" }} />
+          <span className="hero-beam-v" style={{ left: "76%", animationDelay: "5.2s", animationDuration: "11s" }} />
         </div>
-        <h1 className="text-[26px] font-semibold text-fg tracking-tight text-center animate-fade-in-up">
-          How can I help you today?
-        </h1>
-        <p className="mt-2 max-w-md text-center text-[13.5px] leading-relaxed text-fg-muted animate-fade-in-up">
-          Chat with multiple providers, search the web, create artifacts, and
-          deploy autonomous agents in Docker sandboxes — or ask the Company
-          Brain about the engineering org via the Brain tab.
-        </p>
-        <div className="mt-8 grid w-full max-w-3xl gap-2.5 sm:grid-cols-2 animate-fade-in-up">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s.title}
-              onClick={() => chat.send(s.prompt)}
-              className="group flex flex-col gap-2 rounded-2xl border border-border bg-bg-elevated p-4 text-left transition-all hover:border-accent/40 hover:bg-bg-hover hover:shadow-soft"
-            >
-              <span className="flex items-center gap-2 text-[13px] font-semibold text-fg-secondary group-hover:text-accent transition-colors">
-                <span className="text-accent">{s.icon}</span>
-                {s.title}
+        <SubchatOpenerButton />
+        <div className="relative z-10 flex w-full flex-col items-center stagger [--stagger:80ms]">
+          <OmniaMark size={56} animated className="mb-6" />
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-bg-surface-100/80 px-3 py-1 text-[11.5px] text-fg-secondary backdrop-blur">
+            <span className="live-dot !h-1.5 !w-1.5" />
+            Multi-provider · Agents · Artifacts · Company Brain
+          </div>
+          <h1 className="text-center text-[32px] font-medium leading-tight tracking-[-0.02em] text-fg sm:text-[40px]">
+            Build anything with <span className="text-brand-gradient">Omnia</span>
+          </h1>
+          <p className="mt-3 max-w-lg text-center text-[14px] leading-relaxed text-fg-muted">
+            Chat with any model, search the web, create artifacts and deploy
+            autonomous agents in Docker sandboxes — or ask the Company Brain
+            about your engineering org.
+          </p>
+          <div className="mt-6 flex items-center gap-4 text-fg-muted">
+            {(["claude", "openai", "gemini", "deepseek", "qwen", "mistral", "ollama"] as const).map((k, i) => (
+              <span
+                key={k}
+                className="opacity-60 grayscale transition-all duration-300 hover:scale-110 hover:opacity-100 hover:grayscale-0"
+                style={{ animation: `fade-in-up 0.5s var(--ease-out) ${0.45 + i * 0.05}s backwards` }}
+              >
+                <BrandIcon name={k} size={18} />
               </span>
-              <span className="text-[12.5px] leading-relaxed text-fg-muted line-clamp-2">
-                {s.prompt}
-              </span>
-            </button>
-          ))}
+            ))}
+          </div>
+          <div className="mt-9 grid w-full max-w-3xl gap-3 sm:grid-cols-2 stagger [--stagger:70ms]">
+            {SUGGESTIONS.map((s) => (
+              <SpotlightCard
+                as="button"
+                key={s.title}
+                onClick={() => chat.send(s.prompt)}
+                className="lift group flex flex-col gap-2.5 rounded-lg border border-border bg-bg-surface-100 p-4 text-left hover:border-border-strong"
+              >
+                <span className="flex w-full items-center gap-2.5">
+                  <span className="brand-tile brand-tile-glow flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg-surface-200">
+                    {s.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="eyebrow block !text-[10px]">{s.tag}</span>
+                    <span className="block text-[13.5px] font-medium text-fg">{s.title}</span>
+                  </span>
+                  <ArrowUpRight
+                    size={15}
+                    className="text-fg-faint transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent"
+                  />
+                </span>
+                <span className="line-clamp-2 text-[12.5px] leading-relaxed text-fg-muted">
+                  {s.prompt}
+                </span>
+              </SpotlightCard>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -190,7 +234,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
       <SubchatOpenerButton />
       {menu && (
         <div
-          className="fixed z-[90] min-w-[200px] rounded-xl border border-border bg-bg-elevated p-1.5 shadow-pop animate-fade-in"
+          className="fixed z-[90] min-w-[200px] rounded-lg border border-border-strong bg-bg-overlay p-1 shadow-pop animate-scale-in"
           style={{ left: menu.x, top: menu.y }}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -198,7 +242,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
             onClick={openInSubchat}
             disabled={subchatOpen}
             title={subchatOpen ? "Only one subchat can be open at a time" : "Discuss this text in the side subchat"}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-fg transition-colors hover:bg-bg-hover disabled:opacity-45 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] text-fg transition-colors hover:bg-bg-hover disabled:opacity-45 disabled:pointer-events-none"
           >
             <MessagesSquare size={14} className="text-accent" />
             {subchatOpen ? "Subchat already open" : "Open in subchat"}
@@ -208,7 +252,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
               if (menu) void navigator.clipboard.writeText(menu.text).catch(() => {});
               setMenu(null);
             }}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] text-fg transition-colors hover:bg-bg-hover"
+            className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] text-fg transition-colors hover:bg-bg-hover"
           >
             <Copy size={14} className="text-fg-muted" />
             Copy text
@@ -228,7 +272,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
           />
         ))}
         {chat.status === "error" && chat.error && (
-          <div className="mx-auto mt-4 rounded-xl border border-danger/30 bg-danger-soft/60 px-4 py-3 text-[13px] text-danger" style={{ maxWidth: contentWidth }}>
+          <div className="mx-auto mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger animate-fade-in-up" style={{ maxWidth: contentWidth }}>
             <span className="font-medium">Something went wrong:</span>{" "}
             {chat.error.message || "Unknown error"}
             <button

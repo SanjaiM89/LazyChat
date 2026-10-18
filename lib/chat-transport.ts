@@ -1,5 +1,6 @@
 import { DefaultChatTransport, type ChatTransport, type UIMessage } from "ai";
 import { markInjected } from "@/lib/subchat-context";
+import { parseEventsUrl, resilientSse } from "@/lib/resilient-sse";
 
 
 export interface AttachTarget {
@@ -26,7 +27,16 @@ export class BackgroundChatTransport extends DefaultChatTransport<UIMessage> {
         const res = await fetch(input, init);
         const runId = res.headers.get("x-chat-run-id");
         if (runId && onRunStarted) onRunStarted(runId);
-        return res;
+        // Chat streams reconnect from the last SSE event id on any drop or stall (see lib/resilient-sse.ts).
+        const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        const events = parseEventsUrl(url);
+        const isSse = res.ok && (res.headers.get("content-type") ?? "").includes("text/event-stream");
+        if (!isSse || !res.body) return res;
+        return resilientSse(res, {
+          runId: runId ?? events?.runId ?? null,
+          cursor: events?.cursor ?? 0,
+          signal: init?.signal,
+        });
       },
       prepareReconnectToStreamRequest: () => {
         const target = opts.getAttachTarget();

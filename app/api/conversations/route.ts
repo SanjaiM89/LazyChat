@@ -1,19 +1,19 @@
-import { NextRequest } from "next/server";
 import {
   listConversations,
   saveConversation,
   clearConversations,
   type StoredConversation,
 } from "@/lib/store";
+import { authed } from "@/lib/auth/context";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const conversations = await listConversations();
-  return Response.json(conversations.map(({ messages, ...meta }) => meta));
-}
+export const GET = authed(async (_req, user) => {
+  const conversations = await listConversations(user.uid);
+  return Response.json(conversations);
+});
 
-export async function POST(req: NextRequest) {
+export const POST = authed(async (req, user) => {
   const body = await req.json();
   if (!body.id || !body.messages) {
     return Response.json({ error: "id and messages required" }, { status: 400 });
@@ -31,11 +31,11 @@ export async function POST(req: NextRequest) {
     model: body.model || "",
     messages: body.messages,
   };
-  await saveConversation(conv);
+  await saveConversation(conv, { uid: user.uid, orgId: user.orgId });
   return Response.json({ ok: true });
-}
+});
 
-export async function DELETE() {
-  await clearConversations();
+export const DELETE = authed(async (_req, user) => {
+  await clearConversations(user.uid);
   return Response.json({ ok: true });
-}
+});

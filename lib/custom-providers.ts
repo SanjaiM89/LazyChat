@@ -10,7 +10,7 @@ import type {
   ProviderProtocol,
   PublicCustomProvider,
 } from "@/lib/types";
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
 
 
@@ -32,7 +32,7 @@ function isDef(x: unknown): x is CustomProviderDef {
 }
 
 export async function listCustomProviders(): Promise<CustomProviderDef[]> {
-  const raw = await readJSON<unknown>(FILE, []);
+  const raw = await readScoped<unknown>(FILE, []);
   if (!Array.isArray(raw)) return [];
   return raw
     .filter(isDef)
@@ -63,13 +63,13 @@ export async function saveCustomProvider(
   const idx = all.findIndex((p) => p.id === clean.id);
   if (idx >= 0) all[idx] = clean;
   else all.unshift(clean);
-  await writeJSON(FILE, all);
+  await writeScoped(FILE, all);
   return all;
 }
 
 export async function deleteCustomProvider(id: string): Promise<void> {
   const all = await listCustomProviders();
-  await writeJSON(FILE, all.filter((p) => p.id !== id));
+  await writeScoped(FILE, all.filter((p) => p.id !== id));
 }
 
 export function uniqueProviderId(desired?: string): string {

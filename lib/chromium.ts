@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
 import { createSandbox, listSandboxes, sandboxExec } from "@/lib/sandbox";
 
 
@@ -30,7 +30,7 @@ interface TimelineDoc {
 }
 
 async function readTimeline(): Promise<TimelineDoc> {
-  const doc = await readJSON<TimelineDoc>(TIMELINE_FILE, {
+  const doc = await readScoped<TimelineDoc>(TIMELINE_FILE, {
     control: "model",
     controlAt: 0,
     steps: [],
@@ -46,7 +46,7 @@ async function readTimeline(): Promise<TimelineDoc> {
 }
 
 async function writeTimeline(doc: TimelineDoc): Promise<void> {
-  await writeJSON(TIMELINE_FILE, doc);
+  await writeScoped(TIMELINE_FILE, doc);
 }
 
 export async function getControl(): Promise<ChromiumControl> {
@@ -120,7 +120,7 @@ async function daemonReady(): Promise<boolean> {
 
 async function findSessionContainer(): Promise<string | null> {
   try {
-    const saved = await readJSON<{ sandboxId?: string }>(SESSION_FILE, {});
+    const saved = await readScoped<{ sandboxId?: string }>(SESSION_FILE, {});
     if (saved?.sandboxId) {
       const all = await listSandboxes().catch(() => []);
       if (Array.isArray(all) && all.some((s: any) => s.id === saved.sandboxId)) {
@@ -141,7 +141,7 @@ export async function ensureChromium(): Promise<{ sandboxId: string; fresh: bool
   if (!sandboxId) {
     const created = await createSandbox({ label: "Chromium" });
     sandboxId = String(created.id);
-    await writeJSON(SESSION_FILE, { sandboxId });
+    await writeScoped(SESSION_FILE, { sandboxId });
   }
   const target: string = sandboxId;
   await sandboxExec(

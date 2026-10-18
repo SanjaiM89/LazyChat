@@ -6,16 +6,17 @@
  * continues with the answer, and the transcript renders the answered card.
  */
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
 import { answerUser, getQuestion, type AskAnswer } from "@/lib/ask-user";
 
-export async function GET(request: Request) {
+export const GET = authed(async (request: Request) => {
   const id = new URL(request.url).searchParams.get("toolCallId") ?? "";
   const record = getQuestion(id);
   if (!record) return NextResponse.json({ status: "unknown" }, { status: 404 });
   return NextResponse.json(record);
-}
+});
 
-export async function POST(request: Request) {
+export const POST = authed(async (request: Request) => {
   let body: { toolCallId?: string; answers?: AskAnswer[] };
   try {
     body = await request.json();
@@ -57,4 +58,4 @@ export async function POST(request: Request) {
     );
   }
   return NextResponse.json({ ok: true, status: record.status });
-}
+});

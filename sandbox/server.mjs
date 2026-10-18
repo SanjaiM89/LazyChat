@@ -364,7 +364,14 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
+const SECRET = process.env.SANDBOX_SECRET || "";
+const HOST = process.env.SANDBOX_HOST || "127.0.0.1";
+
 const server = http.createServer(async (req, res) => {
+  // Only the Next app (which has authenticated the user) may drive sandboxes.
+  if (SECRET && req.headers["x-sandbox-secret"] !== SECRET) {
+    return json(res, 401, { error: "unauthorized" });
+  }
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const parts = url.pathname.split("/").filter(Boolean);
   const method = req.method;
@@ -548,8 +555,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`[sandbox] listening on http://0.0.0.0:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`[sandbox] listening on http://${HOST}:${PORT}`);
   const d = dockerOk();
   console.log(d.ok ? `[sandbox] docker ready (${d.version})` : `[sandbox] docker NOT available: ${d.error}`);
 });

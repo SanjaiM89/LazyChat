@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { sessionAllowed, sessionOwned } from "@/lib/brain/access";
 
 import { askAgent, knownServices, knownTopics } from "@/lib/brain/agent";
 import { ensureReady } from "@/lib/brain/bootstrap";
@@ -16,7 +18,7 @@ type ChatBody = {
 };
 
 /** Answer a question from the graph, returning the answer and its trace. */
-export async function POST(request: Request) {
+export const POST = authed(async (request, user) => {
   await ensureReady();
   let body: ChatBody;
   try {
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
   if (!message) {
     return NextResponse.json({ detail: "message is required" }, { status: 400 });
   }
-  const userId = body.user_id || "demo";
+  const userId = user.uid; // never trust a client-supplied user id
   const started = Date.now();
 
   let client: FalkorClient;
@@ -39,6 +41,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (body.session_id && !(await sessionAllowed(client, body.session_id, userId))) {
+      return NextResponse.json({ detail: "not found" }, { status: 404 });
+    }
     const result = await askAgent(message, {
       sessionId: body.session_id ?? null,
       userId,
@@ -71,4 +76,4 @@ export async function POST(request: Request) {
     console.error(`[brain] chat failed: ${(err as Error).stack ?? err}`);
     return NextResponse.json({ detail: "internal server error" }, { status: 500 });
   }
-}
+});

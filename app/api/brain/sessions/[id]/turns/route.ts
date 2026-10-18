@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { sessionOwned } from "@/lib/brain/access";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
@@ -8,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Full conversation history for a session. */
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = authed<{ id: string }>(async (request, user, { params }) => {
   await ensureReady();
   const { id: sessionId } = await params;
   const sid = decodeURIComponent(sessionId);
@@ -16,6 +18,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const limit = Math.max(1, Math.min(Number.isFinite(rawLimit) ? rawLimit : 200, 1000));
   try {
     const client = await FalkorClient.get();
+    if (!(await sessionOwned(client, sid, user.uid))) return NextResponse.json({ detail: "not found" }, { status: 404 });
     const turns = await getTurns(client, sid, limit);
     if (turns.length === 0) {
       return NextResponse.json({ detail: `unknown session '${sid}'` }, { status: 404 });
@@ -27,4 +30,4 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     throw err;
   }
-}
+});

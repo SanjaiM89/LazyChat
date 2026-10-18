@@ -6,7 +6,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Code2 } from "lucide-react";
+import { BrandIcon, languageIconKey } from "@/components/brand/BrandIcon";
 
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
@@ -21,15 +22,21 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   };
   return (
     <div className="group relative">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-black/40 border-b border-white/10 rounded-t-lg">
-        <span className="text-[11px] font-medium text-white/60 tracking-wide uppercase">
+      <div className="flex items-center justify-between rounded-t-lg border-b border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
+        <span className="flex items-center gap-2 font-mono text-[11px] tracking-wide text-white/55">
+          <span className="flex gap-1" aria-hidden>
+            <span className="h-2 w-2 rounded-full bg-white/10 transition-colors group-hover:bg-[#ff5f57]" />
+            <span className="h-2 w-2 rounded-full bg-white/10 transition-colors delay-75 group-hover:bg-[#febc2e]" />
+            <span className="h-2 w-2 rounded-full bg-white/10 transition-colors delay-150 group-hover:bg-[#28c840]" />
+          </span>
+          <BrandIcon name={languageIconKey(language)} size={12} fallback={<Code2 size={12} />} />
           {language || "code"}
         </span>
         <button
           onClick={copy}
-          className="flex items-center gap-1 text-[11px] text-white/50 hover:text-white transition-colors"
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[11px] text-white/50 transition-all hover:bg-white/10 hover:text-white"
         >
-          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? <Check size={12} className="text-[#3ecf8e] animate-scale-in" /> : <Copy size={12} />}
           {copied ? "copied" : "copy"}
         </button>
       </div>
@@ -80,8 +87,8 @@ function CitationPill({
       title={`${citation.title}\n${citation.url}${citation.description ? `\n\n${citation.description.slice(0, 220)}` : ""}\n\nClick to see where this was referenced.`}
       className={`mx-0.5 inline-flex h-[18px] min-w-[20px] items-center justify-center rounded-md border px-1 align-super text-[10.5px] font-semibold leading-none transition-colors ${
         active
-          ? "border-accent bg-accent text-white"
-          : "border-accent/40 bg-accent-soft text-accent hover:bg-accent hover:text-white"
+          ? "border-brand bg-brand text-[#0b2e1e]"
+          : "border-brand/40 bg-accent-soft text-accent hover:bg-brand hover:text-[#0b2e1e]"
       }`}
     >
       {n}

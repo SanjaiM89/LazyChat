@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import {
   deleteSearchProvider,
@@ -13,11 +14,11 @@ function bad(message: string) {
   return Response.json({ error: message }, { status: 400 });
 }
 
-export async function GET() {
+async function GET_impl() {
   return Response.json(await listPublicSearchProviders());
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   let body: any;
   try {
     body = await req.json();
@@ -51,14 +52,14 @@ export async function POST(req: NextRequest) {
   });
 }
 
-export async function DELETE(req: NextRequest) {
+async function DELETE_impl(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id") || "";
   if (!id) return bad("id required.");
   await deleteSearchProvider(id);
   return Response.json({ providers: await listPublicSearchProviders() });
 }
 
-export async function PATCH(req: NextRequest) {
+async function PATCH_impl(req: NextRequest) {
   let body: any;
   try {
     body = await req.json();
@@ -77,3 +78,8 @@ export async function PATCH(req: NextRequest) {
   const { toPublicSearchProvider } = await import("@/lib/search-providers");
   return Response.json({ providers: all.map(toPublicSearchProvider) });
 }
+
+export const GET = scoped(GET_impl, { adminWrites: true });
+export const POST = scoped(POST_impl, { adminWrites: true });
+export const DELETE = scoped(DELETE_impl, { adminWrites: true });
+export const PATCH = scoped(PATCH_impl, { adminWrites: true });

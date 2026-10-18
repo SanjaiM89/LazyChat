@@ -1,8 +1,9 @@
 import { hasProviderKey } from "@/lib/providers";
+import { authed } from "@/lib/auth/context";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export const GET = authed(async (req: Request) => {
   const url = new URL(req.url);
   const provider = (url.searchParams.get("provider") || "anthropic") as any;
   try {
@@ -10,4 +11,4 @@ export async function GET(req: Request) {
   } catch {
     return Response.json({ ok: false });
   }
-}
+});

@@ -3,7 +3,18 @@ import net from "node:net";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
+
+// Pick up SANDBOX_SECRET etc. from .env.local the same way Next does.
+for (const f of [".env.local", ".env"]) {
+  const p = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", f);
+  if (!fs.existsSync(p)) continue;
+  for (const line of fs.readFileSync(p, "utf8").split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  }
+}
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.SANDBOX_PORT || 8787);
@@ -25,7 +36,8 @@ if (await alreadyUp()) {
   process.exit(0);
 }
 
-const log = fs.openSync("/tmp/omnia-sandbox.log", "a");
+const logPath = path.join(os.tmpdir(), "omnia-sandbox.log");
+const log = fs.openSync(logPath, "a");
 const child = spawn(process.execPath, [path.join(ROOT, "sandbox", "server.mjs")], {
   cwd: ROOT,
   detached: true,
@@ -33,5 +45,5 @@ const child = spawn(process.execPath, [path.join(ROOT, "sandbox", "server.mjs")]
   env: { ...process.env },
 });
 child.unref();
-console.log(`[sandbox] started service (pid ${child.pid}) → log /tmp/omnia-sandbox.log`);
+console.log(`[sandbox] started service (pid ${child.pid}) → log ${logPath}`);
 setTimeout(() => process.exit(0), 400);
