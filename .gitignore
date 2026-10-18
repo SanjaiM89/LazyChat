@@ -57,3 +57,20 @@ __pycache__/
 
 # DeepSeek Harness (vendored checkout; see README — clone, not tracked)
 harness/
+
+# HyperFrames (vendored git repo; not tracked)
+hyperframes/
+
+# Build artifacts and caches
+.bun/
+.npm/
+.local/
+.commandcode/
+.hyperframes/
+.config/
+.npmrc
+
+# Compositions work/temp directories (keep source compositions only)
+compositions/work-*/
+compositions/.out.hf-transaction-*
+compositions/.hyperframes/
