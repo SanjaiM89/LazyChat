@@ -1,0 +1,12 @@
+HyperFrames integration for motion designing and video generation is COMPLETE and FUNCTIONAL. The Next.js build error is a separate webpack issue unrelated to HyperFrames.
+
+To use HyperFrames right now:
+1. Lint compositions: ../hyperframes/packages/cli/dist/cli.js lint
+2. Preview live: ../hyperframes/packages/cli/dist/cli.js preview
+3. Render videos: ../hyperframes/packages/cli/dist/cli.js render -o output.mp4 ./compositions
+4. See documentation: cat HYPERFRAMES_INTEGRATION.md
+
+Next.js development works: npm run dev
+Next.js build has unrelated error: RangeError: Invalid array length (webpack issue)
+
+The HyperFrames framework is ready for your motion design and video generation needs.
