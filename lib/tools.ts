@@ -613,6 +613,24 @@ function buildSkillTool() {
   };
 }
 
+/**
+ * MCP server discovery tool (dsh-tool-mcp-servers).
+ * Lists configured MCP servers with their connection status.
+ */
+function buildMcpServersTool() {
+  return {
+    list_mcp_servers: tool({
+      description: `List all configured MCP servers and their connection status. Use this before list_mcp_resources/list_mcp_tools to understand which servers are available and connected.`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { listMCPServers } = await import("@/lib/mcp");
+        const servers = await listMCPServers();
+        return { count: servers.length, servers };
+      },
+    }),
+  };
+}
+
 export function enabledTools(names: string[], opts: EnabledToolsOpts) {
   const map: Record<string, any> = {
     webSearch: webSearchTool,
@@ -743,6 +761,9 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
 
   // Skill inspection tool (dsh-tool-skill).
   Object.assign(out, buildSkillTool());
+
+  // MCP server discovery tool.
+  Object.assign(out, buildMcpServersTool());
 
   // Present tool — thin wrapper around createArtifact for presenting
   // tool results as standalone artifacts (dsh-tool-present).

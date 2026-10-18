@@ -24,6 +24,7 @@ import {
   signalTerminal,
   listTerminalSessions,
 } from "@/lib/dsh/terminal-sessions";
+import { listLspServers, attachLspServer, sendLspRequest, detachLspServer } from "@/lib/dsh/lsp";
 
 /** Max results before we spill the full list to a file. */
 const GLOB_MAX = 100;
@@ -891,6 +892,96 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
         }
 
         return { cwd, dependencies: result };
+      },
+    }),
+
+    ws_workspace_context: tool({
+      description: `Load comprehensive workspace context — all manifest files (package.json, Cargo.toml, requirements.txt, go.mod, Dockerfile, etc.) and project structure. Use this when entering a new workspace to understand the project layout.`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const cwd = cwdFor(workspaceId, root);
+        const manifests: Record<string, string> = {};
+
+        const manifestFiles = ["package.json", "Cargo.toml", "requirements.txt", "go.mod", "pyproject.toml", "Dockerfile", "docker-compose.yml", "setup.py", "Gemfile", "pom.xml", "build.gradle", "CMakeLists.txt"];
+        for (const file of manifestFiles) {
+          const p = path.join(cwd, file);
+          if (fs.existsSync(p)) {
+            manifests[file] = truncate(fs.readFileSync(p, "utf8"));
+          }
+        }
+
+        // Workspace structure (top 2 levels)
+        const structure: string[] = [];
+        const walk = (dir: string, depth: number, max: number): void => {
+          if (depth > max) return;
+          let entries: string[];
+          try {
+            entries = fs.readdirSync(dir).filter((e) => !e.startsWith(".") && !e.startsWith("node_modules"));
+          } catch {
+            return;
+          }
+          for (const e of entries) {
+            const full = path.join(dir, e);
+            const rel = path.relative(cwd, full);
+            structure.push(rel);
+            const st = fs.statSync(full);
+            if (st.isDirectory()) walk(full, depth + 1, max);
+          }
+        };
+        walk(cwd, 0, 2);
+
+        return {
+          cwd,
+          manifests,
+          structure: structure.slice(0, 100),
+          structure_count: structure.length,
+        };
+      },
+    }),
+
+    ws_lsp_list: tool({
+      description: `List all active Language Server Protocol sessions in the workspace.`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const servers = listLspServers();
+        return { count: servers.length, servers };
+      },
+    }),
+
+    ws_lsp_attach: tool({
+      description: `Start a language server for a specific language in the workspace. Supported: typescript, javascript, python, rust, go, json, yaml, bash, docker. Returns a server id for ws_lsp_request.`,
+      inputSchema: z.object({
+        language: z.string().describe("Language identifier (typescript, python, etc.)"),
+      }),
+      execute: async ({ language }) => {
+        const cwd = cwdFor(workspaceId, root);
+        const result = await attachLspServer(language, cwd);
+        return result;
+      },
+    }),
+
+    ws_lsp_request: tool({
+      description: `Send a JSON-RPC request to an active language server. Common methods: textDocument/hover, textDocument/definition, textDocument/references, textDocument/completion, workspace/symbols. Pass params as a JSON string.`,
+      inputSchema: z.object({
+        id: z.string().describe("Server id from ws_lsp_attach"),
+        method: z.string().describe("LSP method name (e.g. textDocument/hover)"),
+        params: z.string().optional().describe("JSON string of request params"),
+      }),
+      execute: async ({ id, method, params }) => {
+        const result = await sendLspRequest(id, method, params);
+        return { id, method, result: truncate(JSON.stringify(result, null, 2)) };
+      },
+    }),
+
+    ws_lsp_detach: tool({
+      description: `Detach and kill a language server session.`,
+      inputSchema: z.object({
+        id: z.string().describe("Server id from ws_lsp_attach"),
+      }),
+      execute: async ({ id }) => {
+        const ok = await detachLspServer(id);
+        if (!ok) return { error: `LSP server not found: ${id}` };
+        return { detached: id };
       },
     }),
   };
