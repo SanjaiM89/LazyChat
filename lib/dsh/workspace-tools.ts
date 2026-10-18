@@ -565,6 +565,54 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
         return { path: rel, workspace_root: root };
       },
     }),
+
+    run_code: tool({
+      description: `Execute a code snippet (Python or TypeScript) in the attached workspace. The code is written to a temp file and run via the shell. Returns stdout, stderr, and exit code. Use for quick scripts, data processing, testing algorithms — not long-running servers.`,
+      inputSchema: z.object({
+        code: z.string().describe("Source code to execute"),
+        language: z.enum(["python", "typescript", "javascript", "bash"]).describe("Language of the code"),
+        timeout_s: z.number().min(5).max(120).default(30).describe("Execution timeout"),
+      }),
+      execute: async ({ code, language, timeout_s }) => {
+        const ext: Record<string, string> = {
+          python: ".py",
+          typescript: ".ts",
+          javascript: ".js",
+          bash: ".sh",
+        };
+        const cwd = cwdFor(workspaceId, root);
+        const filename = `code-run-${Date.now()}${ext[language]}`;
+        const filepath = path.join(cwd, ".code-runs", filename);
+        fs.mkdirSync(path.dirname(filepath), { recursive: true });
+        fs.writeFileSync(filepath, code, "utf8");
+        let cmd: string;
+        switch (language) {
+          case "python": cmd = `python3 ${filename}`; break;
+          case "typescript": cmd = `npx tsx ${filename}`; break;
+          case "javascript": cmd = `node ${filename}`; break;
+          case "bash": cmd = `bash ${filename}`; break;
+          default: cmd = `cat ${filename}`;
+        }
+        cmd = `cd "${cwd}" && ${cmd}`;
+        const result = await new Promise<{ code: number; out: string }>((resolve) => {
+          execFile(
+            "bash", ["-lc", cmd],
+            { cwd, timeout: (timeout_s || 30) * 1000, maxBuffer: 4 * 1024 * 1024 },
+            (err, stdout, stderr) => {
+              const out = (stdout || "") + (stderr ? `\n[stderr]\n${stderr}` : "");
+              resolve({ code: err ? (typeof (err as { code?: number }).code === "number" ? (err as { code: number }).code : 1) : 0, out });
+            },
+          );
+        });
+        const rel = path.relative(root, filepath);
+        return {
+          language,
+          file: rel,
+          exit_code: result.code,
+          output: truncate(result.out),
+        };
+      },
+    }),
   };
 }
 

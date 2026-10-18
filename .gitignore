@@ -77,3 +77,6 @@ compositions/.hyperframes/
 
 # Qt desktop wrapper (superseded — Omnia is a pure Next.js web app)
 Desktop/
+
+# Code execution temp output
+.code-runs/

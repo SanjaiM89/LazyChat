@@ -150,6 +150,10 @@ const TOOL_ACTIVITY: Record<string, string> = {
   list_mcp_resources: "Listing resources…",
   list_mcp_resource_templates: "Listing resource templates…",
   read_mcp_resource: "Reading resource…",
+  skill: "Inspecting skills…",
+  session_event_search: "Searching conversation…",
+  session_trace: "Tracing conversation…",
+  run_code: "Running code…",
 };
 
 function isTerminal(status: ChatRunStatus): boolean {

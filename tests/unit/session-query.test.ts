@@ -88,4 +88,59 @@ describe("session query tools", () => {
     });
     assert.ok((result as { error: string }).error?.includes("not found"));
   });
+
+  it("session_event_search finds messages matching a pattern", async () => {
+    const convPath = path.join(DATA_DIR, "conversations.json");
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(convPath, JSON.stringify([{
+      id: CONV_ID + "-search",
+      title: "Search test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      provider: "openai",
+      model: "gpt-4",
+      messages: [
+        { role: "user", id: "m1", parts: [{ type: "text", text: "What is TypeScript?" }] },
+        { role: "assistant", id: "m2", parts: [{ type: "text", text: "TypeScript is a typed superset of JavaScript." }] },
+        { role: "user", id: "m3", parts: [{ type: "text", text: "What about Python?" }] },
+      ],
+    }]));
+
+    const result = await tools.session_event_search.execute({
+      conversation_id: CONV_ID + "-search",
+      pattern: "typescript",
+      limit: 10,
+    });
+    const typed = result as { count: number; results: Array<{ role: string; text: string }> };
+    assert.equal(typed.count, 2); // both messages mention TypeScript
+    assert.ok(typed.results[0].text.toLowerCase().includes("typescript"));
+  });
+
+  it("session_trace shows conversation flow", async () => {
+    // Write the same conversation for this test.
+    const convPath = path.join(DATA_DIR, "conversations.json");
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(convPath, JSON.stringify([{
+      id: CONV_ID + "-trace",
+      title: "Trace test",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      provider: "openai",
+      model: "gpt-4",
+      messages: [
+        { role: "user", id: "m1", parts: [{ type: "text", text: "Hello" }] },
+        { role: "assistant", id: "m2", parts: [{ type: "text", text: "Hi there" }] },
+        { role: "user", id: "m3", parts: [{ type: "text", text: "Bye" }] },
+      ],
+    }]));
+
+    const result = await tools.session_trace.execute({
+      conversation_id: CONV_ID + "-trace",
+      limit: 10,
+    });
+    const typed = result as { trace: Array<{ role: string; text: string }> };
+    assert.equal(typed.trace.length, 3);
+    assert.equal(typed.trace[0].role, "user");
+    assert.equal(typed.trace[2].role, "user");
+  });
 });

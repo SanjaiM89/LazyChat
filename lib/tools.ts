@@ -501,12 +501,112 @@ function buildSessionQueryTools(opts: EnabledToolsOpts) {
           role: m.role,
           text: messageText(m),
         }));
-        return {
+         return {
           id: conv.id,
           title: conv.title,
           count: items.length,
           messages: items,
         };
+      },
+    }),
+
+    session_event_search: tool({
+      description: `Search within a specific conversation for messages matching a regex pattern. Use session_search to find the conversation id first, then this tool to dig deeper. Returns matching messages with their role, text, and position.`,
+      inputSchema: z.object({
+        conversation_id: z.string().describe("Conversation id"),
+        pattern: z.string().describe("Regular expression to match within message text"),
+        limit: z.number().min(1).max(50).default(20).describe("Max matches to return"),
+      }),
+      execute: async ({ conversation_id, pattern, limit }) => {
+        const { getConversation } = await import("@/lib/store");
+        const { messageText } = await import("@/lib/brain/omnia-memory");
+        const conv = await getConversation(conversation_id);
+        if (!conv) return { error: "Conversation not found" };
+        const regex = new RegExp(pattern, "i");
+        const results: Array<{ role: string; text: string; index: number }> = [];
+        for (let i = 0; i < (conv.messages || []).length && results.length < limit; i++) {
+          const m: any = (conv.messages as any[])[i];
+          const text = messageText(m);
+          if (regex.test(text)) {
+            results.push({ role: m.role, text: text.slice(0, 300), index: i });
+          }
+        }
+        return { pattern, count: results.length, results };
+      },
+    }),
+
+    session_trace: tool({
+      description: `Trace the conversation flow of a conversation, showing the sequence of user/assistant/tool events. Returns a compact timeline of message roles and (truncated) text.`,
+      inputSchema: z.object({
+        conversation_id: z.string().describe("Conversation id"),
+        limit: z.number().min(1).max(200).default(50).describe("Max messages to trace"),
+      }),
+      execute: async ({ conversation_id, limit }) => {
+        const { getConversation } = await import("@/lib/store");
+        const { messageText } = await import("@/lib/brain/omnia-memory");
+        const conv = await getConversation(conversation_id);
+        if (!conv) return { error: "Conversation not found" };
+        const msgs = (conv.messages || []).slice(-limit);
+        const trace = msgs.map((m: any, i: number) => ({
+          index: (conv.messages as any[]).length - msgs.length + i,
+          role: m.role,
+          text: messageText(m).slice(0, 200) || "[no text]",
+        }));
+        return {
+          id: conv.id,
+          title: conv.title,
+          message_count: (conv.messages || []).length,
+          trace,
+        };
+      },
+    }),
+  };
+}
+
+/**
+ * Skill inspection tool (port of dsh-tool-skill).
+ * Lets the model list and inspect available agent skills.
+ */
+function buildSkillTool() {
+  return {
+    skill: tool({
+      description: `Inspect available agent skills (prompt modules stored in skills.json). Use 'list' to see all skills and 'inspect' to read a skill's full prompt. When a skill matches the user's request, follow its prompt instructions.`,
+      inputSchema: z.object({
+        action: z.enum(["list", "inspect"]).describe("list | inspect"),
+        id: z.string().optional().describe("Skill id (for inspect)"),
+      }),
+      execute: async ({ action, id }) => {
+        const { listSkills } = await import("@/lib/skills");
+        const skills = await listSkills();
+        if (action === "list") {
+          return {
+            count: skills.length,
+            skills: skills.map((s) => ({
+              id: s.id,
+              name: s.name,
+              description: s.description,
+              enabled: s.enabled,
+              updated_at: s.updatedAt,
+            })),
+          };
+        }
+        if (action === "inspect") {
+          if (!id) return { error: "id is required for inspect" };
+          const s = skills.find((sk) => sk.id === id);
+          if (!s) return { error: `Skill not found: ${id}` };
+          return {
+            skill: {
+              id: s.id,
+              name: s.name,
+              description: s.description,
+              prompt: s.prompt,
+              source: s.source,
+              enabled: s.enabled,
+              updated_at: s.updatedAt,
+            },
+          };
+        }
+        return { error: "Unknown action" };
       },
     }),
   };
@@ -587,6 +687,9 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
       };
     },
   });
+
+  // Skill inspection tool (dsh-tool-skill).
+  Object.assign(out, buildSkillTool());
 
   for (const n of names) {
     if (n === "computerUse") Object.assign(out, buildComputerTools());
