@@ -646,6 +646,52 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
         }
       },
     }),
+
+    ws_load_deps: tool({
+      description: `Detect and install workspace dependencies. Auto-detects the package manager (npm, yarn, pnpm, pip, cargo, go). Returns the install log. Confined to the workspace root; respects cwd.`,
+      inputSchema: z.object({
+        timeout_s: z.number().min(30).max(600).default(300).describe("Install timeout"),
+      }),
+      execute: async ({ timeout_s }) => {
+        const cwd = cwdFor(workspaceId, root);
+        // Detect package manager.
+        let cmd: string;
+        if (fs.existsSync(path.join(cwd, "package-lock.json"))) {
+          cmd = "npm ci";
+        } else if (fs.existsSync(path.join(cwd, "pnpm-lock.yaml"))) {
+          cmd = "pnpm install";
+        } else if (fs.existsSync(path.join(cwd, "yarn.lock"))) {
+          cmd = "yarn install";
+        } else if (fs.existsSync(path.join(cwd, "package.json"))) {
+          cmd = "npm install";
+        } else if (fs.existsSync(path.join(cwd, "requirements.txt"))) {
+          cmd = "pip install -r requirements.txt";
+        } else if (fs.existsSync(path.join(cwd, "Cargo.toml"))) {
+          cmd = "cargo build";
+        } else if (fs.existsSync(path.join(cwd, "go.mod"))) {
+          cmd = "go mod download";
+        } else {
+          return { error: "No recognized dependency files found in the workspace." };
+        }
+        const result = await new Promise<{ code: number; out: string }>((resolve) => {
+          execFile(
+            "bash", ["-lc", `cd "${cwd}" && ${cmd}`],
+            { cwd, timeout: (timeout_s || 300) * 1000, maxBuffer: 4 * 1024 * 1024 },
+            (err, stdout, stderr) => {
+              const out = (stdout || "") + (stderr ? `\n[stderr]\n${stderr}` : "");
+              resolve({ code: err ? 1 : 0, out });
+            },
+          );
+        });
+        remember("command", {
+          command: cmd,
+          output: truncate(result.out).slice(0, 8000),
+          exit_code: result.code,
+          duration_ms: Date.now(),
+        });
+        return { command: cmd, exit_code: result.code, output: truncate(result.out) };
+      },
+    }),
   };
 }
 
