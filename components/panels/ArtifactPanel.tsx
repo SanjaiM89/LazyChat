@@ -7,6 +7,25 @@ import { cn, IconButton } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import { ArtifactViewer, artifactUrl } from "@/components/viewers/ArtifactViewer";
 import type { ArtifactMeta } from "@/lib/types";
+import { FileIcon } from "@/components/brand/FileIcon";
+import { BrandIcon, languageIconKey } from "@/components/brand/BrandIcon";
+
+/** Language logo for code artifacts when we have one, else a format-colored file badge. */
+function ArtifactIcon({ a }: { a: ArtifactMeta }) {
+  const lang = a.type === "code" ? languageIconKey(a.language || a.filename) : undefined;
+  if (lang) {
+    return (
+      <span className="brand-tile brand-tile-glow flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface-200">
+        <BrandIcon name={lang} size={18} />
+      </span>
+    );
+  }
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center transition-transform duration-300 group-hover:-translate-y-0.5">
+      <FileIcon type={a.filename || a.type} size={30} />
+    </span>
+  );
+}
 
 
 const TYPE_LABEL: Record<string, string> = {
@@ -81,11 +100,11 @@ export function ArtifactPanel() {
             <ArrowLeft size={16} />
           </IconButton>
         ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-soft text-accent">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">
             <FileText size={14} />
           </span>
         )}
-        <h2 className="text-[14px] font-semibold text-fg flex-1 truncate">
+        <h2 key={activeArtifact?.id ?? "list"} className="flex-1 truncate text-[13.5px] font-medium text-fg animate-fade-in">
           {activeArtifact ? activeArtifact.title : "Artifacts"}
         </h2>
         <IconButton onClick={() => setPanel(null)} title="Close panel">
@@ -94,32 +113,35 @@ export function ArtifactPanel() {
       </div>
 
       {activeArtifact ? (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 animate-fade-in">
           <ArtifactViewer artifact={activeArtifact} />
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-2.5">
           {artifacts.length === 0 && (
-            <p className="px-3 pt-6 text-center text-[13px] text-fg-muted">
+            <div className="mx-1 mt-4 flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-6 text-center text-[13px] text-fg-muted animate-fade-in-up">
+              <span className="flex items-end gap-1.5">
+                <FileIcon type="pdf" size={26} className="-rotate-6" />
+                <FileIcon type="xlsx" size={30} />
+                <FileIcon type="docx" size={26} className="rotate-6" />
+              </span>
               No artifacts yet. Ask the model to create a document, a
               spreadsheet or a diagram — it will show up here.
-            </p>
+            </div>
           )}
-          <div className="space-y-1">
+          <div className="space-y-0.5 stagger [--stagger:30ms]">
             {artifacts.map((a) => (
               <button
                 key={a.id}
                 onClick={() => openArtifact(a.id)}
-                className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-bg-hover transition-colors"
+                className="group flex w-full items-center gap-3 rounded-md border border-transparent px-2.5 py-2 text-left transition-colors hover:border-border hover:bg-bg-surface-100"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-bg-inset text-fg-muted group-hover:text-accent">
-                  <FileText size={14} />
-                </span>
+                <ArtifactIcon a={a} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium text-fg">
                     {a.title}
                   </span>
-                  <span className="block text-[11px] text-fg-muted">
+                  <span className="block font-mono text-[10.5px] text-fg-muted">
                     {TYPE_LABEL[a.type] || a.type} · {timeAgo(a.createdAt)}
                     {a.size ? ` · ${fmtSize(a.size)}` : ""}
                   </span>

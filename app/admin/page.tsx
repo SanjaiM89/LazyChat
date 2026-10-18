@@ -4,7 +4,7 @@ import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, sendPasswordResetEmail, signOut as fbSignOut, updateProfile } from "firebase/auth";
-import { Building2, KeyRound, LogOut, Plus, Power, ShieldCheck, Trash2, Users } from "lucide-react";
+import { Building2, KeyRound, LogOut, Mail, Plus, Power, ShieldCheck, Trash2, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { auth, db, secondaryAuth } from "@/lib/firebase/client";
 import {
@@ -25,11 +25,12 @@ import {
   type UserDoc,
 } from "@/lib/firebase/data";
 import type { OrgRole } from "@/lib/auth/shared";
-import { Badge, Button, Modal, Spinner } from "@/components/ui";
+import { Badge, Button, Modal, Segmented, Spinner } from "@/components/ui";
+import { OmniaLogo } from "@/components/brand/OmniaLogo";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 const input =
-  "h-9 rounded-lg border border-border bg-bg px-3 text-[13px] text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-accent/50";
+  "h-8 rounded-md border border-border-strong bg-bg-control px-2.5 text-[13px] text-fg placeholder:text-fg-faint transition-[border-color,box-shadow] duration-200 hover:border-border-stronger focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 type Tab = "orgs" | "users";
 
@@ -85,7 +86,7 @@ export default function AdminPage() {
   if (!ready || !isSuper) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-bg">
-        <Spinner />
+        <Spinner className="text-accent" size={20} />
       </div>
     );
   }
@@ -100,45 +101,64 @@ export default function AdminPage() {
     });
   }
 
-  const th = "px-3 py-2 text-left text-[12px] font-semibold uppercase tracking-wide text-fg-muted";
-  const td = "px-3 py-2.5 text-[13px] text-fg";
+  const th = "bg-bg-surface-100 px-4 py-2 text-left font-mono text-[11px] font-normal uppercase tracking-wider text-fg-muted";
+  const td = "px-4 py-2.5 text-[13px] text-fg";
+  const iconBtn = "rounded-md p-1.5 text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg";
+  const activeOrgs = orgs.filter((o) => o.status === "active").length;
+  const stats = [
+    { label: "Organizations", value: orgs.length, icon: <Building2 size={14} /> },
+    { label: "Active orgs", value: activeOrgs, icon: <Power size={14} /> },
+    { label: "Users", value: users.length, icon: <Users size={14} /> },
+    { label: "Pending invites", value: invites.length, icon: <Mail size={14} /> },
+  ];
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
-      <header className="flex items-center gap-3 border-b border-border bg-bg-elevated px-6 py-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-accent-strong text-white">
-          <ShieldCheck size={17} />
-        </div>
-        <div className="flex-1">
-          <div className="text-[15px] font-semibold">Omnia Super Admin</div>
-          <div className="text-[12px] text-fg-muted">{user?.email}</div>
-        </div>
-        <Button variant="ghost" onClick={() => void signOut()}>
+      <header className="glass sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border px-6">
+        <OmniaLogo height={20} />
+        <span className="text-fg-faint">/</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-accent-soft px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-accent">
+          <ShieldCheck size={11} /> Super admin
+        </span>
+        <div className="flex-1" />
+        <span className="hidden text-[12px] text-fg-muted sm:inline">{user?.email}</span>
+        <Button variant="ghost" size="sm" onClick={() => void signOut()}>
           <LogOut size={14} /> Sign out
         </Button>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-4 p-6">
-        <div className="flex gap-1 rounded-xl bg-bg-subtle p-1 w-fit">
-          {([
-            ["orgs", "Organizations", Building2],
-            ["users", "Users", Users],
-          ] as const).map(([k, label, Icon]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] ${tab === k ? "bg-bg-elevated text-fg shadow-sm" : "text-fg-secondary hover:text-fg"}`}
-            >
-              <Icon size={14} /> {label}
-            </button>
+      <main className="mx-auto max-w-5xl space-y-6 p-6">
+        <div className="animate-fade-in-up">
+          <p className="eyebrow">Administration</p>
+          <h1 className="mt-1 text-[22px] font-medium tracking-[-0.01em]">Organizations &amp; users</h1>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 stagger [--stagger:60ms]">
+          {stats.map((s) => (
+            <div key={s.label} className="lift relative overflow-hidden rounded-lg border border-border bg-bg-surface-100 p-4">
+              <div className="flex items-center justify-between text-fg-muted">
+                <span className="font-mono text-[10.5px] uppercase tracking-wider">{s.label}</span>
+                <span className="text-accent">{s.icon}</span>
+              </div>
+              <div className="mt-2 text-[26px] font-medium tabular-nums tracking-tight">{loading ? <span className="skeleton inline-block h-7 w-10" /> : s.value}</div>
+            </div>
           ))}
         </div>
 
-        {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger">{error}</p>}
-        {loading && <Spinner />}
+        <Segmented
+          className="w-[260px]"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "orgs", label: "Organizations", icon: <Building2 size={13} /> },
+            { value: "users", label: "Users", icon: <Users size={13} /> },
+          ]}
+        />
+
+        {error && <p className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-[13px] text-danger animate-scale-in">{error}</p>}
+        {loading && <Spinner className="text-accent" />}
 
         {tab === "orgs" && (
-          <section className="space-y-3">
+          <section className="space-y-3 animate-fade-in-up">
             <form
               className="flex gap-2"
               onSubmit={(e) => {
@@ -151,7 +171,7 @@ export default function AdminPage() {
                 <Plus size={14} /> Create
               </Button>
             </form>
-            <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+            <div className="overflow-hidden rounded-lg border border-border bg-bg-elevated shadow-soft">
               <table className="w-full">
                 <thead className="border-b border-border">
                   <tr>
@@ -161,11 +181,11 @@ export default function AdminPage() {
                     <th className={th} />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border-muted">
                   {orgs.map((o) => (
-                    <tr key={o.id} className="hover:bg-bg-hover/50">
+                    <tr key={o.id} className="transition-colors hover:bg-bg-hover">
                       <td className={td}>
-                        <button className="font-medium hover:text-accent" onClick={() => setSelectedOrg(o.id)}>
+                        <button className="font-medium transition-colors hover:text-accent" onClick={() => setSelectedOrg(o.id)}>
                           {o.name}
                         </button>
                       </td>
@@ -176,14 +196,14 @@ export default function AdminPage() {
                       <td className={`${td} text-right`}>
                         <button
                           title={o.status === "active" ? "Disable" : "Enable"}
-                          className="rounded p-1.5 text-fg-muted hover:bg-bg-hover hover:text-fg"
+                          className={iconBtn}
                           onClick={() => void act(() => setOrgStatus(o.id, o.status === "active" ? "disabled" : "active"))}
                         >
                           <Power size={14} />
                         </button>
                         <button
                           title="Delete"
-                          className="rounded p-1.5 text-fg-muted hover:bg-bg-hover hover:text-danger"
+                          className="rounded-md p-1.5 text-fg-muted transition-colors hover:bg-danger-soft hover:text-danger"
                           onClick={() => void act(() => deleteOrg(o.id), `Delete "${o.name}"? Members are kept but detached from the organization.`)}
                         >
                           <Trash2 size={14} />
@@ -205,11 +225,11 @@ export default function AdminPage() {
         )}
 
         {tab === "users" && (
-          <section className="space-y-3">
+          <section className="space-y-3 animate-fade-in-up">
             <Button variant="primary" onClick={() => setUserModal(true)}>
               <Plus size={14} /> Create user
             </Button>
-            <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+            <div className="overflow-hidden rounded-lg border border-border bg-bg-elevated shadow-soft">
               <table className="w-full">
                 <thead className="border-b border-border">
                   <tr>
@@ -220,12 +240,12 @@ export default function AdminPage() {
                     <th className={th} />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border-muted">
                   {users.map((u) => (
-                    <tr key={u.uid}>
+                    <tr key={u.uid} className="transition-colors hover:bg-bg-hover">
                       <td className={td}>
                         <div>{u.displayName || u.email}</div>
-                        <div className="text-[12px] text-fg-muted">{u.email}</div>
+                        <div className="font-mono text-[11.5px] text-fg-muted">{u.email}</div>
                       </td>
                       <td className={td}>
                         <select
@@ -258,21 +278,21 @@ export default function AdminPage() {
                       <td className={`${td} text-right whitespace-nowrap`}>
                         <button
                           title="Send password reset email"
-                          className="rounded p-1.5 text-fg-muted hover:bg-bg-hover hover:text-fg"
+                          className={iconBtn}
                           onClick={() => void act(() => sendPasswordResetEmail(auth, u.email))}
                         >
                           <KeyRound size={14} />
                         </button>
                         <button
                           title={u.status === "active" ? "Disable" : "Enable"}
-                          className="rounded p-1.5 text-fg-muted hover:bg-bg-hover hover:text-fg"
+                          className={iconBtn}
                           onClick={() => void act(() => setUserStatus(u.uid, u.status === "active" ? "disabled" : "active"))}
                         >
                           <Power size={14} />
                         </button>
                         <button
                           title="Remove user"
-                          className="rounded p-1.5 text-fg-muted hover:bg-bg-hover hover:text-danger"
+                          className="rounded-md p-1.5 text-fg-muted transition-colors hover:bg-danger-soft hover:text-danger"
                           onClick={() =>
                             void act(
                               () => deleteUserDoc(u.uid),
@@ -340,12 +360,12 @@ function OrgDetail({
           Rename
         </Button>
       </div>
-      <ul className="divide-y divide-border rounded-xl border border-border">
+      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-bg-surface-100">
         {members.map((m) => (
           <li key={m.uid} className="flex items-center gap-2 px-3 py-2 text-[13px]">
             <span className="flex-1 truncate">{m.email}</span>
             <Badge>{m.orgRole}</Badge>
-            <button className="rounded p-1 text-fg-muted hover:text-danger" title="Remove from organization" onClick={() => void act(() => assignUser(m.uid, null, null))}>
+            <button className="rounded-md p-1 text-fg-muted transition-colors hover:bg-danger-soft hover:text-danger" title="Remove from organization" onClick={() => void act(() => assignUser(m.uid, null, null))}>
               <Trash2 size={14} />
             </button>
           </li>
@@ -372,7 +392,7 @@ function OrgDetail({
         <div key={i.email} className="flex items-center gap-2 text-[13px] text-fg-secondary">
           <span className="flex-1">{i.email}</span>
           <Badge>{i.orgRole} · pending</Badge>
-          <button className="text-fg-muted hover:text-danger" onClick={() => void act(() => deleteInvite(i.email))}>
+          <button className="text-[12px] text-fg-muted transition-colors hover:text-danger" onClick={() => void act(() => deleteInvite(i.email))}>
             Revoke
           </button>
         </div>
@@ -426,7 +446,7 @@ function CreateUserModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Create user" width="max-w-md">
-      <form onSubmit={submit} className="space-y-2 p-1">
+      <form onSubmit={submit} className="space-y-2.5 p-1">
         <input className={`${input} w-full`} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <input className={`${input} w-full`} type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input className={`${input} w-full`} type="password" required minLength={6} placeholder="Initial password" value={password} onChange={(e) => setPassword(e.target.value)} />

@@ -12,6 +12,96 @@ import type { Envelope } from "./envelope";
 
 export const PREFAB_PROTOCOL_FALLBACK = "2026-01-26";
 
+/**
+ * Omnia's palette expressed as the renderer's shadcn variables. The renderer writes `styles.variables` straight onto
+ * its root element, so these override its stock neutral theme while keeping its component shapes.
+ */
+const THEME_VARIABLES: Record<"light" | "dark", Record<string, string>> = {
+  light: {
+    "--radius": "0.375rem",
+    "--background": "#ffffff",
+    "--foreground": "#171717",
+    "--card": "#fcfcfc",
+    "--card-foreground": "#171717",
+    "--popover": "#ffffff",
+    "--popover-foreground": "#171717",
+    "--primary": "#3ecf8e",
+    "--primary-foreground": "#0b2e1e",
+    "--secondary": "#f3f3f3",
+    "--secondary-foreground": "#171717",
+    "--muted": "#f3f3f3",
+    "--muted-foreground": "#707070",
+    "--accent": "#ededed",
+    "--accent-foreground": "#171717",
+    "--destructive": "#e54d2e",
+    "--success": "#3ecf8e",
+    "--warning": "#db8e00",
+    "--info": "#0b6bcb",
+    "--border": "#dfdfdf",
+    "--input": "#d4d4d4",
+    "--ring": "#3ecf8e",
+    "--chart-1": "#3ecf8e",
+    "--chart-2": "#097c4f",
+    "--chart-3": "#8fe5bc",
+    "--chart-4": "#0b6bcb",
+    "--chart-5": "#db8e00",
+    "--sidebar": "#f8f8f8",
+    "--sidebar-foreground": "#171717",
+    "--sidebar-primary": "#3ecf8e",
+    "--sidebar-primary-foreground": "#0b2e1e",
+    "--sidebar-accent": "#ededed",
+    "--sidebar-accent-foreground": "#171717",
+    "--sidebar-border": "#dfdfdf",
+    "--sidebar-ring": "#3ecf8e",
+  },
+  dark: {
+    "--radius": "0.375rem",
+    "--background": "#171717",
+    "--foreground": "#ededed",
+    "--card": "#1c1c1c",
+    "--card-foreground": "#ededed",
+    "--popover": "#1c1c1c",
+    "--popover-foreground": "#ededed",
+    "--primary": "#3ecf8e",
+    "--primary-foreground": "#0b2e1e",
+    "--secondary": "#242424",
+    "--secondary-foreground": "#ededed",
+    "--muted": "#212121",
+    "--muted-foreground": "#898989",
+    "--accent": "#292929",
+    "--accent-foreground": "#ededed",
+    "--destructive": "#f56e4e",
+    "--success": "#3ecf8e",
+    "--warning": "#f1a10d",
+    "--info": "#52a9ff",
+    "--border": "#2e2e2e",
+    "--input": "#363636",
+    "--ring": "#3ecf8e",
+    "--chart-1": "#3ecf8e",
+    "--chart-2": "#8fe5bc",
+    "--chart-3": "#00c573",
+    "--chart-4": "#52a9ff",
+    "--chart-5": "#f1a10d",
+    "--sidebar": "#121212",
+    "--sidebar-foreground": "#ededed",
+    "--sidebar-primary": "#3ecf8e",
+    "--sidebar-primary-foreground": "#0b2e1e",
+    "--sidebar-accent": "#292929",
+    "--sidebar-accent-foreground": "#ededed",
+    "--sidebar-border": "#2e2e2e",
+    "--sidebar-ring": "#3ecf8e",
+  },
+};
+
+const THEME_FONTS =
+  "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');" +
+  "html,body{font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-feature-settings:'cv11','ss01';-webkit-font-smoothing:antialiased}" +
+  "code,pre,kbd{font-family:'JetBrains Mono',ui-monospace,monospace}";
+
+export function themeStyles(theme: "light" | "dark") {
+  return { variables: THEME_VARIABLES[theme], css: { fonts: THEME_FONTS } };
+}
+
 export interface HostCallbacks {
   /** The UI asked the assistant to do something (SendMessage action). */
   onUserMessage: (text: string) => void;
@@ -117,7 +207,13 @@ export class PrefabHost {
   setTheme(theme: "light" | "dark"): void {
     if (theme === this.theme) return;
     this.theme = theme;
-    if (this.ready) this.post({ jsonrpc: "2.0", method: "ui/notifications/host-context-changed", params: { theme } });
+    if (this.ready) {
+      this.post({
+        jsonrpc: "2.0",
+        method: "ui/notifications/host-context-changed",
+        params: { theme, styles: themeStyles(theme) },
+      });
+    }
   }
 
   teardown(): void {
@@ -127,6 +223,7 @@ export class PrefabHost {
   private context(): Json {
     return {
       theme: this.theme,
+      styles: themeStyles(this.theme),
       displayMode: "inline",
       availableDisplayModes: ["inline"],
       platform: "web",

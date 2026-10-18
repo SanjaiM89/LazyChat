@@ -6,6 +6,7 @@ import { Monitor, Maximize2, Loader2, X } from "lucide-react";
 import { cn } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { SandboxMeta } from "@/lib/types";
+import { BrandIcon } from "@/components/brand/BrandIcon";
 
 
 function useSandboxScreenshots() {
@@ -66,8 +67,9 @@ export function SandboxMini() {
     <div className="mb-2 flex items-center gap-2">
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-soft transition-all",
-          "hover:border-accent/40 hover:shadow-pop cursor-pointer animate-fade-in-up",
+          "lift relative overflow-hidden rounded-lg border border-border bg-bg-surface-100 shadow-soft",
+          "hover:border-border-strong hover:shadow-pop cursor-pointer animate-fade-in-up",
+          sb.state === "busy" && "beam-border",
         )}
         onMouseEnter={() => setHovered(sb.id)}
         onMouseLeave={() => setHovered(null)}
@@ -76,14 +78,14 @@ export function SandboxMini() {
           setPanel("sandbox");
         }}
       >
-        <div className="flex items-center gap-1.5 bg-bg-inset px-2.5 py-1.5 border-b border-border">
+        <div className="flex items-center gap-1.5 border-b border-border bg-bg-surface-200 px-2.5 py-1.5">
           <span className="h-2 w-2 rounded-full bg-danger/70" />
           <span className="h-2 w-2 rounded-full bg-warning/70" />
           <span className="h-2 w-2 rounded-full bg-success/70" />
           <span className="ml-2 flex items-center gap-1 text-[10.5px] font-medium text-fg-muted">
-            <Monitor size={10} className="text-accent" />
+            <BrandIcon name="chrome" size={10} fallback={<Monitor size={10} className="text-accent" />} />
             {sb.label}
-            <span className="text-[9.5px] uppercase tracking-wide text-fg-muted/60">
+            <span className="font-mono text-[9px] uppercase tracking-wider text-fg-faint">
               {sb.state}
             </span>
           </span>
@@ -103,10 +105,7 @@ export function SandboxMini() {
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-fg-muted">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
-              </span>
+              <span className="live-dot !h-1.5 !w-1.5" />
               <span className="text-[9.5px]">
                 {sb.state === "busy" ? "working…" : "live"}
               </span>
@@ -115,7 +114,7 @@ export function SandboxMini() {
 
           <div
             className={cn(
-              "absolute inset-0 flex items-center justify-center bg-black/55 transition-opacity",
+              "absolute inset-0 flex items-center justify-center bg-black/55 backdrop-blur-[1px] transition-opacity duration-200",
               hovered === sb.id ? "opacity-100" : "opacity-0 pointer-events-none",
             )}
           >
@@ -129,7 +128,7 @@ export function SandboxMini() {
               e.stopPropagation();
               close();
             }}
-            className="absolute right-1.5 top-7 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-danger/80"
+            className="absolute right-1.5 top-7 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-danger/80 animate-scale-in"
             title="Close sandbox"
           >
             <X size={11} />

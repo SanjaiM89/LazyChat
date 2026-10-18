@@ -142,7 +142,7 @@ export function AskUserCard({
   // the failure plainly instead of an empty composer with a dead Answer button.
   if (questions.length === 0) {
     return (
-      <div className="my-1 flex items-center gap-2 rounded-[var(--radius)] border border-danger/40 bg-danger-soft/40 px-3.5 py-2.5 text-[13px] text-danger">
+      <div className="my-1 flex items-center gap-2 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-2.5 animate-fade-in-up text-[13px] text-danger">
         {pending ? (
           <Loader2 size={13} className="shrink-0 animate-spin" />
         ) : (
@@ -156,7 +156,7 @@ export function AskUserCard({
   // ---- answered: dsh's read-only transcript -------------------------------
   if (answers) {
     return (
-      <div className="my-1 flex flex-col gap-3 rounded-[var(--radius)] border border-border bg-bg-subtle px-4 py-3.5">
+      <div className="my-1 flex flex-col gap-3 rounded-lg border border-border bg-bg-surface-100 px-4 py-3.5 animate-fade-in-up">
         {questions.map((q, index) => {
           // Match by id, falling back to position. The card builds its own
           // answers from `q.id`, so an exact match is the normal path; the
@@ -200,11 +200,11 @@ export function AskUserCard({
   // stream that already ended. Show why, not controls that do nothing.
   if (!pending && !answers) {
     return (
-      <div className="my-1 overflow-hidden rounded-[var(--radius)] border border-border bg-bg-subtle px-4 py-3.5">
+      <div className="my-1 overflow-hidden rounded-lg border border-border bg-bg-surface-100 px-4 py-3.5 animate-fade-in-up">
         {questions.map((q) => (
           <div key={q.id} className="mb-1.5 flex flex-col gap-0.5 last:mb-0">
             {q.header && (
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
+              <span className="eyebrow">
                 {q.header}
               </span>
             )}
@@ -220,8 +220,8 @@ export function AskUserCard({
 
   // ---- unanswered: the composer ------------------------------------------
   return (
-    <div className="my-1 overflow-hidden rounded-[var(--radius)] border border-accent/40 bg-bg-elevated">
-      <div className="flex items-center gap-2 border-b border-border bg-accent-soft/40 px-4 py-2">
+    <div className="beam-border my-1 overflow-hidden rounded-lg border border-brand/30 bg-bg-surface-100 shadow-soft animate-fade-in-up">
+      <div className="flex items-center gap-2 border-b border-border bg-accent-soft px-4 py-2">
         {pending ? (
           <Loader2 size={13} className="shrink-0 animate-spin text-accent" />
         ) : (
@@ -238,7 +238,7 @@ export function AskUserCard({
           return (
             <div key={q.id} className="flex flex-col gap-2">
               {q.header && (
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">
+                <span className="eyebrow !text-accent">
                   {q.header}
                 </span>
               )}
@@ -247,7 +247,7 @@ export function AskUserCard({
               </p>
 
               {(q.options ?? []).length > 0 && (
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 stagger [--stagger:40ms]">
                   {(q.options ?? []).map((opt) => {
                     const on = d.picked.includes(opt.label);
                     return (
@@ -257,24 +257,24 @@ export function AskUserCard({
                         disabled={!pending || sending}
                         onClick={() => toggle(q, opt.label)}
                         className={cn(
-                          "flex items-start gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-default",
+                          "flex items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-all duration-200 disabled:cursor-default",
                           on
-                            ? "border-accent bg-accent-soft/60"
-                            : "border-border hover:border-accent/40 hover:bg-bg-hover",
+                            ? "border-brand/60 bg-accent-soft shadow-[0_0_0_3px_var(--accent-soft)]"
+                            : "border-border bg-bg-surface-200 hover:border-border-stronger hover:bg-bg-surface-300",
                         )}
                       >
                         <span
                           className={cn(
                             "mt-0.5 flex shrink-0 items-center justify-center border",
                             q.multiSelect ? "h-3.5 w-3.5 rounded" : "h-4 w-4 rounded-full",
-                            on ? "border-accent bg-accent text-white" : "border-border-strong",
+                            on ? "border-brand bg-brand text-[#0b2e1e] animate-scale-in" : "border-border-stronger",
                           )}
                         >
                           {on &&
                             (q.multiSelect ? (
                               <Check size={10} strokeWidth={3} />
                             ) : (
-                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#0b2e1e]" />
                             ))}
                         </span>
                         <span className="min-w-0 flex-1">
@@ -296,20 +296,20 @@ export function AskUserCard({
                     disabled={!pending || sending}
                     onClick={() => patch(q.id, { customOpen: !d.customOpen })}
                     className={cn(
-                      "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-[13px] transition-colors disabled:cursor-default",
+                      "flex items-center gap-2.5 rounded-md border px-3 py-2 text-left text-[13px] transition-all duration-200 disabled:cursor-default",
                       d.customOpen
-                        ? "border-accent bg-accent-soft/60 text-fg"
-                        : "border-dashed border-border text-fg-muted hover:border-accent/40 hover:bg-bg-hover",
+                        ? "border-brand/60 bg-accent-soft text-fg"
+                        : "border-dashed border-border-strong text-fg-muted hover:border-border-stronger hover:bg-bg-hover",
                     )}
                   >
                     <span
                       className={cn(
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
-                        d.customOpen ? "border-accent bg-accent" : "border-border-strong",
+                        d.customOpen ? "border-brand bg-brand" : "border-border-stronger",
                       )}
                     >
                       {d.customOpen && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#0b2e1e]" />
                       )}
                     </span>
                     Something else
@@ -323,7 +323,7 @@ export function AskUserCard({
                       onChange={(e) => patch(q.id, { custom: e.target.value })}
                       placeholder="Type your answer…"
                       rows={2}
-                      className="resize-none rounded-lg border border-border bg-bg px-3 py-2 text-[13px] leading-5 text-fg outline-none focus:border-accent disabled:opacity-60"
+                      className="resize-none rounded-md border border-border-strong bg-bg-control px-3 py-2 text-[13px] leading-5 text-fg outline-none transition-[border-color,box-shadow] focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-60 animate-fade-in-up"
                     />
                   )}
                 </div>
@@ -340,7 +340,7 @@ export function AskUserCard({
             type="button"
             disabled={!pending || sending}
             onClick={() => void submit()}
-            className="rounded-lg bg-accent px-3.5 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="btn-sheen h-8 rounded-md border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] px-3.5 text-[13px] font-medium text-[color:var(--brand-button-text)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
           >
             Answer
           </button>

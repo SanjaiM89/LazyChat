@@ -8,10 +8,18 @@ import {
   Pencil,
   Trash2,
   KeyRound,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
+import { BrandIcon, BrandTile, modelIconKey, providerIconKey } from "@/components/brand/BrandIcon";
 import { cn, Dropdown, MenuItem, Modal, Button, IconButton, Spinner } from "@/components/ui";
 import { PROVIDER_LIST } from "@/lib/models";
 import { useAppStore, modelLabel, providerGlyph } from "@/lib/app-store";
+
+/** Logo for any provider, including custom ones (matched on their name and base URL). */
+function providerLogo(id: string, custom?: PublicCustomProvider) {
+  return providerIconKey(id, custom ? `${custom.name} ${custom.baseUrl}` : undefined);
+}
 import type { ProviderId, ProviderProtocol, PublicCustomProvider } from "@/lib/types";
 
 
@@ -103,6 +111,9 @@ export function ModelPicker() {
         settings.model)
     : modelLabel(settings.provider, settings.model);
 
+  const triggerLogo = modelIconKey(settings.model, settings.provider) ??
+    providerLogo(settings.provider, selectedCustom);
+
   const pick = (provider: string, modelId: string, supportsThinking: boolean) => {
     setSettings({
       provider: provider as ProviderId,
@@ -127,27 +138,36 @@ export function ModelPicker() {
         key={m.id}
         active={selected}
         onClick={() => pick(provider, m.id, m.supportsThinking)}
-        className="pr-8"
+        className="group/row pr-2"
       >
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center opacity-80 transition-opacity group-hover/row:opacity-100">
+          <BrandIcon
+            name={modelIconKey(m.id, provider) ?? providerLogo(provider, customById.get(provider))}
+            size={14}
+            fallback={<span className="h-1.5 w-1.5 rounded-full bg-fg-faint" />}
+          />
+        </span>
         <span className="min-w-0 flex-1 truncate text-[13px]">
           {m.name}
           {m.retired && (
-            <span className="ml-1.5 rounded bg-warning/15 px-1 py-px text-[10px] font-medium text-warning">
+            <span className="ml-1.5 rounded-full border border-warning/30 bg-warning-soft px-1.5 py-px text-[10px] font-medium text-warning">
               retired?
             </span>
           )}
           {m.liveOnly && (
-            <span className="ml-1.5 rounded bg-success-soft px-1 py-px text-[10px] font-medium text-success">
+            <span className="ml-1.5 rounded-full border border-brand/30 bg-success-soft px-1.5 py-px text-[10px] font-medium text-success">
               live
             </span>
           )}
         </span>
         {m.supportsThinking && (
-          <span className="text-[10px] text-fg-muted">●</span>
+          <span title="Supports extended thinking">
+            <Sparkles size={11} className="text-fg-faint" />
+          </span>
         )}
-        {selected && (
-          <Check size={14} className="ml-auto text-accent shrink-0" />
-        )}
+        <span className="flex w-4 shrink-0 justify-end">
+          {selected && <Check size={14} className="text-accent animate-scale-in" />}
+        </span>
       </MenuItem>
     );
   };
@@ -168,17 +188,17 @@ export function ModelPicker() {
         trigger={
           <button
             data-testid="model-picker-trigger"
-            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-fg-secondary hover:bg-bg-hover hover:text-fg transition-colors"
+            className="group flex h-8 items-center gap-2 rounded-md border border-border bg-bg-surface-200 pl-2 pr-1.5 text-[12.5px] font-medium text-fg-secondary transition-all duration-200 hover:border-border-strong hover:bg-bg-surface-300 hover:text-fg"
           >
-            <span className="text-accent">{glyph}</span>
+            <BrandIcon name={triggerLogo} size={14} fallback={<span className="text-accent">{glyph}</span>} />
             <span className="max-w-[150px] truncate">{label}</span>
-            <ChevronDown size={14} className="text-fg-muted" />
+            <ChevronDown size={13} className={cn("text-fg-muted transition-transform duration-300", menuOpen && "rotate-180")} />
           </button>
         }
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-0.5">
-          <div className="flex items-center justify-between px-3 pb-1">
-            <span className="text-[11px] text-fg-muted">
+        <div className="min-h-0 w-[320px] max-w-[calc(100vw-24px)] flex-1 overflow-y-auto overscroll-contain pr-0.5">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-2.5 pb-2 pt-1.5">
+            <span className="text-[11px] leading-snug text-fg-muted">
               {refreshing ? "Refreshing models from providers…" : liveOk && Object.keys(liveOk).length
                 ? "Live model lists loaded where the provider supports it"
                 : "Model lists refresh live from providers when opened"}
@@ -186,21 +206,23 @@ export function ModelPicker() {
             <button
               onClick={() => void refreshLive()}
               disabled={refreshing}
-              className="text-[11px] font-medium text-accent hover:underline disabled:opacity-50"
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium text-fg-secondary transition-colors hover:border-brand/40 hover:text-accent disabled:opacity-50"
             >
-              {refreshing ? "Refreshing…" : "Refresh"}
+              <RefreshCw size={10} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Refreshing" : "Refresh"}
             </button>
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1 pt-1">
             {PROVIDER_LIST.map((p) => {
               const effective = live[p.id] && live[p.id].length ? live[p.id] : p.models;
               return (
               <div key={p.id}>
-                <div className="flex items-center justify-between px-3 pt-1 pb-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-muted">
-                    {p.glyph} {p.name}
+                <div className="flex items-center justify-between gap-2 px-2.5 pb-1 pt-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <BrandTile name={providerLogo(p.id)} size={20} fallback={<span className="text-[11px]">{p.glyph}</span>} />
+                    <span className="truncate text-[12px] font-medium text-fg">{p.name}</span>
                   </span>
-                  <span className="max-w-[45%] truncate text-[10px] text-fg-muted/70">
+                  <span className="max-w-[45%] shrink-0 truncate font-mono text-[10px] uppercase tracking-wider text-fg-muted">
                     {p.keyEnv ? "API key" : "local"}
                     {liveOk[p.id] ? " · live" : ""}
                   </span>
@@ -230,11 +252,12 @@ export function ModelPicker() {
             ) : (
               customProviders.map((c) => (
                 <div key={c.id}>
-                  <div className="flex items-center justify-between px-3 pt-1 pb-1">
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-muted">
-                      {c.glyph || "◆"} {c.name}
+                  <div className="flex items-center justify-between gap-2 px-2.5 pb-1 pt-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <BrandTile name={providerLogo(c.id, c)} size={20} fallback={<span className="text-[11px]">{c.glyph || "◆"}</span>} />
+                      <span className="truncate text-[12px] font-medium text-fg">{c.name}</span>
                     </span>
-                    <span className="text-[10px] text-fg-muted/70">
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
                       {PROTOCOL_META[normProtocol(c.protocol)].short}
                     </span>
                   </div>
@@ -273,7 +296,7 @@ export function ModelPicker() {
               const m = defaultModelId(settings.provider);
               if (m) setSettings({ model: m });
             }}
-            className="px-3 py-1.5 text-left text-[11.5px] text-fg-muted hover:text-accent rounded-lg"
+            className="rounded-md px-2.5 py-1.5 text-left text-[11.5px] text-fg-muted transition-colors hover:text-accent"
           >
             Reset to default model
           </button>
@@ -287,7 +310,7 @@ export function ModelPicker() {
 
 
 const inputCls =
-  "w-full rounded-lg border border-border bg-bg-subtle px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50";
+  "w-full rounded-md border border-border-strong bg-bg-control px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint transition-[border-color,box-shadow] duration-200 hover:border-border-stronger focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]";
 
 function parseModelsText(text: string): { id: string; name?: string; supportsThinking?: boolean }[] {
   const out: { id: string; name?: string; supportsThinking?: boolean }[] = [];
@@ -433,11 +456,9 @@ function CustomProviderDialog({ open, onClose }: { open: boolean; onClose: () =>
               {customProviders.map((p) => (
                 <li
                   key={p.id}
-                  className="flex items-center gap-2.5 rounded-lg border border-border bg-bg-subtle/50 px-3 py-2"
+                  className="group flex items-center gap-2.5 rounded-lg border border-border bg-bg-surface-100 px-3 py-2 transition-colors hover:border-border-strong"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-bg-inset text-[13px]">
-                    {p.glyph || "◆"}
-                  </span>
+                  <BrandTile name={providerLogo(p.id, p)} size={30} glow fallback={<span className="text-[13px]">{p.glyph || "◆"}</span>} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-fg">
                       {p.name}
@@ -589,7 +610,7 @@ function CustomProviderDialog({ open, onClose }: { open: boolean; onClose: () =>
               Cancel
             </Button>
             <Button variant="primary" type="submit" disabled={busy}>
-              {busy && <Spinner size={13} className="text-white" />}
+              {busy && <Spinner size={13} />}
               {editingId ? "Save changes" : "Add provider"}
             </Button>
           </div>

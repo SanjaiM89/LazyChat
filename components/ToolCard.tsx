@@ -5,16 +5,11 @@ import {
   FileText,
   SquareTerminal,
   ChevronDown,
-  ChevronUp,
   Boxes,
   ArrowUpRight,
   Loader2,
   Download,
-  FileImage,
-  FileSpreadsheet,
-  Presentation,
   FileCode2,
-  File,
   FilePlus,
   Monitor,
   Pencil,
@@ -28,6 +23,8 @@ import { terminalCardModel, terminalFailed } from "@/components/dsh/terminal-car
 import { TextShimmer } from "@/components/dsh/TextShimmer";
 import { GenUiCard } from "@/components/genui/GenUiCard";
 import { DocumentCard } from "@/components/DocumentCard";
+import { BrandIcon, connectorIconKey, languageIconKey } from "@/components/brand/BrandIcon";
+import { FileIcon } from "@/components/brand/FileIcon";
 
 
 export function ToolCard({
@@ -166,40 +163,40 @@ function AgentTaskCard({
   const summary = result?.summary;
 
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated mb-2 overflow-hidden animate-fade-in-up">
+    <div className={`mb-2 overflow-hidden rounded-lg border border-border bg-bg-surface-100 animate-fade-in-up ${streaming ? "beam-border" : ""}`}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg-hover transition-colors"
+        className="flex w-full items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-bg-hover"
       >
-        <span className="w-8 h-8 rounded-lg bg-info-soft text-info flex items-center justify-center shrink-0">
-          {streaming ? (
-            <Loader2 size={15} className="animate-spin" />
-          ) : (
-            <SquareTerminal size={15} />
-          )}
+        <span className="brand-tile relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface-200">
+          <BrandIcon name="docker" size={17} fallback={<SquareTerminal size={15} />} />
+          {streaming && <span className="live-dot absolute -right-0.5 -top-0.5 !h-2 !w-2" />}
         </span>
         <span className="min-w-0 flex-1 text-left">
-          <span className="block text-[14px] font-medium text-fg truncate">
+          <span className="block truncate text-[13.5px] font-medium text-fg">
             {args?.task?.slice(0, 90) || "Agent task"}
           </span>
-          <span className="text-[12px] text-fg-muted">
-            Docker sandbox · {status}
-            {status === "done" && files.length > 0 ? ` · ${files.length} file(s)` : ""}
+          <span className="flex items-center gap-1.5 text-[11.5px] text-fg-muted">
+            <span className="eyebrow !text-[10px]">Docker sandbox</span>
+            <span className="text-fg-faint">·</span>
+            <span className={streaming ? "text-shine" : ""}>{status}</span>
+            {status === "done" && files.length > 0 ? <span>· {files.length} file(s)</span> : null}
           </span>
         </span>
-        {expanded ? <ChevronUp size={15} className="text-fg-muted" /> : <ChevronDown size={15} className="text-fg-muted" />}
+        {streaming && <Loader2 size={14} className="animate-spin text-accent" />}
+        <ChevronDown size={15} className={`text-fg-muted transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
       </button>
       {expanded && (
-        <div className="px-4 pb-3 space-y-2">
+        <div className="space-y-2 border-t border-border px-3.5 pb-3 pt-2.5 animate-fade-in">
           {errorText && (
-            <p className="text-[12.5px] text-danger bg-danger-soft/50 border border-danger/20 rounded-lg px-2.5 py-2">
+            <p className="rounded-md border border-danger/30 bg-danger-soft px-2.5 py-2 text-[12.5px] text-danger">
               {errorText}
             </p>
           )}
           {typeof progress === "number" && progress < 100 && (
-            <div className="h-1.5 rounded-full bg-bg-hover overflow-hidden">
+            <div className="h-1 overflow-hidden rounded-full bg-bg-surface-300">
               <div
-                className="h-full bg-info rounded-full transition-all"
+                className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand transition-all duration-700 [transition-timing-function:var(--ease-out)]"
                 style={{ width: `${Math.max(2, progress)}%` }}
               />
             </div>
@@ -210,21 +207,18 @@ function AgentTaskCard({
             </p>
           )}
           {files.length > 0 && (
-            <div className="border-t border-border/70 pt-2 mt-1">
-              <p className="text-[11px] uppercase tracking-wide text-fg-muted/80 font-semibold mb-1.5">
+            <div className="mt-1 border-t border-border pt-2.5">
+              <p className="eyebrow mb-1.5">
                 Produced files
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 stagger [--stagger:40ms]">
                 {files.map((f: any, i: number) => {
-                  const Icon = fileTypeIcon(f.type || f.name);
                   return (
                     <div
                       key={i}
-                      className="group flex items-center gap-3 rounded-xl border border-border bg-bg-subtle/50 px-3 py-2 hover:border-accent/40 hover:bg-bg-hover transition-colors"
+                      className="lift group flex items-center gap-3 rounded-md border border-border bg-bg-surface-200 px-3 py-2 hover:border-border-strong"
                     >
-                      <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
-                        <Icon size={15} />
-                      </span>
+                      <FileIcon type={f.type || f.name} size={30} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-[13px] font-medium text-fg truncate">
                           {f.name || f.filename}
@@ -238,7 +232,7 @@ function AgentTaskCard({
                           href={f.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[12px] text-fg-secondary hover:text-accent hover:border-accent/40 transition-colors"
+                          className="inline-flex h-[26px] items-center gap-1 rounded-md border border-border-strong bg-bg-control px-2 text-[12px] text-fg-secondary transition-colors hover:border-brand/40 hover:text-accent"
                           title="Open file"
                         >
                           <ArrowUpRight size={12} />
@@ -247,7 +241,7 @@ function AgentTaskCard({
                         <a
                           href={f.url}
                           download
-                          className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-lg border border-border text-fg-muted hover:text-accent hover:border-accent/40 transition-colors"
+                          className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-md border border-border-strong bg-bg-control text-fg-muted transition-colors hover:border-brand/40 hover:text-accent"
                           title="Download"
                         >
                           <Download size={12} />
@@ -266,7 +260,7 @@ function AgentTaskCard({
           )}
           <button
             onClick={() => setPanel("agents")}
-            className="text-[12px] text-info hover:underline underline-offset-2 inline-flex items-center gap-1"
+            className="group inline-flex items-center gap-1 text-[12px] text-brand-link hover:underline underline-offset-2"
           >
             View live run in Agents <ArrowUpRight size={12} />
           </button>
@@ -274,16 +268,6 @@ function AgentTaskCard({
       )}
     </div>
   );
-}
-
-function fileTypeIcon(typeOrName: string) {
-  const t = String(typeOrName || "").toLowerCase();
-  if (t.includes("image") || /\.(png|jpe?g|gif|webp)$/.test(t)) return FileImage;
-  if (t.includes("xls") || /\.(xlsx?|csv)$/.test(t)) return FileSpreadsheet;
-  if (t.includes("pptx") || /\.ppt$/.test(t)) return Presentation;
-  if (t.includes("code") || /\.(js|ts|tsx|jsx|py|json|css|html?|svg|xml)$/.test(t)) return FileCode2;
-  if (t.includes("pdf") || t.includes("doc") || /\.(pdf|docx?|md|txt)$/.test(t)) return FileText;
-  return File;
 }
 
 function fileTypeLabel(typeOrName: string) {
@@ -331,11 +315,12 @@ function ComputerCard({
   return (
     <button
       onClick={() => setPanel("sandbox")}
-      className="group flex w-full items-center gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-2.5 mb-2 text-left hover:border-accent/40 hover:bg-bg-hover transition-all animate-fade-in-up"
+      className={`group mb-2 flex w-full items-center gap-3 rounded-lg border border-border bg-bg-surface-100 px-3.5 py-2.5 text-left transition-all hover:border-border-strong hover:bg-bg-surface-200 animate-fade-in-up ${streaming ? "beam-border" : ""}`}
       title="Open the Chromium panel to watch / take over"
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info-soft text-info">
-        {streaming ? <Loader2 size={15} className="animate-spin" /> : <Monitor size={15} />}
+      <span className="brand-tile brand-tile-glow relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface-200">
+        <BrandIcon name="chrome" size={17} fallback={<Monitor size={15} />} />
+        {streaming && <span className="live-dot absolute -right-0.5 -top-0.5 !h-2 !w-2" />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13.5px] font-medium text-fg">
@@ -344,11 +329,11 @@ function ComputerCard({
         </span>
         <span className="block truncate text-[11.5px] text-fg-muted">
           {streaming
-            ? "driving Chromium…"
+            ? <span className="text-shine">driving Chromium…</span>
             : errorText || result?.error || result?.message || pageTitle || "recorded to timeline"}
         </span>
       </span>
-      <span className="flex items-center gap-1 text-[12px] text-accent opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+      <span className="flex shrink-0 translate-x-1 items-center gap-1 text-[12px] text-accent opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100">
         Watch <ArrowUpRight size={13} />
       </span>
     </button>
@@ -444,6 +429,21 @@ const VARIANT_BY_TOOL: Record<string, ToolVariant> = {
   note_knowledge: "write",
   remember_fact: "write",
 };
+
+/**
+ * The real logo for a tool row when one fits — the MCP server's brand, bash for shell calls, the language of the
+ * file being read or written, Neo4j-style graph queries — else the variant glyph.
+ */
+function toolLogo(classified: { variant: ToolVariant; server?: string; tool: string }, args?: Record<string, any>) {
+  if (classified.server) return connectorIconKey(classified.server, classified.tool);
+  if (classified.variant === "bash") return "bash";
+  if (classified.tool === "run_cypher") return "neo4j";
+  const path = typeof args?.path === "string" ? args.path : undefined;
+  if (path && (classified.variant === "read" || classified.variant === "write" || classified.variant === "edit")) {
+    return languageIconKey(path.split(".").pop());
+  }
+  return undefined;
+}
 
 function humanize(name: string): string {
   return name
@@ -577,6 +577,7 @@ function ToolRow({
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const classified = React.useMemo(() => classifyToolCall(toolName, args), [toolName, args]);
+  const logo = toolLogo(classified, args);
 
   // The attached workspace root is the shell's working directory, which is
   // what dsh renders in the terminal prompt label.
@@ -646,7 +647,7 @@ function ToolRow({
             : null;
 
   return (
-    <div className="my-1 animate-fade-in-up" data-variant={classified.variant} data-state={settledState}>
+    <div className="my-0.5 animate-fade-in-up" data-variant={classified.variant} data-state={settledState}>
       {statusLabel && <span className="sr-only">{statusLabel}</span>}
       <div
         role={expandable ? "button" : undefined}
@@ -654,9 +655,9 @@ function ToolRow({
         aria-expanded={expandable ? open : undefined}
         onClick={expandable ? onToggle : undefined}
         onKeyDown={expandable ? onKeyDown : undefined}
-        className={`group flex min-w-0 items-center text-fg-muted transition-colors hover:text-fg-secondary ${
-          expandable ? "cursor-pointer" : ""
-        }`}
+        className={`group -mx-1.5 flex min-w-0 items-center rounded-md px-1.5 text-fg-muted transition-colors hover:text-fg-secondary ${
+          expandable ? "cursor-pointer hover:bg-bg-hover" : ""
+        } ${open ? "bg-bg-hover" : ""}`}
       >
         {/* Leading: the variant icon, crossfading into a chevron on hover when
             the row opens a body — dsh's affordance, no row fill. */}
@@ -666,12 +667,12 @@ function ToolRow({
               expandable ? "opacity-100 group-hover:opacity-0" : ""
             }`}
           >
-            {VARIANT_ICON[classified.variant]}
+            <BrandIcon name={logo} size={14} fallback={VARIANT_ICON[classified.variant]} />
           </span>
           {expandable && (
             <ChevronDown
               size={14}
-              className="absolute inset-0 m-auto opacity-0 transition-opacity duration-100 group-hover:opacity-100"
+              className={`absolute inset-0 m-auto opacity-0 transition-[opacity,transform] duration-200 group-hover:opacity-100 ${open ? "rotate-180" : ""}`}
             />
           )}
         </span>
@@ -700,14 +701,15 @@ function ToolRow({
           </>
         )}
         {classified.server && (
-          <Badge tone="info" className="ml-1.5 shrink-0">
+          <Badge tone="neutral" className="ml-1.5 shrink-0 font-mono">
             {classified.server}
           </Badge>
         )}
+        {running && <span className="live-dot ml-2 !h-1.5 !w-1.5 shrink-0" />}
       </div>
 
       {open && (
-        <div className="mt-1 flex flex-col">
+        <div className="mt-1 flex flex-col animate-fade-in-up">
           {terminal ? (
             <TerminalBlock
               command={terminal.command}
@@ -717,21 +719,21 @@ function ToolRow({
               signal={terminal.signal}
               running={terminal.running}
               maxLines={Number.POSITIVE_INFINITY}
-              className="mx-0 my-1 ml-1 rounded-[var(--radius)] border border-border"
+              className="mx-0 my-1 ml-1 rounded-[var(--radius-lg)] border border-border"
             />
           ) : (
             (inputRaw !== null || output !== null) && (
-              <div className="mx-0 my-1 ml-1 flex flex-col overflow-hidden rounded-[var(--radius)] border border-border bg-bg-subtle font-mono text-[13px]">
+              <div className="mx-0 my-1 ml-1 flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-bg-surface-100 font-mono text-[12.5px]">
                 {inputRaw !== null && (
                   <div className="grid max-h-[150px] grid-cols-[max-content_1fr] items-baseline gap-x-3.5 overflow-y-auto px-4 py-3">
-                    <span className="sticky top-0 self-start text-[13px] text-fg-muted">Input</span>
+                    <span className="eyebrow sticky top-0 self-start !text-[10px]">Input</span>
                     <span className="min-w-0 break-words whitespace-pre-wrap text-fg-secondary">{inputRaw}</span>
                   </div>
                 )}
-                {inputRaw !== null && output !== null && <span aria-hidden className="h-px w-full bg-border/60" />}
+                {inputRaw !== null && output !== null && <span aria-hidden className="h-px w-full bg-border" />}
                 {output !== null && (
                   <div className="grid max-h-[150px] grid-cols-[max-content_1fr] items-baseline gap-x-3.5 overflow-y-auto px-4 py-3">
-                    <span className="sticky top-0 self-start text-[13px] text-fg-muted">Output</span>
+                    <span className="eyebrow sticky top-0 self-start !text-[10px]">Output</span>
                     <span
                       className={`min-w-0 break-words whitespace-pre-wrap ${
                         settledState === "error" ? "text-danger" : "text-fg-secondary"

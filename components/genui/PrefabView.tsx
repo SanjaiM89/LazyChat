@@ -82,13 +82,13 @@ export function PrefabView({
 
   return (
     <div className={className} data-genui-streaming={streaming || undefined}>
-      <div className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
+      <div className={`relative overflow-hidden rounded-lg border border-border bg-bg-elevated shadow-soft transition-shadow duration-500 ${streaming ? "beam-border" : ""}`}>
         {!rendered && <GenUiSkeleton />}
         <iframe
           ref={frameRef}
           title="Generated interface"
           sandbox="allow-scripts allow-popups"
-          className="block w-full border-0 bg-transparent"
+          className="block w-full border-0 bg-transparent animate-fade-in"
           style={{ height: rendered ? Math.max(height, 48) : 0, colorScheme: dark ? "dark" : "light" }}
         />
       </div>
@@ -99,9 +99,9 @@ export function PrefabView({
 export function GenUiSkeleton() {
   return (
     <div className="space-y-2.5 p-4" aria-label="Building interface">
-      <div className="h-4 w-1/3 animate-pulse rounded bg-bg-hover" />
-      <div className="h-20 w-full animate-pulse rounded-lg bg-bg-hover" />
-      <div className="h-3 w-2/3 animate-pulse rounded bg-bg-hover" />
+      <div className="skeleton h-4 w-1/3" />
+      <div className="skeleton h-20 w-full" />
+      <div className="skeleton h-3 w-2/3" />
     </div>
   );
 }

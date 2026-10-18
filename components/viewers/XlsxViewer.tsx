@@ -39,7 +39,7 @@ export function XlsxViewer({ url }: { url: string }) {
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger-soft/60 px-4 py-3 text-[13px] text-danger m-4">
+      <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger m-4">
         <FileWarning size={15} />
         {error}
       </div>
@@ -49,7 +49,7 @@ export function XlsxViewer({ url }: { url: string }) {
   if (!sheets) {
     return (
       <div className="flex justify-center py-10 text-[13px] text-fg-muted">
-        <Loader2 className="animate-spin mr-2 text-accent" size={14} /> Reading
+        <Loader2 className="mr-2 animate-spin text-accent" size={14} /> Reading
         spreadsheet…
       </div>
     );
@@ -63,10 +63,10 @@ export function XlsxViewer({ url }: { url: string }) {
             key={s.name}
             onClick={() => setActive(i)}
             className={
-              "rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors " +
+              "rounded-md border px-2.5 py-1 font-mono text-[11.5px] transition-all duration-200 " +
               (i === active
-                ? "bg-accent-soft text-accent"
-                : "text-fg-secondary hover:bg-bg-hover")
+                ? "border-border-strong bg-bg-surface-300 text-fg shadow-[inset_0_-1px_0_var(--brand)]"
+                : "border-transparent text-fg-muted hover:bg-bg-hover hover:text-fg-secondary")
             }
           >
             {s.name}
@@ -75,7 +75,8 @@ export function XlsxViewer({ url }: { url: string }) {
       </div>
       <div className="flex-1 overflow-auto p-3">
         <div
-          className="xlsx-table"
+          key={active}
+          className="xlsx-table animate-fade-in"
           dangerouslySetInnerHTML={{ __html: sheets[active].html }}
         />
       </div>

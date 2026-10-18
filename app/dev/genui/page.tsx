@@ -42,10 +42,13 @@ export default function GenUiDevPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-2xl space-y-4 p-6">
-      <h1 className="text-lg font-semibold">GenUI harness</h1>
+    <main className="mx-auto max-w-2xl space-y-4 p-6 animate-fade-in-up">
+      <div>
+        <p className="eyebrow">Developer</p>
+        <h1 className="text-[18px] font-medium tracking-tight text-fg">GenUI harness</h1>
+      </div>
       <GenUiCard args={{ title: "Sales overview", ui }} result={streaming ? undefined : { ok: true }} streaming={streaming} />
-      <pre data-testid="messages" className="text-xs text-fg-muted">{JSON.stringify(messages)}</pre>
+      <pre data-testid="messages" className="rounded-md border border-border bg-bg-surface-100 p-3 font-mono text-xs text-fg-muted">{JSON.stringify(messages)}</pre>
     </main>
   );
 }

@@ -4,12 +4,14 @@ import * as React from "react";
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, ShieldCheck, Bot, Network } from "lucide-react";
 import { auth } from "@/lib/firebase/client";
 import { createUserDoc, getUser } from "@/lib/firebase/data";
 import { setCookie, useAuth } from "@/lib/auth/AuthProvider";
 import { isSuperEmail } from "@/lib/auth/shared";
-import { Button, Spinner } from "@/components/ui";
+import { Button, Input, Spinner } from "@/components/ui";
+import { OmniaLogo, OmniaMark } from "@/components/brand/OmniaLogo";
+import { BrandIcon } from "@/components/brand/BrandIcon";
 
 function friendly(e: unknown): string {
   const code = (e as { code?: string })?.code ?? "";
@@ -79,59 +81,130 @@ function LoginForm() {
     }
   }
 
-  const input =
-    "h-10 w-full rounded-lg border border-border bg-bg px-3 text-[14px] text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-accent/50";
-
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-sm animate-[fade-in-up_0.3s_ease-out]">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-strong text-white">
-            <Sparkles size={20} />
-          </div>
-          <span className="text-xl font-bold text-fg">Omnia</span>
+    <main className="relative flex min-h-dvh bg-bg text-fg">
+      {/* Brand side */}
+      <section className="relative hidden w-[46%] max-w-[640px] flex-col justify-between overflow-hidden border-r border-border bg-bg-alternative p-10 lg:flex">
+        <div className="hero-backdrop" aria-hidden>
+          <div className="hero-grid" />
+          <div className="hero-aurora" />
+          <span className="hero-beam" style={{ top: "24%", animationDelay: "0.4s" }} />
+          <span className="hero-beam" style={{ top: "68%", animationDelay: "3.6s", animationDuration: "9s" }} />
+          <span className="hero-beam-v" style={{ left: "30%", animationDelay: "1.4s" }} />
+          <span className="hero-beam-v" style={{ left: "78%", animationDelay: "5s", animationDuration: "11s" }} />
         </div>
-        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-[var(--shadow-soft)]">
-          <h1 className="text-[17px] font-semibold text-fg">{mode === "signin" ? "Sign in" : "Create your account"}</h1>
-          {disabled && (
-            <p className="rounded-lg bg-danger-soft px-3 py-2 text-[13px] text-danger">
-              Your account or organization has been disabled. Contact your administrator.
-            </p>
-          )}
-          {mode === "signup" && (
-            <input className={input} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-          )}
-          <input className={input} type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-          <input
-            className={input}
-            type="password"
-            required
-            minLength={6}
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          />
-          {error && <p className="text-[13px] text-danger">{error}</p>}
-          {info && <p className="text-[13px] text-success">{info}</p>}
-          <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
-            {busy ? <Spinner /> : mode === "signin" ? "Sign in" : "Sign up"}
-          </Button>
-          <div className="flex items-center justify-between text-[13px] text-fg-secondary">
-            <button type="button" className="hover:text-fg" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); }}>
-              {mode === "signin" ? "Create an account" : "I already have an account"}
-            </button>
-            {mode === "signin" && (
-              <button type="button" className="hover:text-fg" onClick={reset}>
-                Forgot password?
-              </button>
-            )}
+        <div className="relative z-10 animate-fade-in">
+          <OmniaLogo height={26} />
+        </div>
+        <div className="relative z-10 stagger [--stagger:90ms]">
+          <OmniaMark size={64} animated className="mb-8" />
+          <p className="eyebrow mb-3">AI workspace</p>
+          <h2 className="max-w-md text-[34px] font-medium leading-[1.15] tracking-[-0.02em]">
+            One workspace for <span className="text-brand-gradient">every model</span>, agent and answer.
+          </h2>
+          <p className="mt-4 max-w-sm text-[14px] leading-relaxed text-fg-muted">
+            Chat with any provider, run sandboxed agents and ask the Company Brain — self-hosted and yours.
+          </p>
+          <ul className="mt-8 space-y-2.5 text-[13px] text-fg-secondary">
+            {[
+              { icon: <Network size={14} />, text: "Multi-provider chat with live model lists" },
+              { icon: <Bot size={14} />, text: "Autonomous agents in Docker sandboxes" },
+              { icon: <ShieldCheck size={14} />, text: "Organization-scoped data and access" },
+            ].map((f) => (
+              <li key={f.text} className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">{f.icon}</span>
+                {f.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="relative z-10 flex items-center gap-4 text-fg-muted animate-fade-in">
+          {(["claude", "openai", "gemini", "deepseek", "qwen", "mistral", "ollama"] as const).map((k) => (
+            <span key={k} className="opacity-60 grayscale transition-all duration-300 hover:scale-110 hover:opacity-100 hover:grayscale-0">
+              <BrandIcon name={k} size={18} />
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* Form side */}
+      <section className="relative flex flex-1 items-center justify-center px-4 py-10">
+        <div className="w-full max-w-[380px] stagger [--stagger:70ms]">
+          <div className="mb-8 flex justify-center lg:hidden">
+            <OmniaLogo height={26} />
           </div>
-        </form>
-        <p className="mt-4 text-center text-[12px] text-fg-muted">
-          Invited to an organization? Sign up with the invited email and you&apos;ll be added automatically.
-        </p>
-      </div>
+          <div className="mb-6">
+            <h1 className="text-[24px] font-medium tracking-[-0.01em] text-fg">
+              {mode === "signin" ? "Welcome back" : "Get started"}
+            </h1>
+            <p className="mt-1 text-[13.5px] text-fg-muted">
+              {mode === "signin" ? "Sign in to your account" : "Create a new account"}
+            </p>
+          </div>
+          <form onSubmit={submit} className="space-y-4">
+            {disabled && (
+              <p className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-[13px] text-danger animate-scale-in">
+                Your account or organization has been disabled. Contact your administrator.
+              </p>
+            )}
+            {mode === "signup" && (
+              <label className="block animate-fade-in-up">
+                <span className="mb-1.5 block text-[13px] text-fg-secondary">Name</span>
+                <Input className="h-9" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+              </label>
+            )}
+            <label className="block">
+              <span className="mb-1.5 block text-[13px] text-fg-secondary">Email</span>
+              <Input className="h-9" type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 flex items-center justify-between text-[13px] text-fg-secondary">
+                Password
+                {mode === "signin" && (
+                  <button type="button" className="text-[12px] text-fg-muted transition-colors hover:text-fg" onClick={reset}>
+                    Forgot password?
+                  </button>
+                )}
+              </span>
+              <Input
+                className="h-9"
+                type="password"
+                required
+                minLength={6}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              />
+            </label>
+            {error && <p className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-[13px] text-danger animate-scale-in">{error}</p>}
+            {info && <p className="rounded-md border border-brand/30 bg-success-soft px-3 py-2 text-[13px] text-success animate-scale-in">{info}</p>}
+            <Button type="submit" variant="primary" size="lg" className="group w-full" disabled={busy}>
+              {busy ? (
+                <Spinner />
+              ) : (
+                <>
+                  {mode === "signin" ? "Sign in" : "Sign up"}
+                  <ArrowRight size={15} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                </>
+              )}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-[13px] text-fg-muted">
+            {mode === "signin" ? "Don't have an account? " : "Have an account? "}
+            <button
+              type="button"
+              className="text-fg underline decoration-border-stronger underline-offset-4 transition-colors hover:decoration-brand"
+              onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); }}
+            >
+              {mode === "signin" ? "Sign up now" : "Sign in now"}
+            </button>
+          </p>
+          <p className="mt-8 border-t border-border pt-4 text-center text-[12px] leading-relaxed text-fg-muted">
+            Invited to an organization? Sign up with the invited email and you&apos;ll be added automatically.
+          </p>
+        </div>
+      </section>
     </main>
   );
 }

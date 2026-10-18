@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Sparkles,
   Plus,
   Trash2,
   MessageSquare,
@@ -12,12 +11,18 @@ import {
   Briefcase,
   BookOpen,
   Plug,
-  PanelLeft,
+  PanelLeftClose,
   Globe,
   Folder,
   Pencil,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronDown,
 } from "lucide-react";
-import { cn, Tooltip } from "@/components/ui";
+import { cn, Tooltip, Segmented } from "@/components/ui";
+import { OmniaLogo } from "@/components/brand/OmniaLogo";
+import { BrandIcon, modelIconKey } from "@/components/brand/BrandIcon";
 import { UserMenu } from "@/components/UserMenu";
 import { AttachWorkspaceDialog } from "@/components/workspace/AttachWorkspaceDialog";
 import { RenameWorkspaceDialog } from "@/components/workspace/RenameWorkspaceDialog";
@@ -26,7 +31,6 @@ import type { Workspace } from "@/lib/dsh/types";
 import {
   useAppStore,
   modelLabel,
-  providerGlyph,
   activeRunFor,
 } from "@/lib/app-store";
 import type { ChatController } from "@/lib/use-chat";
@@ -49,12 +53,12 @@ function SectionHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1.5 px-3 pb-1 pt-4">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-        {label}
-      </span>
+    <div className="flex items-center gap-1.5 px-2.5 pb-1.5 pt-5">
+      <span className="eyebrow">{label}</span>
       {count !== undefined && count > 0 && (
-        <span className="text-[11px] text-fg-muted/70">{count}</span>
+        <span className="rounded-full border border-border bg-bg-surface-200 px-1.5 font-mono text-[10px] leading-4 text-fg-muted">
+          {count}
+        </span>
       )}
       {children}
       {action && <span className="ml-auto">{action}</span>}
@@ -103,9 +107,6 @@ export function Sidebar({
   const runs = useAppStore((s) => s.runs);
   const mainView = useAppStore((s) => s.mainView);
   const setMainView = useAppStore((s) => s.setMainView);
-  const activeConversation = conversations.find(
-    (c) => c.id === activeConversationId,
-  );
 
   const refreshWorkspaces = useCallback(async () => {
     try {
@@ -141,101 +142,77 @@ export function Sidebar({
     <>
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] animate-fade-in lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
       <aside
         className={cn(
-          "z-40 flex h-full w-[272px] shrink-0 flex-col border-r border-border bg-bg-elevated/40 transition-transform",
+          "z-40 flex h-full w-[264px] shrink-0 flex-col border-r border-border bg-bg-alternative",
+          "transition-[transform,width] duration-300 [transition-timing-function:var(--ease-out)]",
           "fixed lg:static",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-0 lg:overflow-hidden",
         )}
       >
         {sidebarOpen && (
-          <div className="flex w-[272px] flex-col h-full">
-            <div className="flex items-center justify-between px-4 pt-4 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-strong text-white shadow-sm">
-                  <Sparkles size={15} />
-                </span>
-                <div>
-                  <h1 className="text-[15px] font-bold tracking-tight text-fg leading-none">
-                    Omnia
-                  </h1>
-                  <p className="text-[10.5px] text-fg-muted mt-0.5">
-                    {activeConversation
-                      ? `${providerGlyph(activeConversation.provider as any)} ${modelLabel(
-                          activeConversation.provider as any,
-                          activeConversation.model,
-                        )}`
-                      : "Multi-provider workspace"}
-                  </p>
-                </div>
-              </div>
+          <div className="flex h-full w-[264px] flex-col animate-slide-in-left">
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
+              <OmniaLogo height={22} />
               <Tooltip text="Collapse sidebar">
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-fg-muted hover:bg-bg-hover hover:text-fg lg:hidden"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg lg:hidden"
                 >
-                  <PanelLeft size={15} />
+                  <PanelLeftClose size={15} />
                 </button>
               </Tooltip>
             </div>
 
-            <div className="px-3 pb-2">
-              <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl border border-border bg-bg-subtle p-1">
-                <button
-                  onClick={() => setMainView("chat")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
-                    mainView === "chat"
-                      ? "bg-bg-elevated text-fg shadow-sm"
-                      : "text-fg-muted hover:text-fg-secondary",
-                  )}
-                >
-                  <MessageCircle size={14} />
-                  Chat
-                </button>
-                <button
-                  onClick={() => setMainView("brain")}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
-                    mainView === "brain"
-                      ? "bg-bg-elevated text-fg shadow-sm"
-                      : "text-fg-muted hover:text-fg-secondary",
-                  )}
-                >
-                  <Brain size={14} />
-                  Brain
-                </button>
-              </div>
+            <div className="space-y-2 px-3 pt-3">
+              <Segmented
+                value={mainView === "brain" ? "brain" : "chat"}
+                onChange={(v) => setMainView(v)}
+                options={[
+                  { value: "chat", label: "Chat", icon: <MessageCircle size={13} /> },
+                  { value: "brain", label: "Brain", icon: <Brain size={13} /> },
+                ]}
+              />
               {mainView === "chat" && (
                 <div className="relative">
-                  <button
-                    onClick={() => setMenuOpen((v) => !v)}
-                    onMouseEnter={() => setMenuOpen(true)}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-bg-elevated px-3 py-2 text-[13.5px] font-medium text-fg hover:border-accent/40 hover:bg-bg-hover transition-colors"
-                  >
-                    <Plus size={15} />
-                    New chat
-                  </button>
+                  <div className="flex">
+                    <button
+                      onClick={() => chat.startNew()}
+                      className="btn-sheen group flex h-8 flex-1 items-center gap-2 rounded-l-md border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] px-2.5 text-[13px] font-medium text-[color:var(--brand-button-text)] transition-[filter,box-shadow] duration-200 hover:brightness-110 hover:shadow-[0_0_0_3px_var(--accent-soft)]"
+                    >
+                      <Plus size={14} className="transition-transform duration-300 group-hover:rotate-90" />
+                      New chat
+                    </button>
+                    <button
+                      onClick={() => setMenuOpen((v) => !v)}
+                      aria-label="More ways to start"
+                      className="flex h-8 w-8 items-center justify-center rounded-r-md border border-l-0 border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)] transition-[filter] hover:brightness-110"
+                    >
+                      <ChevronDown size={14} className={cn("transition-transform duration-300", menuOpen && "rotate-180")} />
+                    </button>
+                  </div>
                   {menuOpen && (
                     <div
                       onMouseLeave={() => setMenuOpen(false)}
-                      className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-soft"
+                      className="absolute inset-x-0 top-full z-50 mt-1.5 overflow-hidden rounded-lg border border-border-strong bg-bg-overlay p-1 shadow-pop animate-scale-in"
                     >
                       <button
                         onClick={() => {
                           setMenuOpen(false);
                           chat.startNew();
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] hover:bg-bg-hover"
+                        className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-bg-hover"
                       >
-                        <MessageCircle size={14} className="text-accent" />
+                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">
+                          <MessageCircle size={13} />
+                        </span>
                         <span>
                           New chat
-                          <span className="block text-[11px] text-fg-muted">Plain conversation</span>
+                          <span className="block text-[11.5px] text-fg-muted">Plain conversation</span>
                         </span>
                       </button>
                       <button
@@ -243,14 +220,14 @@ export function Sidebar({
                           setMenuOpen(false);
                           setAttachOpen(true);
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] hover:bg-bg-hover"
+                        className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-bg-hover"
                       >
-                        <Briefcase size={14} className="text-accent" />
+                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">
+                          <Briefcase size={13} />
+                        </span>
                         <span>
                           New workspace
-                          <span className="block text-[11px] text-fg-muted">
-                            Chat bound to a project folder
-                          </span>
+                          <span className="block text-[11.5px] text-fg-muted">Chat bound to a project folder</span>
                         </span>
                       </button>
                     </div>
@@ -286,7 +263,7 @@ export function Sidebar({
                 {workspaceFilter && (
                   <button
                     onClick={() => setWorkspaceFilterId(null)}
-                    className="ml-1 rounded-full bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent hover:opacity-80"
+                    className="ml-1 rounded-full border border-brand/30 bg-accent-soft px-1.5 text-[10px] font-medium leading-4 text-accent transition-opacity hover:opacity-80 animate-scale-in"
                     title="Show all chats"
                   >
                     {workspaceFilter.name} ✕
@@ -295,59 +272,69 @@ export function Sidebar({
               </SectionHeader>
 
               {visibleConversations.length === 0 && (
-                <p className="px-3 py-2 text-[12px] text-fg-muted">
+                <div className="mx-1 rounded-md border border-dashed border-border px-3 py-3 text-[12px] leading-relaxed text-fg-muted animate-fade-in">
                   {workspaceFilter
                     ? `No chats in ${workspaceFilter.name} yet.`
                     : "No conversations yet. Start a new chat to get going."}
-                </p>
+                </div>
               )}
+              <div className="stagger [--stagger:25ms]">
               {visibleConversations.map((c) => {
                 const active = c.id === activeConversationId;
                 const live = activeRunFor(runs, c.id);
                 const bound = conversationWorkspaces[c.id];
+                const logo = modelIconKey(c.model, c.provider as string);
                 return (
                   <div
                     key={c.id}
                     className={cn(
-                      "group relative mb-0.5 flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors",
+                      "group relative mb-px flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors duration-150",
                       active
-                        ? "bg-accent-soft/70"
-                        : "hover:bg-bg-hover",
+                        ? "bg-bg-surface-300 text-fg"
+                        : "text-fg-secondary hover:bg-bg-hover hover:text-fg",
                     )}
                     onClick={() => {
                       void chat.openConversation(c.id);
                     }}
                   >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand transition-all duration-300 [transition-timing-function:var(--ease-out)]",
+                        active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
+                      )}
+                    />
                     {live ? (
-                      <span className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-                        <span className="absolute h-2.5 w-2.5 animate-ping rounded-full bg-accent/50" />
-                        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                        <span className="live-dot" />
                       </span>
                     ) : (
-                      <MessageSquare
-                        size={14}
-                        className={cn(
-                          "shrink-0",
-                          active ? "text-accent" : "text-fg-muted",
-                        )}
-                      />
+                      <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center transition-opacity", active ? "opacity-100" : "opacity-70 group-hover:opacity-100")}>
+                        <BrandIcon
+                          name={logo}
+                          size={14}
+                          fallback={<MessageSquare size={14} className={active ? "text-accent" : "text-fg-muted"} />}
+                        />
+                      </span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-fg">
+                      <p className="truncate text-[13px] font-normal leading-5">
                         {c.title}
                       </p>
-                      <p className="flex items-center gap-1 truncate text-[10.5px] text-fg-muted">
+                      <p className="flex items-center gap-1 truncate text-[11px] leading-4 text-fg-muted">
                         {bound && (
                           <Folder size={10} className="shrink-0 text-fg-muted/80" />
                         )}
                         {live ? (
-                          <span className="truncate font-medium text-accent">
+                          <span className="text-shine truncate font-medium">
                             {live.activity}
                           </span>
                         ) : bound ? (
                           <span className="truncate">{bound.name}</span>
                         ) : (
-                          timeAgo(c.updatedAt)
+                          <span className="truncate">
+                            {timeAgo(c.updatedAt)} · {modelLabel(c.provider as any, c.model)}
+                          </span>
                         )}
                       </p>
                     </div>
@@ -356,14 +343,15 @@ export function Sidebar({
                         e.stopPropagation();
                         void deleteConversation(c.id);
                       }}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md text-fg-muted opacity-0 group-hover:opacity-100 hover:bg-danger-soft hover:text-danger transition-opacity"
+                      className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 translate-x-1 items-center justify-center rounded-md border border-transparent text-fg-muted opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 hover:border-danger/30 hover:bg-danger-soft hover:text-danger"
                       title="Delete conversation"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 );
               })}
+              </div>
 
               <SectionHeader
                 label="Workspaces"
@@ -372,7 +360,7 @@ export function Sidebar({
                   <Tooltip text="New workspace">
                     <button
                       onClick={() => setAttachOpen(true)}
-                      className="flex h-5 w-5 items-center justify-center rounded-md text-fg-muted hover:bg-bg-hover hover:text-fg transition-colors"
+                      className="flex h-5 w-5 items-center justify-center rounded-md text-fg-muted transition-all duration-200 hover:rotate-90 hover:bg-bg-hover hover:text-fg"
                     >
                       <Plus size={13} />
                     </button>
@@ -381,10 +369,10 @@ export function Sidebar({
               />
 
               {workspaces.length === 0 && (
-                <p className="px-3 py-2 text-[12px] text-fg-muted">
+                <div className="mx-1 rounded-md border border-dashed border-border px-3 py-3 text-[12px] leading-relaxed text-fg-muted">
                   No workspaces. Add a project folder to give a chat its own
                   files, shell, and memory.
-                </p>
+                </div>
               )}
               {workspaces.map((w) => {
                 const selected = workspaceFilterId === w.id;
@@ -392,28 +380,35 @@ export function Sidebar({
                   <div
                     key={w.id}
                     className={cn(
-                      "group relative mb-0.5 flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 transition-colors",
-                      selected ? "bg-accent-soft/70" : "hover:bg-bg-hover",
+                      "group relative mb-px flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors duration-150",
+                      selected ? "bg-bg-surface-300" : "hover:bg-bg-hover",
                     )}
                     onClick={() => setWorkspaceFilterId(selected ? null : w.id)}
                   >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand transition-all duration-300",
+                        selected ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
+                      )}
+                    />
                     <Folder
                       size={14}
                       className={cn(
-                        "shrink-0",
-                        selected ? "text-accent" : "text-fg-muted",
+                        "shrink-0 transition-colors",
+                        selected ? "text-accent" : "text-fg-muted group-hover:text-fg-secondary",
                       )}
                     />
                     <div className="min-w-0 flex-1">
                       <p
                         className={cn(
-                          "truncate text-[13px] font-medium",
+                          "truncate text-[13px] leading-5",
                           selected ? "text-fg" : "text-fg-secondary",
                         )}
                       >
                         {w.name}
                       </p>
-                      <p className="truncate font-mono text-[10.5px] text-fg-muted">
+                      <p className="truncate font-mono text-[10.5px] leading-4 text-fg-muted">
                         {w.path}
                       </p>
                     </div>
@@ -422,7 +417,7 @@ export function Sidebar({
                         e.stopPropagation();
                         setRenaming(w);
                       }}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md text-fg-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-fg focus-visible:opacity-100"
+                      className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-fg focus-visible:opacity-100"
                       title="Rename workspace"
                     >
                       <Pencil size={12} />
@@ -433,42 +428,67 @@ export function Sidebar({
             </div>
             )}
             {mainView === "brain" && (
-              <div className="flex-1 overflow-y-auto px-4 py-3">
-                <p className="text-[12px] leading-relaxed text-fg-muted">
-                  The Company Brain answers from the FalkorDB knowledge graph —
-                  people, services, tickets, decisions — and remembers earlier
-                  sessions. Its own past sessions live in the Brain panel.
-                </p>
+              <div className="flex-1 overflow-y-auto px-3 py-4 animate-fade-in">
+                <div className="relative overflow-hidden rounded-lg border border-border bg-bg-surface-100 p-3">
+                  <div aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand/15 blur-2xl" />
+                  <p className="eyebrow mb-1.5">Company Brain</p>
+                  <p className="text-[12px] leading-relaxed text-fg-secondary">
+                    Answers from the FalkorDB knowledge graph — people, services,
+                    tickets, decisions — and remembers earlier sessions. Its own
+                    past sessions live in the Brain panel.
+                  </p>
+                </div>
               </div>
             )}
 
-            <div className="border-t border-border p-2.5 space-y-0.5">
-              <button
-                onClick={onOpenSkills}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-fg-secondary hover:bg-bg-hover hover:text-fg transition-colors"
-              >
-                <BookOpen size={15} className="text-accent" />
-                Skills
-              </button>
-              <button
-                onClick={onOpenSearch}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-fg-secondary hover:bg-bg-hover hover:text-fg transition-colors"
-              >
-                <Globe size={15} className="text-accent" />
-                Search providers
-              </button>
-              <button
-                onClick={onOpenConnections}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-fg-secondary hover:bg-bg-hover hover:text-fg transition-colors"
-              >
-                <Plug size={15} className="text-accent" />
-                Connections
-              </button>
+            <div className="space-y-px border-t border-border p-2">
+              <NavRow icon={<BookOpen size={14} />} label="Skills" onClick={onOpenSkills} />
+              <NavRow icon={<Globe size={14} />} label="Search providers" onClick={onOpenSearch} />
+              <NavRow icon={<Plug size={14} />} label="Connections" onClick={onOpenConnections} />
+              <ThemeSwitcher />
               <UserMenu />
             </div>
           </div>
         )}
       </aside>
     </>
+  );
+}
+
+function NavRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] text-fg-secondary transition-colors hover:bg-bg-hover hover:text-fg"
+    >
+      <span className="text-fg-muted transition-[color,transform] duration-200 group-hover:scale-110 group-hover:text-accent">{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+/** System / light / dark, with a cross-fade while the palette swaps. */
+function ThemeSwitcher() {
+  const theme = useAppStore((s) => s.theme);
+  const setTheme = useAppStore((s) => s.setTheme);
+  return (
+    <div className="flex items-center justify-between px-2.5 py-1">
+      <span className="text-[12px] text-fg-muted">Theme</span>
+      <Segmented
+        className="w-[96px]"
+        value={theme}
+        onChange={(t) => {
+          const root = document.documentElement;
+          root.classList.add("theme-transition");
+          setTheme(t);
+          window.setTimeout(() => root.classList.remove("theme-transition"), 400);
+        }}
+        options={[
+          { value: "system", label: <Monitor size={12} aria-label="System" /> },
+          { value: "light", label: <Sun size={12} aria-label="Light" /> },
+          { value: "dark", label: <Moon size={12} aria-label="Dark" /> },
+        ]}
+      />
+    </div>
   );
 }

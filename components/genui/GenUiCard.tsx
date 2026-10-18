@@ -51,16 +51,18 @@ export function GenUiCard({
   return (
     <div className="my-2">
       <div className="mb-1.5 flex items-center gap-2 text-[12px] text-fg-muted">
-        <LayoutDashboard size={13} className="text-accent" />
+        <span className="flex h-5 w-5 items-center justify-center rounded border border-border bg-bg-surface-200 text-accent">
+          <LayoutDashboard size={11} />
+        </span>
         <span className="truncate font-medium text-fg-secondary">{title ?? "Interface"}</span>
         {streaming && <Badge tone="accent">building…</Badge>}
-        <button className="ml-auto hover:text-fg" onClick={() => setShowJson((v) => !v)}>
+        <button className="ml-auto rounded px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-wider transition-colors hover:bg-bg-hover hover:text-fg" onClick={() => setShowJson((v) => !v)}>
           {showJson ? "Hide JSON" : "Show JSON"}
         </button>
       </div>
       <PrefabView envelope={envelope} streaming={streaming} onUserMessage={sendFromGenUi} />
       {showJson && (
-        <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-border bg-bg-inset p-3 text-[11px] leading-relaxed">
+        <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-border bg-bg-inset p-3 font-mono text-[11px] leading-relaxed animate-fade-in-up">
           {JSON.stringify(args?.ui ?? {}, null, 2)}
         </pre>
       )}

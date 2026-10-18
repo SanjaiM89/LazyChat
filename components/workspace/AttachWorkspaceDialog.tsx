@@ -14,6 +14,7 @@ import { useAppStore } from "@/lib/app-store";
 import { dshApi } from "@/lib/dsh/client";
 import type { ChatController } from "@/lib/use-chat";
 import type { Workspace } from "@/lib/dsh/types";
+import { Folder, FolderOpen, CornerLeftUp, Briefcase } from "lucide-react";
 
 export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController; onClose: () => void }) {
   const [existing, setExisting] = React.useState<Workspace[]>([]);
@@ -94,35 +95,43 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
   // Portal to document.body: the sidebar's transform would otherwise trap
   // `fixed` positioning and squeeze the dialog into the sidebar column.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[6px] [animation:overlay-in_0.3s_ease_both]" onClick={onClose}>
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-bg-elevated shadow-soft"
+        className="relative w-full max-w-lg overflow-hidden rounded-lg border border-border-strong bg-bg-overlay shadow-pop animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-border px-4 py-3">
-          <h2 className="text-[14px] font-semibold">New workspace</h2>
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent" />
+        <div className="flex items-start gap-3 border-b border-border px-5 py-3.5">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">
+            <Briefcase size={15} />
+          </span>
+          <div>
+          <h2 className="text-[15px] font-medium tracking-tight">New workspace</h2>
           <p className="mt-0.5 text-[12px] text-fg-muted">
             Bind a fresh chat to a project folder. File and shell tools will run there.
           </p>
+          </div>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
+        <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
           {existing.length > 0 && (
             <div className="mb-3">
-              <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+              <p className="eyebrow pb-1.5">
                 Attach existing
               </p>
               {existing.map((w) => (
                 <button
                   key={w.id}
                   onClick={() => void attach({ id: w.id, name: w.name, path: w.path })}
-                  className="mb-1 block w-full truncate rounded-lg px-3 py-2 text-left text-[13px] hover:bg-bg-hover"
+                  className="group mb-1 flex w-full items-center gap-2.5 truncate rounded-md border border-border bg-bg-surface-100 px-3 py-2 text-left text-[13px] transition-colors hover:border-brand/40 hover:bg-bg-hover"
                 >
-                  {w.name} <span className="font-mono text-[11px] text-fg-muted">{w.path}</span>
+                  <Folder size={14} className="shrink-0 text-fg-muted transition-colors group-hover:text-accent" />
+                  <span className="truncate">{w.name}</span>
+                  <span className="truncate font-mono text-[11px] text-fg-muted">{w.path}</span>
                 </button>
               ))}
             </div>
           )}
-          <p className="pb-1 text-[11px] font-medium uppercase tracking-wide text-fg-muted">
+          <p className="eyebrow pb-1.5">
             Or create new
           </p>
           <input
@@ -132,7 +141,7 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
               setNameTouched(true);
             }}
             placeholder="Name (defaults to folder name)"
-            className="mb-2 w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] outline-none focus:border-accent"
+            className="mb-2 w-full rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-2 text-[13px] focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
           />
           <div className="mb-2 flex gap-2">
             <input
@@ -140,18 +149,18 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
               onChange={(e) => pickFolder(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void create()}
               placeholder="Folder (optional - leave empty to create one from the name)"
-              className="min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-[12px] outline-none focus:border-accent"
+              className="min-w-0 flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-2 font-mono text-[12px] focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
             />
             <button
               onClick={() => void create()}
               disabled={busy}
-              className="rounded-lg bg-accent px-4 py-2 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className={"btn-sheen inline-flex items-center justify-center rounded-md border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)] font-medium transition-[filter,box-shadow] duration-200 hover:brightness-110 hover:shadow-[0_0_0_3px_var(--accent-soft)] disabled:opacity-45 disabled:pointer-events-none h-8 px-4 text-[13px]"}
             >
               {busy ? "Creating…" : "Create"}
             </button>
           </div>
-          <p className="pb-1 font-mono text-[11px] text-fg-muted">{cwd || "…"}</p>
-          <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
+          <p className="flex items-center gap-1.5 pb-1.5 font-mono text-[11px] text-fg-muted"><FolderOpen size={12} className="text-accent" />{cwd || "…"}</p>
+          <div className="max-h-48 overflow-y-auto rounded-md border border-border bg-bg-surface-100">
             {dirs.map((d) => (
               <button
                 key={d}
@@ -159,17 +168,18 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
                   pickFolder(`${cwd}/${d}`);
                   void nav(`${cwd}/${d}`);
                 }}
-                className="block w-full truncate px-3 py-1.5 text-left font-mono text-[12px] hover:bg-bg-hover"
+                className="group flex w-full items-center gap-2 truncate border-b border-border-muted px-3 py-1.5 text-left font-mono text-[12px] text-fg-secondary transition-colors last:border-b-0 hover:bg-bg-hover hover:text-fg"
               >
-                📁 {d}
+                <Folder size={13} className="shrink-0 text-fg-muted transition-colors group-hover:text-accent" />
+                {d}
               </button>
             ))}
             {dirs.length === 0 && <p className="px-3 py-2 text-[12px] text-fg-muted">No subfolders.</p>}
           </div>
-          <button onClick={() => void nav(`${cwd}/..`)} className="mt-1 text-[12px] text-accent">
-            ↑ parent folder
+          <button onClick={() => void nav(`${cwd}/..`)} className="mt-1.5 inline-flex items-center gap-1 rounded px-1 text-[12px] text-brand-link transition-colors hover:bg-bg-hover">
+            <CornerLeftUp size={12} /> parent folder
           </button>
-          {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
+          {error && <p className="mt-2 rounded-md border border-danger/30 bg-danger-soft px-2.5 py-1.5 text-[12px] text-danger animate-fade-in-up">{error}</p>}
         </div>
       </div>
     </div>,

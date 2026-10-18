@@ -1,18 +1,16 @@
 "use client";
 
 import * as React from "react";
-import {
-  FileText,
-  Image as ImageIcon,
-  Link2,
-  User,
-} from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 import type { UIMessage, UIMessagePart } from "ai";
 import { cn } from "@/components/ui";
 import { Markdown, type Citation } from "@/components/Markdown";
 import { ThinkingBlock } from "@/components/ThinkingBlock";
 import { ToolCard } from "@/components/ToolCard";
 import { isSubchatMessage } from "@/lib/subchat-context";
+import { OmniaMark } from "@/components/brand/OmniaLogo";
+import { SiteFavicon } from "@/components/brand/BrandIcon";
+import { FileIcon } from "@/components/brand/FileIcon";
 
 
 interface NormalizedTool {
@@ -83,14 +81,14 @@ function FileChip({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-2.5 py-1.5",
-        "text-[12px] text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors",
+        "lift group flex items-center gap-2 rounded-md border border-border bg-bg-surface-200 py-1 pl-1.5 pr-2.5",
+        "text-[12px] text-fg-secondary hover:border-border-strong hover:text-fg",
       )}
     >
       {isImage ? (
-        <ImageIcon size={13} className="text-accent shrink-0" />
+        <ImageIcon size={14} className="text-accent shrink-0" />
       ) : (
-        <FileText size={13} className="text-accent shrink-0" />
+        <FileIcon type={filename || mediaType} size={22} />
       )}
       <span className="truncate max-w-[160px]">{filename || "attachment"}</span>
     </a>
@@ -115,9 +113,9 @@ function SourceChips({ urls }: { urls: { url: string; title?: string }[] }) {
             href={s.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-elevated px-2.5 py-1 text-[11.5px] text-fg-secondary hover:border-accent/40 hover:text-accent transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-surface-200 py-1 pl-1.5 pr-2.5 text-[11.5px] text-fg-secondary transition-colors hover:border-brand/40 hover:text-fg"
           >
-            <Link2 size={11} className="text-accent" />
+            <SiteFavicon hostname={host} size={13} />
             <span className="truncate max-w-[180px]">{s.title || host}</span>
           </a>
         );
@@ -185,9 +183,7 @@ function AssistantParts({
               selectedCitation={selected}
               onSelectCitation={toggleSelect}
             />
-            {isLastText && (
-              <span className="cursor-caret inline-block h-[1em] w-[2px] align-text-bottom bg-accent animate-pulse" />
-            )}
+            {isLastText && <span className="stream-caret" aria-hidden />}
           </div>,
         );
         break;
@@ -227,7 +223,7 @@ function AssistantParts({
       }
       case "step-start": {
         out.push(
-          <div key={i} className="my-1 h-px w-full bg-border/60" />,
+          <div key={i} className="my-2 h-px w-full bg-gradient-to-r from-transparent via-border to-transparent" />,
         );
         break;
       }
@@ -294,7 +290,7 @@ function ContextBadge() {
   return (
     <span
       title="This turn came from the subchat — shared context both chats can see"
-      className="inline-flex w-fit items-center rounded-full bg-accent-soft px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-accent"
+      className="inline-flex w-fit items-center rounded-full border border-brand/30 bg-accent-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-accent"
     >
       via subchat
     </span>
@@ -323,26 +319,24 @@ function MessageItemComponent({
     const viaSubchat = isSubchatMessage(message);
 
     return (
-      <div className="chat-message group flex gap-3 px-1 py-3 animate-fade-in-up">
-        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-strong text-[11px] font-semibold text-white shadow-sm">
-          <User size={14} />
-        </span>
-        <div className="min-w-0 flex-1 pt-0.5 space-y-2">
+      <div className="chat-message group flex justify-end px-1 py-3 animate-fade-in-up">
+        <div className="flex max-w-[85%] min-w-0 flex-col items-end gap-2">
           {viaSubchat && <ContextBadge />}
           {imageParts.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               {imageParts.map((p: any, i: number) => (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={i}
                   src={p.url}
                   alt={p.filename || "attachment"}
-                  className="max-h-40 max-w-[220px] rounded-xl border border-border object-cover"
+                  className="max-h-40 max-w-[220px] rounded-lg border border-border object-cover shadow-soft transition-transform duration-300 hover:scale-[1.02]"
                 />
               ))}
             </div>
           )}
           {otherParts.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap justify-end gap-1.5">
               {otherParts.map((p: any, i: number) => (
                 <FileChip
                   key={i}
@@ -354,7 +348,7 @@ function MessageItemComponent({
             </div>
           )}
           {text.trim() && (
-            <div className="user-text text-[14.5px] leading-relaxed text-fg whitespace-pre-wrap">
+            <div className="user-text rounded-xl rounded-br-sm border border-border bg-bg-surface-200 px-4 py-2.5 text-[14.5px] leading-relaxed text-fg whitespace-pre-wrap shadow-[0_1px_0_rgba(0,0,0,0.04)]">
               {text}
             </div>
           )}
@@ -367,17 +361,23 @@ function MessageItemComponent({
   }
 
   if (role === "assistant") {
+    const live = isLast && streaming;
     return (
-      <div className="chat-message px-1 py-3 animate-fade-in-up">
-        {isSubchatMessage(message) && <ContextBadge />}
-        <AssistantParts parts={message.parts} streaming={isLast && streaming} />
+      <div className="chat-message flex gap-3 px-1 py-3 animate-fade-in-up">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
+          <OmniaMark size={22} animated={live} />
+        </span>
+        <div className="min-w-0 flex-1">
+          {isSubchatMessage(message) && <ContextBadge />}
+          <AssistantParts parts={message.parts} streaming={live} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="chat-message px-1 py-3">
-      <div className="rounded-xl border border-border bg-bg-subtle px-4 py-2 text-[13px] text-fg-muted">
+      <div className="rounded-lg border border-border bg-bg-surface-100 px-4 py-2 text-[13px] text-fg-muted">
         {message.parts
           .filter((p) => p.type === "text")
           .map((p: any) => p.text)

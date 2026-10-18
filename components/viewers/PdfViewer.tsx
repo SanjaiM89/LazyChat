@@ -97,7 +97,7 @@ export function PdfViewer({ url }: { url: string }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-bg-surface-100 px-3">
         <span className="text-[12px] text-fg-muted">
           {total > 0 ? `Page ${page} of ${total}` : "PDF"}
         </span>
@@ -142,7 +142,7 @@ export function PdfViewer({ url }: { url: string }) {
 
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto bg-bg-subtle/50 p-4"
+        className="flex-1 overflow-auto bg-bg-alternative p-4"
         onScroll={(e) => {
           const el = e.currentTarget;
           const canvases = Array.from(el.querySelectorAll("canvas")) as HTMLCanvasElement[];
@@ -162,7 +162,7 @@ export function PdfViewer({ url }: { url: string }) {
           </div>
         )}
         {error && (
-          <div className="rounded-lg border border-danger/30 bg-danger-soft/60 px-4 py-3 text-[13px] text-danger">
+          <div className="rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger">
             {error}
           </div>
         )}
@@ -175,7 +175,7 @@ export function PdfViewer({ url }: { url: string }) {
           {pages.map((num) => (
             <div
               key={num}
-              className="overflow-hidden rounded-lg border border-border bg-white shadow-soft"
+              className="overflow-hidden rounded-md border border-border bg-white shadow-soft animate-fade-in-up"
             >
               <canvas data-page={num} className="block max-w-full" style={{ width: "auto" }} />
             </div>
