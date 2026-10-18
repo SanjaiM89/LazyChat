@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { ownedWorkspace } from "@/lib/dsh/access";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
@@ -8,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Recall shared memory (global + optional workspace scope). */
-export async function GET(request: Request) {
+export const GET = authed(async (request, user) => {
   await ensureReady();
   const { searchParams } = new URL(request.url);
   const workspaceId = searchParams.get("workspace_id") ?? "";
@@ -16,15 +18,18 @@ export async function GET(request: Request) {
   const limit = Math.max(1, Math.min(Number(searchParams.get("limit") ?? "20") || 20, 100));
   try {
     const client = await FalkorClient.get();
+    if (workspaceId && !(await ownedWorkspace(client, workspaceId, user))) {
+      return NextResponse.json({ detail: "unknown workspace" }, { status: 404 });
+    }
     return NextResponse.json({ memories: await recallShared(client, workspaceId, q, limit) });
   } catch (err) {
     if (err instanceof GraphError) return NextResponse.json({ detail: err.message }, { status: 503 });
     throw err;
   }
-}
+});
 
 /** Store shared memory (secrets redacted, deduped, slot-conflicts resolved). */
-export async function POST(request: Request) {
+export const POST = authed(async (request, user) => {
   await ensureReady();
   let body: { scope?: string; kind?: string; text?: string; slot?: string | null; tags?: string[] };
   try {
@@ -37,6 +42,12 @@ export async function POST(request: Request) {
   }
   try {
     const client = await FalkorClient.get();
+    if (body.scope !== "global") {
+      const wid = body.scope.startsWith("workspace:") ? body.scope.slice("workspace:".length) : "";
+      if (!wid || !(await ownedWorkspace(client, wid, user))) {
+        return NextResponse.json({ detail: "unknown workspace" }, { status: 404 });
+      }
+    }
     const mem = await storeShared(client, {
       scope: body.scope,
       kind: body.kind ?? "note",
@@ -49,4 +60,4 @@ export async function POST(request: Request) {
     if (err instanceof GraphError) return NextResponse.json({ detail: err.message }, { status: 503 });
     return NextResponse.json({ detail: (err as Error).message }, { status: 400 });
   }
-}
+});

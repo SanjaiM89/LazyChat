@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { Plug, Plus, Trash2, RefreshCw, Loader2, Wrench } from "lucide-react";
-import { Modal, Button, Badge, Toggle } from "@/components/ui";
+import { Plug, Plus, Trash2, RefreshCw, Wrench } from "lucide-react";
+import { Modal, Button, Badge, Toggle, Spinner, Segmented } from "@/components/ui";
+import { BrandIcon, BrandTile, connectorIconKey } from "@/components/brand/BrandIcon";
 import { useAppStore } from "@/lib/app-store";
 import type { MCPServerDef } from "@/lib/types";
 
@@ -91,34 +92,25 @@ export function ConnectionsDialog({
       width="max-w-3xl"
     >
       <div className="space-y-4">
-        <div className="rounded-xl border border-border bg-bg-subtle/50 p-3.5 space-y-2">
-          <div className="flex items-center gap-2">
-            <Plus size={14} className="text-accent" />
-            <span className="text-[13px] font-medium text-fg-secondary">
-              Add MCP server
-            </span>
-            <div className="ml-auto flex rounded-lg border border-border overflow-hidden">
-              {(["stdio", "http"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setType(t)}
-                  className={
-                    "px-3 py-1.5 text-[12px] font-medium transition-colors " +
-                    (type === t
-                      ? "bg-accent-soft text-accent"
-                      : "text-fg-muted hover:bg-bg-hover")
-                  }
-                >
-                  {t === "stdio" ? "Local command" : "HTTP URL"}
-                </button>
-              ))}
-            </div>
+        <div className="space-y-2 rounded-lg border border-border bg-bg-surface-100 p-3.5">
+          <div className="flex items-center gap-2.5">
+            <BrandTile name={connectorIconKey(name, url, command, args)} size={28} />
+            <span className="eyebrow">Add MCP server</span>
+            <Segmented
+              className="ml-auto w-[220px]"
+              value={type}
+              onChange={setType}
+              options={[
+                { value: "stdio", label: "Local command" },
+                { value: "http", label: "HTTP URL" },
+              ]}
+            />
           </div>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (e.g. 'filesystem', 'github')"
-            className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+            className="w-full rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
           />
           {type === "stdio" ? (
             <>
@@ -126,13 +118,13 @@ export function ConnectionsDialog({
                 value={command}
                 onChange={(e) => setCommand(e.target.value)}
                 placeholder="Command (e.g. npx)"
-                className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+                className="w-full rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
               <input
                 value={args}
                 onChange={(e) => setArgs(e.target.value)}
                 placeholder="Args, comma-separated (e.g. -y, @modelcontextprotocol/server-filesystem, /workspace)"
-                className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+                className="w-full rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
             </>
           ) : (
@@ -140,7 +132,7 @@ export function ConnectionsDialog({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://mcp.example.com/sse or /mcp endpoint"
-              className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-[13px] text-fg placeholder:text-fg-muted/60 focus:outline-none focus:border-accent/50"
+              className="w-full rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-1.5 text-[13px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
             />
           )}
           <div className="flex justify-end">
@@ -151,23 +143,31 @@ export function ConnectionsDialog({
                 busy || !name.trim() || (type === "stdio" && !command.trim()) || (type === "http" && !url.trim())
               }
             >
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              {busy ? <Spinner size={13} /> : <Plus size={14} />}
               Add & connect
             </Button>
           </div>
         </div>
 
         {mcpServers.length === 0 && (
-          <p className="py-3 text-center text-[13px] text-fg-muted">
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border py-6 text-center text-[13px] text-fg-muted">
+            <span className="flex items-center gap-2 opacity-60 grayscale">
+              {(["github", "notion", "linear", "postgresql", "figma"] as const).map((k) => (
+                <BrandIcon key={k} name={k} size={16} />
+              ))}
+            </span>
             No MCP servers connected.
-          </p>
+          </div>
         )}
-        <div className="space-y-2">
+        <div className="space-y-2 stagger [--stagger:45ms]">
           {mcpServers.map((s) => (
-            <div key={s.id} className="rounded-xl border border-border bg-bg-elevated p-3">
+            <div key={s.id} className="lift group rounded-lg border border-border bg-bg-surface-100 p-3 hover:border-border-strong">
               <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-info-soft text-info">
-                  <Plug size={14} />
+                <span className="relative">
+                  <BrandTile name={connectorIconKey(s.name, s.url, s.command, (s.args || []).join(" "))} size={34} glow fallback={<Plug size={14} />} />
+                  {s.status === "connected" && (
+                    <span className="absolute -bottom-0.5 -right-0.5 flex rounded-full ring-2 ring-bg-surface-100"><span className="live-dot !h-2 !w-2" /></span>
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export function ConnectionsDialog({
                 />
                 <button
                   onClick={() => remove(s.id)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-fg-muted hover:bg-danger-soft hover:text-danger transition-colors"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-fg-muted opacity-60 transition-all group-hover:opacity-100 hover:bg-danger-soft hover:text-danger"
                   title="Remove server"
                 >
                   <Trash2 size={13} />
@@ -200,7 +200,7 @@ export function ConnectionsDialog({
                   {s.tools.map((t) => (
                     <span
                       key={t}
-                      className="inline-flex items-center gap-1 rounded-md bg-bg-inset px-2 py-1 text-[11px] font-medium text-fg-secondary"
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[11px] text-fg-secondary"
                     >
                       <Wrench size={10} className="text-accent" />
                       {t}
@@ -213,14 +213,14 @@ export function ConnectionsDialog({
         </div>
 
         {mcpTools.length > 0 && (
-          <div className="rounded-xl border border-border bg-bg-subtle/40 p-3">
-            <div className="flex items-center gap-2 text-[12px] font-medium text-fg-muted mb-2">
+          <div className="rounded-lg border border-border bg-bg-surface-100 p-3">
+            <div className="eyebrow mb-2 flex items-center gap-2">
               <RefreshCw size={12} />
               {mcpTools.length} MCP tool(s) available to the model
             </div>
             <div className="flex flex-wrap gap-1.5">
               {mcpTools.map((t, i) => (
-                <span key={i} className="rounded-md border border-border px-2 py-1 text-[11px] text-fg-secondary">
+                <span key={i} className="rounded-md border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[11px] text-fg-secondary">
                   {t.serverId}/{t.name}
                 </span>
               ))}

@@ -1,0 +1,4192 @@
+{
+ "generatedFrom": "@prefecthq/prefab-ui@0.20.2",
+ "protocolVersion": "0.3",
+ "count": 112,
+ "shapes": [
+  {
+   "name": "ChartSeries",
+   "summary": "Series definition for cartesian charts (Bar, Line, Area).",
+   "fields": [
+    {
+     "name": "dataKey",
+     "type": "str",
+     "required": false,
+     "description": "Data field to plot"
+    },
+    {
+     "name": "label",
+     "type": "str | None",
+     "required": false,
+     "description": "Display label (defaults to dataKey)",
+     "default": "None"
+    },
+    {
+     "name": "color",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS color override",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "name": "Component",
+   "summary": "Base class for all UI components.",
+   "fields": [
+    {
+     "name": "id",
+     "type": "str | None",
+     "required": false,
+     "description": "HTML id attribute for CSS targeting. Applied to the outermost element.",
+     "default": "None"
+    },
+    {
+     "name": "cssClass",
+     "type": "Annotated[str | None, BeforeValidator(_coerce_css_class)]",
+     "required": false,
+     "description": "CSS/Tailwind classes for styling. Accepts a Responsive() for breakpoint-aware classes.",
+     "default": "None"
+    },
+    {
+     "name": "onMount",
+     "type": "Any | None",
+     "required": false,
+     "description": "Action(s) to execute when this component mounts.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "name": "ContainerComponent",
+   "summary": "Component that can contain child components.",
+   "fields": [
+    {
+     "name": "children",
+     "type": "list[Component]",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "let",
+     "type": "dict[str, Any] | None",
+     "required": false,
+     "description": "Scoped bindings available to children. Values are template strings.",
+     "default": "None"
+    },
+    {
+     "name": "case",
+     "type": "dict[str, Any]",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "result",
+     "type": "list[dict[str, Any]]",
+     "required": false,
+     "description": ""
+    }
+   ]
+  },
+  {
+   "name": "DataTableColumn",
+   "summary": "Column definition for DataTable.",
+   "fields": [
+    {
+     "name": "key",
+     "type": "str",
+     "required": false,
+     "description": "Data key to display in this column"
+    },
+    {
+     "name": "header",
+     "type": "str",
+     "required": false,
+     "description": "Column header text"
+    },
+    {
+     "name": "sortable",
+     "type": "bool",
+     "required": false,
+     "description": "Enable sorting for this column",
+     "default": "False"
+    },
+    {
+     "name": "format",
+     "type": "str | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "width",
+     "type": "str | None",
+     "required": false,
+     "description": "Column width as CSS value (e.g. '200px', '30%')",
+     "default": "None"
+    },
+    {
+     "name": "minWidth",
+     "type": "str | None",
+     "required": false,
+     "description": "Minimum column width as CSS value",
+     "default": "None"
+    },
+    {
+     "name": "maxWidth",
+     "type": "str | None",
+     "required": false,
+     "description": "Maximum column width as CSS value",
+     "default": "None"
+    },
+    {
+     "name": "align",
+     "type": "DataTableAlign | None",
+     "required": false,
+     "description": "Cell text alignment — resolves to cell_class",
+     "default": "None"
+    },
+    {
+     "name": "headerClass",
+     "type": "str | None",
+     "required": false,
+     "description": "Tailwind classes for header cells",
+     "default": "None"
+    },
+    {
+     "name": "cellClass",
+     "type": "str | None",
+     "required": false,
+     "description": "Tailwind classes for data cells",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "name": "UserProfile",
+   "summary": "",
+   "fields": [
+    {
+     "name": "name",
+     "type": "str",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "email",
+     "type": "str",
+     "required": true,
+     "description": ""
+    },
+    {
+     "name": "age",
+     "type": "int",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "active",
+     "type": "bool",
+     "required": false,
+     "description": ""
+    }
+   ]
+  }
+ ],
+ "components": [
+  {
+   "type": "Accordion",
+   "module": "accordion",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Accordion container — children must be `AccordionItem` components.",
+   "container": true,
+   "fields": [
+    {
+     "name": "multiple",
+     "type": "bool",
+     "required": false,
+     "description": "Allow multiple items to be open simultaneously",
+     "default": "False"
+    },
+    {
+     "name": "collapsible",
+     "type": "bool",
+     "required": false,
+     "description": "Whether items can be fully collapsed (single mode)",
+     "default": "True"
+    },
+    {
+     "name": "defaultOpenItems",
+     "type": "int | str | list[int | str] | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "defaultValues",
+     "type": "list[RxStr] | None",
+     "required": false,
+     "description": "Wire format for default_open_items (always an array).",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "AccordionItem",
+   "module": "accordion",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A single collapsible section within an Accordion.",
+   "container": true,
+   "fields": [
+    {
+     "name": "title",
+     "type": "RxStr",
+     "required": false,
+     "description": "Accordion trigger label"
+    },
+    {
+     "name": "value",
+     "type": "str | None",
+     "required": false,
+     "description": "Unique value (defaults to title)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Alert",
+   "module": "alert",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "An alert container for important messages.",
+   "container": true,
+   "fields": [
+    {
+     "name": "variant",
+     "type": "AlertVariant",
+     "required": false,
+     "description": "Visual variant: default, destructive, success, warning, info",
+     "default": "\"default\""
+    },
+    {
+     "name": "icon",
+     "type": "str | None",
+     "required": false,
+     "description": "Lucide icon name (kebab-case, e.g. 'circle-alert')",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "AlertDescription",
+   "module": "alert",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Alert description text.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Description text"
+    }
+   ]
+  },
+  {
+   "type": "AlertTitle",
+   "module": "alert",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Alert title text.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Title text"
+    }
+   ]
+  },
+  {
+   "type": "AreaChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Area chart with one or more series.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "series",
+     "type": "list[ChartSeries]",
+     "required": false,
+     "description": "Series to render as areas"
+    },
+    {
+     "name": "xAxis",
+     "type": "str | None",
+     "required": false,
+     "description": "Data key for x-axis labels",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "stacked",
+     "type": "bool",
+     "required": false,
+     "description": "Stack areas",
+     "default": "False"
+    },
+    {
+     "name": "curve",
+     "type": "Literal[\"linear\", \"smooth\", \"step\"]",
+     "required": false,
+     "description": "Line interpolation style",
+     "default": "\"linear\""
+    },
+    {
+     "name": "showDots",
+     "type": "bool",
+     "required": false,
+     "description": "Show dots at data points",
+     "default": "False"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "showGrid",
+     "type": "bool",
+     "required": false,
+     "description": "Show cartesian grid",
+     "default": "True"
+    },
+    {
+     "name": "showYAxis",
+     "type": "bool",
+     "required": false,
+     "description": "Show y-axis with tick labels",
+     "default": "True"
+    },
+    {
+     "name": "valueFormat",
+     "type": "ChartValueFormat",
+     "required": false,
+     "description": "",
+     "default": "\"auto\""
+    }
+   ]
+  },
+  {
+   "type": "Audio",
+   "module": "audio",
+   "bases": [
+    "Component"
+   ],
+   "summary": "HTML5 audio element.",
+   "container": false,
+   "fields": [
+    {
+     "name": "src",
+     "type": "RxStr",
+     "required": false,
+     "description": "Audio URL"
+    },
+    {
+     "name": "controls",
+     "type": "bool",
+     "required": false,
+     "description": "Show playback controls",
+     "default": "True"
+    },
+    {
+     "name": "autoplay",
+     "type": "bool",
+     "required": false,
+     "description": "Auto-start playback",
+     "default": "False"
+    },
+    {
+     "name": "loop",
+     "type": "bool",
+     "required": false,
+     "description": "Loop playback",
+     "default": "False"
+    },
+    {
+     "name": "muted",
+     "type": "bool",
+     "required": false,
+     "description": "Mute audio",
+     "default": "False"
+    }
+   ]
+  },
+  {
+   "type": "Badge",
+   "module": "badge",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A badge component for displaying status or labels.",
+   "container": true,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Badge text",
+     "default": "None"
+    },
+    {
+     "name": "variant",
+     "type": "BadgeVariant",
+     "required": false,
+     "description": "Visual variant: default, secondary, destructive, outline, ghost, success, warning, or info",
+     "default": "\"default\""
+    }
+   ]
+  },
+  {
+   "type": "BarChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Bar chart with one or more series.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "series",
+     "type": "list[ChartSeries]",
+     "required": false,
+     "description": "Series to render as bars"
+    },
+    {
+     "name": "xAxis",
+     "type": "str | None",
+     "required": false,
+     "description": "Data key for x-axis labels",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "stacked",
+     "type": "bool",
+     "required": false,
+     "description": "Stack bars",
+     "default": "False"
+    },
+    {
+     "name": "horizontal",
+     "type": "bool",
+     "required": false,
+     "description": "Render as horizontal bar chart",
+     "default": "False"
+    },
+    {
+     "name": "barRadius",
+     "type": "int",
+     "required": false,
+     "description": "Corner radius on bars",
+     "default": "4"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "showGrid",
+     "type": "bool",
+     "required": false,
+     "description": "Show cartesian grid",
+     "default": "True"
+    },
+    {
+     "name": "showYAxis",
+     "type": "bool",
+     "required": false,
+     "description": "Show y-axis with tick labels",
+     "default": "True"
+    },
+    {
+     "name": "valueFormat",
+     "type": "ChartValueFormat",
+     "required": false,
+     "description": "",
+     "default": "\"auto\""
+    }
+   ]
+  },
+  {
+   "type": "BlockQuote",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Block quotation.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "Button",
+   "module": "button",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A button component with multiple variants and sizes.",
+   "container": false,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr",
+     "required": false,
+     "description": "Button text"
+    },
+    {
+     "name": "icon",
+     "type": "str | None",
+     "required": false,
+     "description": "Lucide icon name (kebab-case, e.g. 'arrow-right')",
+     "default": "None"
+    },
+    {
+     "name": "variant",
+     "type": "ButtonVariant",
+     "required": false,
+     "description": "Visual variant: default, destructive, outline, secondary, ghost, link, success, warning, info",
+     "default": "\"default\""
+    },
+    {
+     "name": "size",
+     "type": "ButtonSize",
+     "required": false,
+     "description": "Size: default, xs, sm, lg, icon, icon-xs, icon-sm, icon-lg",
+     "default": "\"default\""
+    },
+    {
+     "name": "buttonType",
+     "type": "ButtonType | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool | RxStr",
+     "required": false,
+     "description": "Whether the button is disabled",
+     "default": "False"
+    },
+    {
+     "name": "onClick",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when clicked",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "ButtonGroup",
+   "module": "button_group",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A container that groups buttons with merged borders.",
+   "container": true,
+   "fields": [
+    {
+     "name": "orientation",
+     "type": "Literal[\"horizontal\", \"vertical\"]",
+     "required": false,
+     "description": "Layout direction: horizontal or vertical",
+     "default": "\"horizontal\""
+    }
+   ]
+  },
+  {
+   "type": "Calendar",
+   "module": "calendar",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Date picker calendar.",
+   "container": false,
+   "fields": [
+    {
+     "name": "mode",
+     "type": "Literal[\"single\", \"multiple\", \"range\"]",
+     "required": false,
+     "description": "Selection mode: single date, multiple dates, or date range",
+     "default": "\"single\""
+    },
+    {
+     "name": "value",
+     "type": "(",
+     "required": true,
+     "description": ""
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) when selection changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Card",
+   "module": "card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A card container with border and shadow.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "CardContent",
+   "module": "card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Card content section for the main body.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "CardDescription",
+   "module": "card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Card description text, typically below the title.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Description text (alternative to children)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "CardFooter",
+   "module": "card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Card footer section, typically for actions.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "CardHeader",
+   "module": "card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Card header section for title and description.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "CardTitle",
+   "module": "card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Card title text.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Title text (alternative to children)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Carousel",
+   "module": "carousel",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Scrollable container that cycles through children.",
+   "container": true,
+   "fields": [
+    {
+     "name": "visible",
+     "type": "float | None",
+     "required": false,
+     "description": "Slides visible at once. Float for peek: 1.3 = 1 slide + 15% peek each side. None = natural sizing (default for marquee when visible is omitted).",
+     "default": "1"
+    },
+    {
+     "name": "gap",
+     "type": "int",
+     "required": false,
+     "description": "Pixels between slides",
+     "default": "16"
+    },
+    {
+     "name": "height",
+     "type": "int | None",
+     "required": false,
+     "description": "Fixed height in pixels. Auto-detected for vertical carousels.",
+     "default": "None"
+    },
+    {
+     "name": "direction",
+     "type": "Literal[\"left\", \"right\", \"up\", \"down\"]",
+     "required": false,
+     "description": "Scroll direction",
+     "default": "\"left\""
+    },
+    {
+     "name": "loop",
+     "type": "bool",
+     "required": false,
+     "description": "Loop back to start after reaching the end",
+     "default": "True"
+    },
+    {
+     "name": "autoAdvance",
+     "type": "int",
+     "required": false,
+     "description": "Milliseconds between auto-advances. 0 = manual only.",
+     "default": "0"
+    },
+    {
+     "name": "continuous",
+     "type": "bool",
+     "required": false,
+     "description": "Smooth continuous scroll (marquee mode)",
+     "default": "False"
+    },
+    {
+     "name": "speed",
+     "type": "int",
+     "required": false,
+     "description": "Scroll speed for continuous mode (1-10)",
+     "default": "2"
+    },
+    {
+     "name": "effect",
+     "type": "Literal[\"slide\", \"fade\"]",
+     "required": false,
+     "description": "Transition effect: slide or fade",
+     "default": "\"slide\""
+    },
+    {
+     "name": "dimInactive",
+     "type": "bool",
+     "required": false,
+     "description": "Reduce opacity of non-active slides",
+     "default": "False"
+    },
+    {
+     "name": "showControls",
+     "type": "bool",
+     "required": false,
+     "description": "Show previous/next navigation arrows",
+     "default": "True"
+    },
+    {
+     "name": "controlsPosition",
+     "type": "Literal[\"overlay\", \"outside\", \"gutter\"]",
+     "required": false,
+     "description": "Position controls over slides (overlay), outside the viewport, or in the dots gutter",
+     "default": "\"outside\""
+    },
+    {
+     "name": "showDots",
+     "type": "bool",
+     "required": false,
+     "description": "Show pagination dots",
+     "default": "False"
+    },
+    {
+     "name": "pauseOnHover",
+     "type": "bool",
+     "required": false,
+     "description": "Pause auto-advance or continuous scroll on hover",
+     "default": "True"
+    },
+    {
+     "name": "align",
+     "type": "Literal[\"start\", \"center\", \"end\"]",
+     "required": false,
+     "description": "Slide alignment within the viewport",
+     "default": "\"start\""
+    },
+    {
+     "name": "slidesToScroll",
+     "type": "int",
+     "required": false,
+     "description": "Number of slides to advance per step",
+     "default": "1"
+    },
+    {
+     "name": "drag",
+     "type": "bool",
+     "required": false,
+     "description": "Allow drag/swipe to navigate",
+     "default": "True"
+    }
+   ]
+  },
+  {
+   "type": "Checkbox",
+   "module": "checkbox",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Checkbox input component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Label text",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "bool | RxStr",
+     "required": false,
+     "description": "Whether checkbox is checked",
+     "default": "False"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether checkbox is disabled",
+     "default": "False"
+    },
+    {
+     "name": "required",
+     "type": "bool",
+     "required": false,
+     "description": "Whether checkbox is required",
+     "default": "False"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when checked state changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "ChoiceCard",
+   "module": "field",
+   "bases": [
+    "Field"
+   ],
+   "summary": "Bordered, clickable card for toggle controls.",
+   "container": false,
+   "fields": []
+  },
+  {
+   "type": "Code",
+   "module": "code",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Code block with optional syntax highlighting.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Code content"
+    },
+    {
+     "name": "language",
+     "type": "str | None",
+     "required": false,
+     "description": "Syntax highlighting language",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Column",
+   "module": "column",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Vertical flex container.",
+   "container": true,
+   "fields": [
+    {
+     "name": "gap",
+     "type": "Gap",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "align",
+     "type": "Align",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "justify",
+     "type": "Justify",
+     "required": false,
+     "description": "",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Combobox",
+   "module": "combobox",
+   "bases": [
+    "StatefulMixin",
+    "ContainerComponent"
+   ],
+   "summary": "Searchable select dropdown.",
+   "container": true,
+   "fields": [
+    {
+     "name": "placeholder",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Placeholder text shown when no value is selected",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "str | None",
+     "required": false,
+     "description": "Initially selected option value",
+     "default": "None"
+    },
+    {
+     "name": "searchPlaceholder",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Placeholder text in the search input",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether combobox is disabled",
+     "default": "False"
+    },
+    {
+     "name": "side",
+     "type": "Literal[\"top\", \"right\", \"bottom\", \"left\"] | None",
+     "required": false,
+     "description": "Which side to show the dropdown",
+     "default": "None"
+    },
+    {
+     "name": "align",
+     "type": "Literal[\"start\", \"center\", \"end\"] | None",
+     "required": false,
+     "description": "Alignment of the dropdown relative to the trigger",
+     "default": "None"
+    },
+    {
+     "name": "invalid",
+     "type": "bool",
+     "required": false,
+     "description": "Whether the combobox is in an error state",
+     "default": "False"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) when the selected value changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "ComboboxGroup",
+   "module": "combobox",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A group container for related combobox options.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "ComboboxLabel",
+   "module": "combobox",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A label/header for a `ComboboxGroup`.",
+   "container": false,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr",
+     "required": false,
+     "description": "Label text"
+    }
+   ]
+  },
+  {
+   "type": "ComboboxOption",
+   "module": "combobox",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A single option within a Combobox.",
+   "container": false,
+   "fields": [
+    {
+     "name": "value",
+     "type": "RxStr",
+     "required": false,
+     "description": "Option value"
+    },
+    {
+     "name": "label",
+     "type": "RxStr",
+     "required": false,
+     "description": "Display label"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether option is disabled",
+     "default": "False"
+    }
+   ]
+  },
+  {
+   "type": "ComboboxSeparator",
+   "module": "combobox",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A visual divider between combobox options or groups.",
+   "container": false,
+   "fields": []
+  },
+  {
+   "type": "Condition",
+   "module": "control_flow",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Conditional rendering: the first case whose `when` expression is truthy renders its children, else `else`.",
+   "container": false,
+   "fields": [
+    {
+     "name": "cases",
+     "type": "list[{when: str, children: list[Component]}]",
+     "required": true,
+     "description": "`when` is a raw expression over state, e.g. \"status == 'active'\" or \"count > 3\" (no {{ }})"
+    },
+    {
+     "name": "else",
+     "type": "list[Component] | None",
+     "required": false,
+     "description": "Rendered when no case matches"
+    }
+   ]
+  },
+  {
+   "type": "Container",
+   "module": "container",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A centered, max-width container with responsive padding.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "Dashboard",
+   "module": "dashboard",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Explicit-placement grid for dashboard layouts.",
+   "container": true,
+   "fields": [
+    {
+     "name": "columns",
+     "type": "int",
+     "required": false,
+     "description": "Number of grid columns.",
+     "default": "12"
+    },
+    {
+     "name": "rowHeight",
+     "type": "int | str",
+     "required": false,
+     "description": "Height of each auto-generated row. Integer for pixels, string for any CSS value.",
+     "default": "120"
+    },
+    {
+     "name": "rows",
+     "type": "int | None",
+     "required": false,
+     "description": "Fixed number of rows. Omit for auto-expanding rows.",
+     "default": "None"
+    },
+    {
+     "name": "gap",
+     "type": "Gap",
+     "required": false,
+     "description": "",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "DashboardItem",
+   "module": "dashboard",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A positioned cell within a `Dashboard`.",
+   "container": true,
+   "fields": [
+    {
+     "name": "col",
+     "type": "int",
+     "required": false,
+     "description": "Starting column (1-indexed).",
+     "default": "1"
+    },
+    {
+     "name": "row",
+     "type": "int",
+     "required": false,
+     "description": "Starting row (1-indexed).",
+     "default": "1"
+    },
+    {
+     "name": "colSpan",
+     "type": "int",
+     "required": false,
+     "description": "Number of columns to span.",
+     "default": "1"
+    },
+    {
+     "name": "rowSpan",
+     "type": "int",
+     "required": false,
+     "description": "Number of rows to span.",
+     "default": "1"
+    },
+    {
+     "name": "zIndex",
+     "type": "int | None",
+     "required": false,
+     "description": "CSS z-index for layering.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "DataTable",
+   "module": "data_table",
+   "bases": [
+    "Component"
+   ],
+   "summary": "High-level data table with sorting, filtering, and pagination.",
+   "container": false,
+   "fields": [
+    {
+     "name": "columns",
+     "type": "list[DataTableColumn]",
+     "required": false,
+     "description": "Column definitions"
+    },
+    {
+     "name": "rows",
+     "type": "list[dict[str, Any] | ExpandableRow] | str | Rx",
+     "required": false,
+     "description": "Row data, `{{ interpolation }}` reference, or DataFrame"
+    },
+    {
+     "name": "search",
+     "type": "bool",
+     "required": false,
+     "description": "Show search input",
+     "default": "False"
+    },
+    {
+     "name": "paginated",
+     "type": "bool",
+     "required": false,
+     "description": "Show pagination controls",
+     "default": "False"
+    },
+    {
+     "name": "pageSize",
+     "type": "int",
+     "required": false,
+     "description": "Rows per page when paginated",
+     "default": "10"
+    },
+    {
+     "name": "onRowClick",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "DatePicker",
+   "module": "date_picker",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Date picker with a popover calendar.",
+   "container": false,
+   "fields": [
+    {
+     "name": "placeholder",
+     "type": "RxStr",
+     "required": false,
+     "description": "Button text when no date is selected",
+     "default": "\"Pick a date\""
+    },
+    {
+     "name": "value",
+     "type": "str | None",
+     "required": false,
+     "description": "Initially selected date (ISO string)",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) when date changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Dialog",
+   "module": "dialog",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Modal dialog overlay.",
+   "container": true,
+   "fields": [
+    {
+     "name": "title",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Dialog header title",
+     "default": "None"
+    },
+    {
+     "name": "description",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Dialog header description",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "dismissible",
+     "type": "bool",
+     "required": false,
+     "description": "",
+     "default": "True"
+    }
+   ]
+  },
+  {
+   "type": "Div",
+   "module": "div",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A bare container with no default styling.",
+   "container": true,
+   "fields": [
+    {
+     "name": "style",
+     "type": "dict[str, str] | None",
+     "required": false,
+     "description": "Inline CSS styles as a dict of property/value pairs.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Dot",
+   "module": "dot",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A colored dot indicator.",
+   "container": false,
+   "fields": [
+    {
+     "name": "variant",
+     "type": "DotVariant",
+     "required": false,
+     "description": "",
+     "default": "\"default\""
+    },
+    {
+     "name": "size",
+     "type": "DotSize",
+     "required": false,
+     "description": "Dot size: sm, default, lg",
+     "default": "\"default\""
+    },
+    {
+     "name": "shape",
+     "type": "DotShape",
+     "required": false,
+     "description": "Dot shape: circle, square, rounded",
+     "default": "\"circle\""
+    }
+   ]
+  },
+  {
+   "type": "DropZone",
+   "module": "drop_zone",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Drag-and-drop file upload area.",
+   "container": false,
+   "fields": [
+    {
+     "name": "value",
+     "type": "list[Any] | None",
+     "required": false,
+     "description": "Initial file data",
+     "default": "None"
+    },
+    {
+     "name": "icon",
+     "type": "str | None",
+     "required": false,
+     "description": "Lucide icon name (kebab-case, e.g. 'cloud-upload'). Defaults to an upload icon when not specified.",
+     "default": "None"
+    },
+    {
+     "name": "label",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Primary prompt text (e.g. 'Drop files here')",
+     "default": "None"
+    },
+    {
+     "name": "description",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Secondary helper text (e.g. 'PNG, JPG up to 10MB')",
+     "default": "None"
+    },
+    {
+     "name": "accept",
+     "type": "str | None",
+     "required": false,
+     "description": "File type filter (e.g. 'image/*', '.csv,.xlsx')",
+     "default": "None"
+    },
+    {
+     "name": "multiple",
+     "type": "bool",
+     "required": false,
+     "description": "Allow selecting multiple files",
+     "default": "False"
+    },
+    {
+     "name": "maxSize",
+     "type": "int | None",
+     "required": false,
+     "description": "Maximum file size in bytes per file",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether the drop zone is disabled",
+     "default": "False"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when files are selected",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Elif",
+   "module": "control_flow/conditional",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Alternate conditional branch — must follow an If or another Elif.",
+   "container": true,
+   "fields": [
+    {
+     "name": "condition",
+     "type": "RxStr",
+     "required": false,
+     "description": "Expression to evaluate"
+    }
+   ]
+  },
+  {
+   "type": "Else",
+   "module": "control_flow/conditional",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Default branch — renders when no preceding If/Elif matched.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "Embed",
+   "module": "embed",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Embed external content in a sandboxed iframe.",
+   "container": false,
+   "fields": [
+    {
+     "name": "url",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "URL to embed (iframe src)",
+     "default": "None"
+    },
+    {
+     "name": "html",
+     "type": "str | None",
+     "required": false,
+     "description": "HTML to embed (iframe srcdoc)",
+     "default": "None"
+    },
+    {
+     "name": "width",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS width",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS height",
+     "default": "None"
+    },
+    {
+     "name": "sandbox",
+     "type": "str | None",
+     "required": false,
+     "description": "Iframe sandbox attribute (e.g. 'allow-scripts allow-same-origin')",
+     "default": "None"
+    },
+    {
+     "name": "allow",
+     "type": "str | None",
+     "required": false,
+     "description": "Iframe allow attribute (e.g. 'fullscreen; autoplay')",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Field",
+   "module": "field",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Composable form field wrapper.",
+   "container": true,
+   "fields": [
+    {
+     "name": "invalid",
+     "type": "bool | RxStr",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "disabled",
+     "type": "bool | RxStr",
+     "required": false,
+     "description": ""
+    }
+   ]
+  },
+  {
+   "type": "FieldContent",
+   "module": "field",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Container that groups title and description in choice card layouts.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "FieldDescription",
+   "module": "field",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Field description text.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Description text"
+    }
+   ]
+  },
+  {
+   "type": "FieldError",
+   "module": "field",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Error message text for invalid fields.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Error message text"
+    }
+   ]
+  },
+  {
+   "type": "FieldTitle",
+   "module": "field",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Field heading text.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Title text"
+    }
+   ]
+  },
+  {
+   "type": "ForEach",
+   "module": "control_flow/foreach",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Repeat children for every item of a state list. Inside, use {{ $item.field }} (or {{ $item }}) and {{ $index }}.",
+   "container": true,
+   "fields": [
+    {
+     "name": "key",
+     "type": "str",
+     "required": true,
+     "description": "State key holding the list to iterate over"
+    },
+    {
+     "name": "let",
+     "type": "dict[str, str] | None",
+     "required": false,
+     "description": "Extra scoped bindings for the children"
+    }
+   ]
+  },
+  {
+   "type": "Form",
+   "module": "form",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Form container that groups labeled inputs.",
+   "container": true,
+   "fields": [
+    {
+     "name": "gap",
+     "type": "int",
+     "required": false,
+     "description": "",
+     "default": "4"
+    },
+    {
+     "name": "onSubmit",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when the form is submitted",
+     "default": "None"
+    },
+    {
+     "name": "onSubmit",
+     "type": "Action | list[Action] | None,",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "model",
+     "type": "type[BaseModel],",
+     "required": true,
+     "description": ""
+    },
+    {
+     "name": "kwargs",
+     "type": "dict[str, Any]",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "constraints",
+     "type": "dict[str, Any]",
+     "required": false,
+     "description": ""
+    },
+    {
+     "name": "name",
+     "type": "str,",
+     "required": true,
+     "description": ""
+    },
+    {
+     "name": "fieldInfo",
+     "type": "FieldInfo,",
+     "required": true,
+     "description": ""
+    },
+    {
+     "name": "defaults",
+     "type": "dict[str, Any] | None",
+     "required": false,
+     "description": ""
+    }
+   ]
+  },
+  {
+   "type": "Grid",
+   "module": "grid",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Responsive CSS grid container.",
+   "container": true,
+   "fields": [
+    {
+     "name": "columns",
+     "type": "int | list[int | str] | dict[str, int] | Responsive | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "columnTemplate",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS grid-template-columns value for custom column widths.",
+     "default": "None"
+    },
+    {
+     "name": "minColumnWidth",
+     "type": "str | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "gap",
+     "type": "Gap",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "align",
+     "type": "Align",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "justify",
+     "type": "Justify",
+     "required": false,
+     "description": "",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "GridItem",
+   "module": "grid",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A child of `Grid` that spans multiple columns or rows.",
+   "container": true,
+   "fields": [
+    {
+     "name": "colSpan",
+     "type": "int",
+     "required": false,
+     "description": "Number of columns to span.",
+     "default": "1"
+    },
+    {
+     "name": "rowSpan",
+     "type": "int",
+     "required": false,
+     "description": "Number of rows to span.",
+     "default": "1"
+    }
+   ]
+  },
+  {
+   "type": "H1",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Large page heading (h1).",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "H2",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Section heading (h2).",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "H3",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Subsection heading (h3).",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "H4",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Small heading (h4).",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "Heading",
+   "module": "heading",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Section heading (h1-h4).",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    },
+    {
+     "name": "level",
+     "type": "Literal[1, 2, 3, 4]",
+     "required": false,
+     "description": "Heading level (1=h1, 4=h4)",
+     "default": "1"
+    }
+   ]
+  },
+  {
+   "type": "HoverCard",
+   "module": "hover_card",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Hover card with rich content.",
+   "container": true,
+   "fields": [
+    {
+     "name": "side",
+     "type": "Literal[\"top\", \"right\", \"bottom\", \"left\"] | None",
+     "required": false,
+     "description": "Which side to show the hover card",
+     "default": "None"
+    },
+    {
+     "name": "openDelay",
+     "type": "int | None",
+     "required": false,
+     "description": "Delay in milliseconds before opening",
+     "default": "None"
+    },
+    {
+     "name": "closeDelay",
+     "type": "int | None",
+     "required": false,
+     "description": "Delay in milliseconds before closing",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Icon",
+   "module": "icon",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Renders a lucide icon by name.",
+   "container": false,
+   "fields": [
+    {
+     "name": "name",
+     "type": "RxStr",
+     "required": false,
+     "description": "Lucide icon name in kebab-case"
+    },
+    {
+     "name": "size",
+     "type": "Literal[\"sm\", \"default\", \"lg\"]",
+     "required": false,
+     "description": "Icon size variant",
+     "default": "\"default\""
+    }
+   ]
+  },
+  {
+   "type": "If",
+   "module": "control_flow/conditional",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Conditional branch — renders children when the condition is truthy.",
+   "container": true,
+   "fields": [
+    {
+     "name": "condition",
+     "type": "RxStr",
+     "required": false,
+     "description": "Expression to evaluate"
+    }
+   ]
+  },
+  {
+   "type": "Image",
+   "module": "image",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Image element.",
+   "container": false,
+   "fields": [
+    {
+     "name": "src",
+     "type": "RxStr",
+     "required": false,
+     "description": "Image URL"
+    },
+    {
+     "name": "alt",
+     "type": "RxStr",
+     "required": false,
+     "description": "Alt text",
+     "default": "\"\""
+    },
+    {
+     "name": "width",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS width",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS height",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Input",
+   "module": "input",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Text input field component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "inputType",
+     "type": "InputType",
+     "required": false,
+     "description": "Input type (text, email, password, etc.)",
+     "default": "\"text\""
+    },
+    {
+     "name": "placeholder",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Placeholder text",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Input value",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether input is disabled",
+     "default": "False"
+    },
+    {
+     "name": "readOnly",
+     "type": "bool",
+     "required": false,
+     "description": "Whether input is read-only (visible and selectable but not editable)",
+     "default": "False"
+    },
+    {
+     "name": "required",
+     "type": "bool",
+     "required": false,
+     "description": "Whether input is required",
+     "default": "False"
+    },
+    {
+     "name": "minLength",
+     "type": "int | None",
+     "required": false,
+     "description": "Minimum character length",
+     "default": "None"
+    },
+    {
+     "name": "maxLength",
+     "type": "int | None",
+     "required": false,
+     "description": "Maximum character length",
+     "default": "None"
+    },
+    {
+     "name": "min",
+     "type": "float | None",
+     "required": false,
+     "description": "Minimum value (for number inputs)",
+     "default": "None"
+    },
+    {
+     "name": "max",
+     "type": "float | None",
+     "required": false,
+     "description": "Maximum value (for number inputs)",
+     "default": "None"
+    },
+    {
+     "name": "step",
+     "type": "float | None",
+     "required": false,
+     "description": "Step increment (for number inputs)",
+     "default": "None"
+    },
+    {
+     "name": "pattern",
+     "type": "str | None",
+     "required": false,
+     "description": "Regex pattern for validation",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when value changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Kbd",
+   "module": "kbd",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Keyboard key indicator for displaying shortcuts.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    },
+    {
+     "name": "label",
+     "type": "str | RxStr",
+     "required": false,
+     "description": "Key label to display"
+    }
+   ]
+  },
+  {
+   "type": "Label",
+   "module": "label",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Label element for form fields.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    },
+    {
+     "name": "text",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Label text",
+     "default": "None"
+    },
+    {
+     "name": "forId",
+     "type": "str | None",
+     "required": false,
+     "description": "ID of the associated form field",
+     "default": "None"
+    },
+    {
+     "name": "optional",
+     "type": "bool",
+     "required": false,
+     "description": "Whether to show an '(optional)' indicator after the label text",
+     "default": "False"
+    }
+   ]
+  },
+  {
+   "type": "Large",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Large text for emphasis.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "Lead",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Lead paragraph with larger text for introductions.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "LineChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Line chart with one or more series.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "series",
+     "type": "list[ChartSeries]",
+     "required": false,
+     "description": "Series to render as lines"
+    },
+    {
+     "name": "xAxis",
+     "type": "str | None",
+     "required": false,
+     "description": "Data key for x-axis labels",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "curve",
+     "type": "Literal[\"linear\", \"smooth\", \"step\"]",
+     "required": false,
+     "description": "Line interpolation style",
+     "default": "\"linear\""
+    },
+    {
+     "name": "showDots",
+     "type": "bool",
+     "required": false,
+     "description": "Show dots at data points",
+     "default": "False"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "showGrid",
+     "type": "bool",
+     "required": false,
+     "description": "Show cartesian grid",
+     "default": "True"
+    },
+    {
+     "name": "showYAxis",
+     "type": "bool",
+     "required": false,
+     "description": "Show y-axis with tick labels",
+     "default": "True"
+    },
+    {
+     "name": "valueFormat",
+     "type": "ChartValueFormat",
+     "required": false,
+     "description": "",
+     "default": "\"auto\""
+    }
+   ]
+  },
+  {
+   "type": "Link",
+   "module": "div",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "An inline link that renders as an anchor tag.",
+   "container": false,
+   "fields": [
+    {
+     "name": "href",
+     "type": "RxStr",
+     "required": false,
+     "description": "URL to navigate to"
+    },
+    {
+     "name": "target",
+     "type": "str | None",
+     "required": false,
+     "description": "Link target: '_blank' (new tab), '_self' (same tab)",
+     "default": "\"_blank\""
+    },
+    {
+     "name": "code",
+     "type": "bool",
+     "required": false,
+     "description": "Render as inline code with monospace font",
+     "default": "False"
+    },
+    {
+     "name": "align",
+     "type": "None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "style",
+     "type": "dict[str, str] | None",
+     "required": false,
+     "description": "Inline CSS styles as a dict of property/value pairs.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Loader",
+   "module": "loader",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Animated activity indicator.",
+   "container": false,
+   "fields": [
+    {
+     "name": "variant",
+     "type": "Literal[\"spin\", \"dots\", \"pulse\", \"bars\", \"ios\"]",
+     "required": false,
+     "description": "Animation style: spin (rotating arc), dots (bouncing dots), pulse (pulsing dot), bars (oscillating bars), or ios (segmented circle)",
+     "default": "\"spin\""
+    },
+    {
+     "name": "size",
+     "type": "Literal[\"sm\", \"default\", \"lg\"]",
+     "required": false,
+     "description": "Indicator size variant",
+     "default": "\"default\""
+    }
+   ]
+  },
+  {
+   "type": "Markdown",
+   "module": "markdown",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Render markdown content with full formatting support.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Markdown content"
+    }
+   ]
+  },
+  {
+   "type": "Mermaid",
+   "module": "mermaid",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Render a Mermaid diagram from a text definition.",
+   "container": false,
+   "fields": [
+    {
+     "name": "chart",
+     "type": "RxStr",
+     "required": false,
+     "description": "Mermaid diagram definition"
+    }
+   ]
+  },
+  {
+   "type": "Metric",
+   "module": "metric",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A metric/KPI display showing a headline number with optional change indicator.",
+   "container": false,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr",
+     "required": false,
+     "description": "The metric name"
+    },
+    {
+     "name": "value",
+     "type": "int | float | RxStr",
+     "required": false,
+     "description": "The headline number"
+    },
+    {
+     "name": "description",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Optional description text",
+     "default": "None"
+    },
+    {
+     "name": "delta",
+     "type": "int | float | RxStr | None",
+     "required": false,
+     "description": "Change indicator (e.g. '+23.4%', -15)",
+     "default": "None"
+    },
+    {
+     "name": "trend",
+     "type": "TrendDirection | None",
+     "required": false,
+     "description": "Arrow direction: 'up', 'down', or 'neutral'. Inferred from delta if None.",
+     "default": "None"
+    },
+    {
+     "name": "trendSentiment",
+     "type": "TrendSentiment | None",
+     "required": false,
+     "description": "Color: 'positive' (green), 'negative' (red), 'neutral' (muted). Inferred from trend if None.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Muted",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Muted/secondary text for less prominent information.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "P",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Paragraph text.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "Page",
+   "module": "pages",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A single page within a Pages container.",
+   "container": true,
+   "fields": [
+    {
+     "name": "title",
+     "type": "str",
+     "required": false,
+     "description": "Page identifier / label"
+    },
+    {
+     "name": "value",
+     "type": "str | None",
+     "required": false,
+     "description": "Unique value for this page (defaults to title)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Pages",
+   "module": "pages",
+   "bases": [
+    "StatefulMixin",
+    "ContainerComponent"
+   ],
+   "summary": "Multi-page layout — only the active Page renders.",
+   "container": true,
+   "fields": [
+    {
+     "name": "value",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Initially active page value",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "PieChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Pie or donut chart.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "dataKey",
+     "type": "str",
+     "required": false,
+     "description": "Numeric value field"
+    },
+    {
+     "name": "nameKey",
+     "type": "str",
+     "required": false,
+     "description": "Label field"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "innerRadius",
+     "type": "int",
+     "required": false,
+     "description": "Inner radius (>0 for donut)",
+     "default": "0"
+    },
+    {
+     "name": "showLabel",
+     "type": "bool",
+     "required": false,
+     "description": "Show labels on slices",
+     "default": "False"
+    },
+    {
+     "name": "paddingAngle",
+     "type": "int",
+     "required": false,
+     "description": "Gap between slices in degrees",
+     "default": "0"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "valueFormat",
+     "type": "ChartValueFormat",
+     "required": false,
+     "description": "Tooltip value format pipe, such as 'currency' or 'percent:1'",
+     "default": "\"auto\""
+    }
+   ]
+  },
+  {
+   "type": "Popover",
+   "module": "popover",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Popover floating panel.",
+   "container": true,
+   "fields": [
+    {
+     "name": "title",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Optional popover header title",
+     "default": "None"
+    },
+    {
+     "name": "description",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Optional popover description",
+     "default": "None"
+    },
+    {
+     "name": "side",
+     "type": "Literal[\"top\", \"right\", \"bottom\", \"left\"] | None",
+     "required": false,
+     "description": "Which side to show the popover",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Progress",
+   "module": "progress",
+   "bases": [
+    "Component"
+   ],
+   "summary": "A progress bar showing completion status.",
+   "container": false,
+   "fields": [
+    {
+     "name": "value",
+     "type": "float | RxStr",
+     "required": false,
+     "description": "Current progress value",
+     "default": "0"
+    },
+    {
+     "name": "min",
+     "type": "float | None",
+     "required": false,
+     "description": "Minimum value (default 0)",
+     "default": "None"
+    },
+    {
+     "name": "max",
+     "type": "float | None",
+     "required": false,
+     "description": "Maximum value (default 100)",
+     "default": "None"
+    },
+    {
+     "name": "variant",
+     "type": "ProgressVariant",
+     "required": false,
+     "description": "Visual variant: default, success, warning, destructive, info, muted",
+     "default": "\"default\""
+    },
+    {
+     "name": "size",
+     "type": "ProgressSize",
+     "required": false,
+     "description": "Bar thickness: sm (4px), default (6px), lg (10px)",
+     "default": "\"default\""
+    },
+    {
+     "name": "target",
+     "type": "float | RxStr | None",
+     "required": false,
+     "description": "Target marker position (renders a vertical line at this value)",
+     "default": "None"
+    },
+    {
+     "name": "indicatorClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the indicator bar (e.g. 'bg-green-500')",
+     "default": "None"
+    },
+    {
+     "name": "targetClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the target marker line",
+     "default": "None"
+    },
+    {
+     "name": "orientation",
+     "type": "ProgressOrientation",
+     "required": false,
+     "description": "Layout direction: horizontal or vertical",
+     "default": "\"horizontal\""
+    },
+    {
+     "name": "gradient",
+     "type": "bool | None",
+     "required": false,
+     "description": "Gradient fill: None (inherit from theme), True (force on), False (force off)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "RadarChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Radar (spider) chart with one or more series plotted on radial axes.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "series",
+     "type": "list[ChartSeries]",
+     "required": false,
+     "description": "Series to render as radar areas"
+    },
+    {
+     "name": "axisKey",
+     "type": "str | None",
+     "required": false,
+     "description": "Data key for angular axis labels",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "filled",
+     "type": "bool",
+     "required": false,
+     "description": "Fill radar polygons (False for lines only)",
+     "default": "True"
+    },
+    {
+     "name": "showDots",
+     "type": "bool",
+     "required": false,
+     "description": "Show dots at vertices",
+     "default": "False"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "showGrid",
+     "type": "bool",
+     "required": false,
+     "description": "Show polar grid",
+     "default": "True"
+    }
+   ]
+  },
+  {
+   "type": "RadialChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Radial bar chart — categorical data as concentric rings.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "dataKey",
+     "type": "str",
+     "required": false,
+     "description": "Numeric value field"
+    },
+    {
+     "name": "nameKey",
+     "type": "str",
+     "required": false,
+     "description": "Label field"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "innerRadius",
+     "type": "int",
+     "required": false,
+     "description": "Inner radius in pixels",
+     "default": "30"
+    },
+    {
+     "name": "startAngle",
+     "type": "int",
+     "required": false,
+     "description": "Arc start angle in degrees",
+     "default": "180"
+    },
+    {
+     "name": "endAngle",
+     "type": "int",
+     "required": false,
+     "description": "Arc end angle in degrees",
+     "default": "0"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "valueFormat",
+     "type": "ChartValueFormat",
+     "required": false,
+     "description": "Tooltip value format pipe, such as 'currency' or 'percent:1'",
+     "default": "\"auto\""
+    }
+   ]
+  },
+  {
+   "type": "Radio",
+   "module": "radio",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Radio button input component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "option",
+     "type": "RxStr",
+     "required": false,
+     "description": "Option identifier within the group"
+    },
+    {
+     "name": "label",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Label text",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "bool | RxStr",
+     "required": false,
+     "description": "Whether radio is selected",
+     "default": "False"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether radio is disabled",
+     "default": "False"
+    },
+    {
+     "name": "required",
+     "type": "bool",
+     "required": false,
+     "description": "Whether radio is required",
+     "default": "False"
+    }
+   ]
+  },
+  {
+   "type": "RadioGroup",
+   "module": "radio",
+   "bases": [
+    "StatefulMixin",
+    "ContainerComponent"
+   ],
+   "summary": "Container for radio button options.",
+   "container": true,
+   "fields": [
+    {
+     "name": "value",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Initially selected radio option string",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when selection changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Ring",
+   "module": "ring",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A circular progress indicator with an optional centered label.",
+   "container": true,
+   "fields": [
+    {
+     "name": "value",
+     "type": "float | RxStr",
+     "required": false,
+     "description": "Current value (number or template expression)",
+     "default": "0"
+    },
+    {
+     "name": "min",
+     "type": "float",
+     "required": false,
+     "description": "Minimum value",
+     "default": "0"
+    },
+    {
+     "name": "max",
+     "type": "float",
+     "required": false,
+     "description": "Maximum value",
+     "default": "100"
+    },
+    {
+     "name": "label",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Text displayed in the center of the ring",
+     "default": "None"
+    },
+    {
+     "name": "variant",
+     "type": "RingVariant",
+     "required": false,
+     "description": "Visual variant: default, success, warning, destructive, info, muted",
+     "default": "\"default\""
+    },
+    {
+     "name": "size",
+     "type": "RingSize",
+     "required": false,
+     "description": "Ring size: sm (64px), default (96px), lg (128px)",
+     "default": "\"default\""
+    },
+    {
+     "name": "thickness",
+     "type": "float",
+     "required": false,
+     "description": "Stroke width of the ring in pixels",
+     "default": "6"
+    },
+    {
+     "name": "target",
+     "type": "float | RxStr | None",
+     "required": false,
+     "description": "Target marker position (renders a tick mark on the ring at this value)",
+     "default": "None"
+    },
+    {
+     "name": "indicatorClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the filled arc (e.g. 'hover:drop-shadow-lg')",
+     "default": "None"
+    },
+    {
+     "name": "targetClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the target marker",
+     "default": "None"
+    },
+    {
+     "name": "gradient",
+     "type": "bool | None",
+     "required": false,
+     "description": "Gradient stroke: None (inherit from theme), True (force on), False (force off)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Row",
+   "module": "row",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Horizontal flex container.",
+   "container": true,
+   "fields": [
+    {
+     "name": "gap",
+     "type": "Gap",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "align",
+     "type": "Align",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "justify",
+     "type": "Justify",
+     "required": false,
+     "description": "",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "ScatterChart",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Scatter (or bubble) chart plotting points from shared data.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[dict[str, Any]] | RxStr",
+     "required": false,
+     "description": "Row data or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "series",
+     "type": "list[ChartSeries]",
+     "required": false,
+     "description": "Series to render as scatter groups"
+    },
+    {
+     "name": "xAxis",
+     "type": "str",
+     "required": false,
+     "description": "Data key for x-axis values"
+    },
+    {
+     "name": "yAxis",
+     "type": "str",
+     "required": false,
+     "description": "Data key for y-axis values"
+    },
+    {
+     "name": "zAxis",
+     "type": "str | None",
+     "required": false,
+     "description": "Data key for bubble size (optional)",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "int",
+     "required": false,
+     "description": "Chart height in pixels",
+     "default": "300"
+    },
+    {
+     "name": "showLegend",
+     "type": "bool",
+     "required": false,
+     "description": "Show legend",
+     "default": "True"
+    },
+    {
+     "name": "showTooltip",
+     "type": "bool",
+     "required": false,
+     "description": "Show tooltip on hover",
+     "default": "True"
+    },
+    {
+     "name": "animate",
+     "type": "bool",
+     "required": false,
+     "description": "Animate transitions when data changes",
+     "default": "True"
+    },
+    {
+     "name": "showGrid",
+     "type": "bool",
+     "required": false,
+     "description": "Show cartesian grid",
+     "default": "True"
+    }
+   ]
+  },
+  {
+   "type": "Select",
+   "module": "select",
+   "bases": [
+    "StatefulMixin",
+    "ContainerComponent"
+   ],
+   "summary": "Select dropdown container.",
+   "container": true,
+   "fields": [
+    {
+     "name": "placeholder",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Placeholder text",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "str | None",
+     "required": false,
+     "description": "Initially selected option value",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "size",
+     "type": "SelectSize",
+     "required": false,
+     "description": "Select size (sm, default)",
+     "default": "\"default\""
+    },
+    {
+     "name": "side",
+     "type": "SelectSide | None",
+     "required": false,
+     "description": "Which side of the trigger the dropdown appears on",
+     "default": "None"
+    },
+    {
+     "name": "align",
+     "type": "SelectAlign | None",
+     "required": false,
+     "description": "Alignment of the dropdown relative to the trigger",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether select is disabled",
+     "default": "False"
+    },
+    {
+     "name": "required",
+     "type": "bool",
+     "required": false,
+     "description": "Whether select is required",
+     "default": "False"
+    },
+    {
+     "name": "invalid",
+     "type": "bool",
+     "required": false,
+     "description": "Whether select shows error/invalid styling",
+     "default": "False"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when selection changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "SelectGroup",
+   "module": "select",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Group of related select options with an optional label.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "SelectLabel",
+   "module": "select",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Label for a group of select options.",
+   "container": false,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr",
+     "required": false,
+     "description": "Group label text"
+    }
+   ]
+  },
+  {
+   "type": "SelectOption",
+   "module": "select",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Select dropdown option.",
+   "container": false,
+   "fields": [
+    {
+     "name": "value",
+     "type": "RxStr",
+     "required": false,
+     "description": "Option value"
+    },
+    {
+     "name": "label",
+     "type": "RxStr",
+     "required": false,
+     "description": "Display text"
+    },
+    {
+     "name": "selected",
+     "type": "bool",
+     "required": false,
+     "description": "Whether option is selected",
+     "default": "False"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether option is disabled",
+     "default": "False"
+    }
+   ]
+  },
+  {
+   "type": "SelectSeparator",
+   "module": "select",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Visual separator between items or groups in a Select dropdown.",
+   "container": false,
+   "fields": []
+  },
+  {
+   "type": "Separator",
+   "module": "separator",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Visual divider component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "orientation",
+     "type": "SeparatorOrientation",
+     "required": false,
+     "description": "Separator orientation",
+     "default": "\"horizontal\""
+    },
+    {
+     "name": "spacing",
+     "type": "int | None",
+     "required": false,
+     "description": "Space around the separator (Tailwind spacing scale)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Slider",
+   "module": "slider",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Range slider input component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "min",
+     "type": "float",
+     "required": false,
+     "description": "Minimum value",
+     "default": "0"
+    },
+    {
+     "name": "max",
+     "type": "float",
+     "required": false,
+     "description": "Maximum value",
+     "default": "100"
+    },
+    {
+     "name": "value",
+     "type": "float | list[float] | RxStr | None",
+     "required": false,
+     "description": "Initial value (number, or [low, high] list when range=True)",
+     "default": "None"
+    },
+    {
+     "name": "step",
+     "type": "float | None",
+     "required": false,
+     "description": "Step increment",
+     "default": "None"
+    },
+    {
+     "name": "range",
+     "type": "bool",
+     "required": false,
+     "description": "Enable two-thumb range selection",
+     "default": "False"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether slider is disabled",
+     "default": "False"
+    },
+    {
+     "name": "variant",
+     "type": "SliderVariant",
+     "required": false,
+     "description": "Visual variant for the filled track: default, success, warning, destructive, info, muted",
+     "default": "\"default\""
+    },
+    {
+     "name": "size",
+     "type": "SliderSize",
+     "required": false,
+     "description": "Track thickness: sm (4px), default (6px), lg (10px)",
+     "default": "\"default\""
+    },
+    {
+     "name": "indicatorClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the filled track (e.g. 'bg-green-500')",
+     "default": "None"
+    },
+    {
+     "name": "orientation",
+     "type": "SliderOrientation",
+     "required": false,
+     "description": "Layout direction: horizontal or vertical",
+     "default": "\"horizontal\""
+    },
+    {
+     "name": "handleStyle",
+     "type": "SliderHandleStyle",
+     "required": false,
+     "description": "Thumb shape: circle (default round) or bar (tall rounded rectangle)",
+     "default": "\"circle\""
+    },
+    {
+     "name": "handleClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the thumb (e.g. 'bg-blue-500')",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when value changes",
+     "default": "None"
+    },
+    {
+     "name": "gradient",
+     "type": "bool | None",
+     "required": false,
+     "description": "Gradient fill: None (inherit from theme), True (force on), False (force off)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Slot",
+   "module": "slot",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Render a component tree stored in state.",
+   "container": true,
+   "fields": [
+    {
+     "name": "name",
+     "type": "str",
+     "required": false,
+     "description": "State key containing the component tree to render."
+    }
+   ]
+  },
+  {
+   "type": "Small",
+   "module": "typography",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Small text for fine print or metadata.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    }
+   ]
+  },
+  {
+   "type": "Span",
+   "module": "div",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "An inline text element with text modifiers.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    },
+    {
+     "name": "code",
+     "type": "bool",
+     "required": false,
+     "description": "Render as inline code with monospace font",
+     "default": "False"
+    },
+    {
+     "name": "align",
+     "type": "None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    },
+    {
+     "name": "style",
+     "type": "dict[str, str] | None",
+     "required": false,
+     "description": "Inline CSS styles as a dict of property/value pairs.",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Sparkline",
+   "module": "charts/__init__",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Compact inline chart for showing trends at a glance.",
+   "container": false,
+   "fields": [
+    {
+     "name": "data",
+     "type": "list[int | float] | RxStr",
+     "required": false,
+     "description": "Flat list of numeric values or `{{ interpolation }}` reference"
+    },
+    {
+     "name": "height",
+     "type": "int | None",
+     "required": false,
+     "description": "Chart height in pixels (default 24px via CSS)",
+     "default": "None"
+    },
+    {
+     "name": "variant",
+     "type": "SparklineVariant",
+     "required": false,
+     "description": "Visual variant: default, success, warning, destructive, info, muted",
+     "default": "\"default\""
+    },
+    {
+     "name": "indicatorClass",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Tailwind classes for the line/fill (e.g. 'stroke-blue-500')",
+     "default": "None"
+    },
+    {
+     "name": "fill",
+     "type": "bool",
+     "required": false,
+     "description": "Show area fill under the line",
+     "default": "False"
+    },
+    {
+     "name": "curve",
+     "type": "SparklineCurve",
+     "required": false,
+     "description": "Line interpolation: linear, smooth, or step",
+     "default": "\"linear\""
+    },
+    {
+     "name": "strokeWidth",
+     "type": "float",
+     "required": false,
+     "description": "Line thickness in pixels",
+     "default": "1.5"
+    },
+    {
+     "name": "mode",
+     "type": "SparklineMode",
+     "required": false,
+     "description": "Chart mode: line or bar",
+     "default": "\"line\""
+    }
+   ]
+  },
+  {
+   "type": "Svg",
+   "module": "svg",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Inline SVG element.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "SVG markup"
+    },
+    {
+     "name": "width",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS width",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS height",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Switch",
+   "module": "switch",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Toggle switch component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "label",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Label text",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "bool | RxStr",
+     "required": false,
+     "description": "Whether switch is on",
+     "default": "False"
+    },
+    {
+     "name": "size",
+     "type": "SwitchSize",
+     "required": false,
+     "description": "Switch size (sm, default)",
+     "default": "\"default\""
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether switch is disabled",
+     "default": "False"
+    },
+    {
+     "name": "required",
+     "type": "bool",
+     "required": false,
+     "description": "Whether switch is required",
+     "default": "False"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when toggled",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Tab",
+   "module": "tabs",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A single tab panel within a Tabs container.",
+   "container": true,
+   "fields": [
+    {
+     "name": "title",
+     "type": "RxStr",
+     "required": false,
+     "description": "Tab trigger label"
+    },
+    {
+     "name": "value",
+     "type": "str | None",
+     "required": false,
+     "description": "Unique value for this tab (defaults to title)",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Disable this tab",
+     "default": "False"
+    }
+   ]
+  },
+  {
+   "type": "Table",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Table container.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "TableBody",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Table body section containing data rows.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "TableCaption",
+   "module": "table",
+   "bases": [
+    "Component"
+   ],
+   "summary": "Table caption text.",
+   "container": false,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Caption text"
+    }
+   ]
+  },
+  {
+   "type": "TableCell",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A data cell within a TableRow.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Cell text (alternative to children)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "TableFooter",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Table footer section.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "TableHead",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A header cell within a TableRow.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Header text (alternative to children)",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "TableHeader",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Table header section containing header rows.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "TableRow",
+   "module": "table",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "A single table row containing cells.",
+   "container": true,
+   "fields": []
+  },
+  {
+   "type": "Tabs",
+   "module": "tabs",
+   "bases": [
+    "StatefulMixin",
+    "ContainerComponent"
+   ],
+   "summary": "Tab container — children must be `Tab` components.",
+   "container": true,
+   "fields": [
+    {
+     "name": "variant",
+     "type": "TabsVariant",
+     "required": false,
+     "description": "Visual style — 'default' (pill) or 'line' (underline)",
+     "default": "\"default\""
+    },
+    {
+     "name": "value",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Value of the initially active tab",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "orientation",
+     "type": "TabsOrientation",
+     "required": false,
+     "description": "Layout direction — 'horizontal' (default) or 'vertical'",
+     "default": "\"horizontal\""
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) when the active tab changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Text",
+   "module": "text",
+   "bases": [
+    "_TextComponent"
+   ],
+   "summary": "Body text component with inline formatting support.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "The text (supports {{ state }} interpolation)"
+    },
+    {
+     "name": "children",
+     "type": "list[Any] | None",
+     "required": false,
+     "description": "",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Textarea",
+   "module": "textarea",
+   "bases": [
+    "StatefulMixin",
+    "Component"
+   ],
+   "summary": "Multi-line text input component.",
+   "container": false,
+   "fields": [
+    {
+     "name": "placeholder",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Placeholder text",
+     "default": "None"
+    },
+    {
+     "name": "value",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Textarea value",
+     "default": "None"
+    },
+    {
+     "name": "name",
+     "type": "str | None",
+     "required": false,
+     "description": "State key for reactive binding. Auto-generated if omitted.",
+     "default": "None"
+    },
+    {
+     "name": "rows",
+     "type": "int | None",
+     "required": false,
+     "description": "Number of visible text rows",
+     "default": "None"
+    },
+    {
+     "name": "disabled",
+     "type": "bool",
+     "required": false,
+     "description": "Whether textarea is disabled",
+     "default": "False"
+    },
+    {
+     "name": "required",
+     "type": "bool",
+     "required": false,
+     "description": "Whether textarea is required",
+     "default": "False"
+    },
+    {
+     "name": "minLength",
+     "type": "int | None",
+     "required": false,
+     "description": "Minimum character length",
+     "default": "None"
+    },
+    {
+     "name": "maxLength",
+     "type": "int | None",
+     "required": false,
+     "description": "Maximum character length",
+     "default": "None"
+    },
+    {
+     "name": "onChange",
+     "type": "Action | list[Action] | None",
+     "required": false,
+     "description": "Action(s) to execute when value changes",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Tooltip",
+   "module": "tooltip",
+   "bases": [
+    "ContainerComponent"
+   ],
+   "summary": "Tooltip that appears on hover over its child.",
+   "container": true,
+   "fields": [
+    {
+     "name": "content",
+     "type": "RxStr",
+     "required": false,
+     "description": "Tooltip text"
+    },
+    {
+     "name": "side",
+     "type": "Literal[\"top\", \"right\", \"bottom\", \"left\"] | None",
+     "required": false,
+     "description": "Which side to show the tooltip",
+     "default": "None"
+    },
+    {
+     "name": "delay",
+     "type": "int | None",
+     "required": false,
+     "description": "Delay in milliseconds before showing the tooltip",
+     "default": "None"
+    }
+   ]
+  },
+  {
+   "type": "Video",
+   "module": "video",
+   "bases": [
+    "Component"
+   ],
+   "summary": "HTML5 video element.",
+   "container": false,
+   "fields": [
+    {
+     "name": "src",
+     "type": "RxStr",
+     "required": false,
+     "description": "Video URL"
+    },
+    {
+     "name": "poster",
+     "type": "RxStr | None",
+     "required": false,
+     "description": "Poster image URL",
+     "default": "None"
+    },
+    {
+     "name": "controls",
+     "type": "bool",
+     "required": false,
+     "description": "Show playback controls",
+     "default": "True"
+    },
+    {
+     "name": "autoplay",
+     "type": "bool",
+     "required": false,
+     "description": "Auto-start playback",
+     "default": "False"
+    },
+    {
+     "name": "loop",
+     "type": "bool",
+     "required": false,
+     "description": "Loop playback",
+     "default": "False"
+    },
+    {
+     "name": "muted",
+     "type": "bool",
+     "required": false,
+     "description": "Mute audio",
+     "default": "False"
+    },
+    {
+     "name": "width",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS width",
+     "default": "None"
+    },
+    {
+     "name": "height",
+     "type": "str | None",
+     "required": false,
+     "description": "CSS height",
+     "default": "None"
+    }
+   ]
+  }
+ ]
+}

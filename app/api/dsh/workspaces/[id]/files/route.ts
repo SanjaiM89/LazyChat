@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { ownedWorkspace } from "@/lib/dsh/access";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
-import { getWorkspace } from "@/lib/dsh/workspaces";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,13 +21,13 @@ export type FileEntry = {
 };
 
 /** Directory listing confined to the workspace root (no traversal escapes). */
-export async function GET(request: Request, { params }: Ctx) {
+export const GET = authed<{ id: string }>(async (request, user, { params }) => {
   await ensureReady();
   const { id } = await params;
   const rel = new URL(request.url).searchParams.get("path") ?? "";
   try {
     const client = await FalkorClient.get();
-    const ws = await getWorkspace(client, decodeURIComponent(id));
+    const ws = await ownedWorkspace(client, decodeURIComponent(id), user);
     if (!ws) return NextResponse.json({ detail: "unknown workspace" }, { status: 404 });
     const root = path.resolve(ws.path);
     const target = path.resolve(root, rel);
@@ -66,4 +67,4 @@ export async function GET(request: Request, { params }: Ctx) {
     if (err instanceof GraphError) return NextResponse.json({ detail: err.message }, { status: 503 });
     return NextResponse.json({ detail: (err as Error).message }, { status: 400 });
   }
-}
+});

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
 import type { BuiltinProviderId } from "@/lib/types";
 
@@ -10,7 +10,7 @@ const FILE = "provider-keys.json";
 type KeyMap = Record<string, string>;
 
 async function readMap(): Promise<KeyMap> {
-  const raw = await readJSON<unknown>(FILE, {});
+  const raw = await readScoped<unknown>(FILE, {});
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const out: KeyMap = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
@@ -51,11 +51,11 @@ export async function setStoredProviderKey(
   const key = apiKey.trim();
   if (key) map[provider] = key;
   else delete map[provider];
-  await writeJSON(FILE, map);
+  await writeScoped(FILE, map);
 }
 
 export async function deleteStoredProviderKey(provider: string): Promise<void> {
   const map = await readMap();
   delete map[provider];
-  await writeJSON(FILE, map);
+  await writeScoped(FILE, map);
 }

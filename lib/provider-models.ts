@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
 import type { BuiltinProviderId, CustomModelDef } from "@/lib/types";
 
@@ -15,7 +15,7 @@ interface ProviderOverride {
 type OverrideMap = Record<string, ProviderOverride>;
 
 async function readMap(): Promise<OverrideMap> {
-  const raw = await readJSON<unknown>(FILE, {});
+  const raw = await readScoped<unknown>(FILE, {});
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as OverrideMap;
 }
@@ -68,7 +68,7 @@ export async function addProviderModel(
   models.unshift(clean);
   const hideBuiltin = (ov.hideBuiltin || []).filter((id) => id !== clean.id);
   map[provider] = { models, hideBuiltin };
-  await writeJSON(FILE, map);
+  await writeScoped(FILE, map);
 }
 
 export async function renameProviderModel(
@@ -95,7 +95,7 @@ export async function renameProviderModel(
     }
   }
   map[provider] = { models, hideBuiltin };
-  await writeJSON(FILE, map);
+  await writeScoped(FILE, map);
 }
 
 export async function deleteProviderModel(provider: string, id: string): Promise<void> {
@@ -113,7 +113,7 @@ export async function deleteProviderModel(provider: string, id: string): Promise
     hideBuiltin = hideBuiltin.filter((x) => x !== id);
   }
   map[provider] = { models, hideBuiltin };
-  await writeJSON(FILE, map);
+  await writeScoped(FILE, map);
 }
 
 export async function unhideProviderModel(provider: string, id: string): Promise<void> {
@@ -123,5 +123,5 @@ export async function unhideProviderModel(provider: string, id: string): Promise
     models: (ov.models || []).filter((m) => m.id !== id),
     hideBuiltin: (ov.hideBuiltin || []).filter((x) => x !== id),
   };
-  await writeJSON(FILE, map);
+  await writeScoped(FILE, map);
 }

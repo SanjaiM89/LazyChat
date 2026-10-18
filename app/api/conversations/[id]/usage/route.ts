@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { authed } from "@/lib/auth/context";
 
 import { findModel } from "@/lib/models";
 import { getConversation } from "@/lib/store";
@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Token accounting for the composer status bar (dsh usage-pill equivalent). */
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = authed<{ id: string }>(async (_req, user, { params }) => {
   const { id } = await params;
-  const conv = await getConversation(id);
+  const conv = await getConversation(id, user.uid);
   if (!conv) return Response.json({ error: "not found" }, { status: 404 });
   const contextWindow =
     findModel(conv.provider as never, conv.model)?.context ?? 128_000;
@@ -20,4 +20,4 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     model: conv.model,
     contextWindow,
   });
-}
+});

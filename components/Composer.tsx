@@ -12,9 +12,10 @@ import {
   Bot,
   Brain,
   Monitor,
+  Sparkles,
 } from "lucide-react";
 import type { FileUIPart } from "ai";
-import { cn, IconButton, Tooltip } from "@/components/ui";
+import { cn, IconButton, Spinner, Tooltip } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import { DEFAULT_DISPLAY } from "@/lib/display";
 import { modelSupportsThinking } from "@/lib/models";
@@ -24,6 +25,8 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { ComposerStats } from "@/components/ComposerStats";
 import { SandboxMini } from "@/components/SandboxMini";
 import { BackgroundRunBar } from "@/components/BackgroundRunBar";
+import { BrandIcon } from "@/components/brand/BrandIcon";
+import { FileIcon } from "@/components/brand/FileIcon";
 
 
 const TOOL_BUTTONS: {
@@ -35,31 +38,31 @@ const TOOL_BUTTONS: {
   {
     id: "webSearch",
     label: "Search",
-    icon: <Globe size={15} />,
+    icon: <BrandIcon name="duckduckgo" size={14} fallback={<Globe size={14} />} />,
     tooltip: "Search the web (add Tavily/Brave/Serper keys via Search providers in the sidebar)",
   },
   {
     id: "createArtifact",
     label: "Artifacts",
-    icon: <FileText size={15} />,
+    icon: <FileText size={14} />,
     tooltip: "Create viewable artifacts (code, HTML, SVG, …)",
   },
   {
     id: "runAgentTask",
     label: "Agents",
-    icon: <Bot size={15} />,
+    icon: <BrandIcon name="docker" size={14} fallback={<Bot size={14} />} />,
     tooltip: "Run autonomous agents in Docker sandboxes",
   },
   {
     id: "computerUse",
     label: "Computer",
-    icon: <Monitor size={15} />,
+    icon: <BrandIcon name="chrome" size={14} fallback={<Monitor size={14} />} />,
     tooltip: "Let the model drive the shared Chromium computer anytime (recorded, you can take over)",
   },
   {
     id: "companyBrain",
     label: "Brain",
-    icon: <Brain size={15} />,
+    icon: <Brain size={14} />,
     tooltip: "Company Brain: FalkorDB knowledge graph (people, services, tickets, decisions) plus memory of earlier Omnia conversations",
   },
 ];
@@ -83,15 +86,18 @@ function ToolToggle({
     <Tooltip text={tooltip}>
       <button
         onClick={() => onToggle(id)}
+        aria-pressed={checked}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+          "group inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-all duration-200 active:scale-95",
           checked
-            ? "bg-accent-soft text-accent"
-            : "text-fg-muted hover:bg-bg-hover hover:text-fg-secondary",
+            ? "border-brand/40 bg-accent-soft text-accent shadow-[0_0_12px_-4px_var(--accent-glow)]"
+            : "border-border bg-transparent text-fg-muted hover:border-border-strong hover:bg-bg-hover hover:text-fg-secondary",
         )}
       >
-        {icon}
-        {label}
+        <span className={cn("transition-[filter,opacity,transform] duration-200 group-hover:scale-110", !checked && "opacity-70 grayscale group-hover:opacity-100 group-hover:grayscale-0")}>
+          {icon}
+        </span>
+        <span className="hidden md:inline">{label}</span>
       </button>
     </Tooltip>
   );
@@ -189,7 +195,7 @@ export function Composer({
   };
 
   return (
-    <div className="sticky bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-3 pb-3 pt-2 sm:px-6">
+    <div className="sticky bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-3 pb-3 pt-3 sm:px-6">
       <div className="mx-auto w-full" style={{ maxWidth: contentWidth }}>
         <SandboxMini />
 
@@ -197,9 +203,10 @@ export function Composer({
 
         <div
           className={cn(
-            "relative rounded-[22px] border border-border-strong bg-bg-elevated shadow-soft transition-all",
-            "focus-within:border-accent/50 focus-within:shadow-pop",
-            dragging && "border-accent border-dashed",
+            "relative rounded-xl border border-border-strong bg-bg-surface-100 shadow-soft transition-[border-color,box-shadow] duration-300",
+            "hover:border-border-stronger focus-within:border-brand/50 focus-within:shadow-[0_0_0_4px_var(--accent-soft),var(--shadow-soft)]",
+            isBusy && "beam-border",
+            dragging && "border-brand border-dashed",
           )}
           onDragEnter={(e) => {
             if (!hasFiles(e)) return;
@@ -229,8 +236,8 @@ export function Composer({
           }}
         >
           {dragging && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-accent/10 backdrop-blur-[1px]">
-              <p className="rounded-full border border-accent/40 bg-bg-elevated px-4 py-2 text-[13px] font-medium text-accent shadow-soft">
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-brand/10 backdrop-blur-[2px] animate-fade-in">
+              <p className="rounded-full border border-brand/40 bg-bg-overlay px-4 py-2 text-[13px] font-medium text-accent shadow-pop animate-scale-in">
                 Drop files to attach{uploading ? " (uploading…)" : ""}
               </p>
             </div>
@@ -240,15 +247,15 @@ export function Composer({
               {pending.map((p, i) => (
                 <span
                   key={`${p.url}-${i}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg-subtle px-2.5 py-1.5 text-[12px] text-fg-secondary"
+                  className="group inline-flex items-center gap-2 rounded-md border border-border bg-bg-surface-200 py-1 pl-1.5 pr-2 text-[12px] text-fg-secondary animate-scale-in"
                 >
-                  <FileText size={12} className="text-accent" />
+                  <FileIcon type={p.filename || p.mediaType} size={22} />
                   <span className="max-w-[140px] truncate">{p.filename}</span>
                   <button
                     onClick={() =>
                       setPending((arr) => arr.filter((_, j) => j !== i))
                     }
-                    className="text-fg-muted hover:text-danger"
+                    className="rounded p-0.5 text-fg-muted transition-colors hover:bg-danger-soft hover:text-danger"
                   >
                     <X size={13} />
                   </button>
@@ -276,7 +283,7 @@ export function Composer({
             placeholder="Ask anything… (drop files to attach)"
             disabled={disabled}
             className={cn(
-              "w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-[14.5px] leading-relaxed text-fg placeholder:text-fg-muted/70",
+              "w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-[14.5px] leading-relaxed text-fg placeholder:text-fg-faint",
               "focus:outline-none disabled:opacity-50",
             )}
           />
@@ -291,7 +298,7 @@ export function Composer({
                   title="Attach a file"
                 >
                   {uploading ? (
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <Spinner size={14} className="text-accent" />
                   ) : (
                     <Paperclip size={16} />
                   )}
@@ -329,15 +336,16 @@ export function Composer({
                     onClick={() =>
                       setSettings({ thinking: !settings.thinking })
                     }
+                    aria-pressed={settings.thinking}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[12.5px] font-medium transition-colors",
+                      "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-all duration-200 active:scale-95",
                       settings.thinking
-                        ? "bg-info-soft text-info"
-                        : "text-fg-muted hover:bg-bg-hover hover:text-fg-secondary",
+                        ? "border-info/40 bg-info-soft text-info"
+                        : "border-border text-fg-muted hover:border-border-strong hover:bg-bg-hover hover:text-fg-secondary",
                     )}
                   >
-                    <Brain size={15} />
-                    Thinking
+                    <Sparkles size={14} className={settings.thinking ? "animate-pulse" : ""} />
+                    <span className="hidden md:inline">Thinking</span>
                   </button>
                 </Tooltip>
               )}
@@ -348,18 +356,18 @@ export function Composer({
               {isBusy ? (
                 <button
                   onClick={() => chat.stop()}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white shadow-sm transition-transform hover:scale-105 active:scale-95"
+                  className="relative flex h-8 w-8 items-center justify-center rounded-md border border-border-strong bg-bg-control text-fg transition-all hover:border-danger/40 hover:bg-danger-soft hover:text-danger active:scale-95"
                   title="Stop generating"
                 >
-                  <Square size={14} fill="currentColor" />
+                  <Square size={12} fill="currentColor" />
                 </button>
               ) : (
                 <button
                   onClick={handleSend}
                   disabled={(!text.trim() && !pending.length) || disabled || !!backgroundRun}
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white shadow-sm",
-                    "transition-all hover:scale-105 hover:bg-accent-strong active:scale-95 disabled:opacity-40 disabled:pointer-events-none",
+                    "btn-sheen group flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)]",
+                    "transition-all hover:brightness-110 hover:shadow-[0_0_0_3px_var(--accent-soft)] active:scale-95 disabled:opacity-35 disabled:grayscale disabled:pointer-events-none",
                   )}
                   title={
                     backgroundRun
@@ -367,7 +375,7 @@ export function Composer({
                       : "Send message"
                   }
                 >
-                  <ArrowUp size={16} strokeWidth={2.5} />
+                  <ArrowUp size={15} strokeWidth={2.5} className="transition-transform duration-300 group-hover:-translate-y-0.5" />
                 </button>
               )}
             </div>
@@ -376,8 +384,8 @@ export function Composer({
 
         <ComposerStats chat={chat} />
 
-        <p className="mt-1.5 text-center text-[11px] text-fg-muted/80">
-          Claude Code can make mistakes. Check important info.
+        <p className="mt-1.5 text-center text-[11px] text-fg-muted">
+          Omnia can make mistakes. Check important info.
         </p>
       </div>
     </div>

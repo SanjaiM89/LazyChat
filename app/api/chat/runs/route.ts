@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { authed } from "@/lib/auth/context";
 import {
   ChatRunConflictError,
   cleanupChatRuns,
@@ -11,14 +12,14 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 3600;
 
-export async function GET(req: Request) {
+export const GET = authed(async (req: Request, user) => {
   cleanupChatRuns();
   const url = new URL(req.url);
   const conversationId = url.searchParams.get("conversationId") || undefined;
-  return Response.json({ runs: listChatRuns(conversationId) });
-}
+  return Response.json({ runs: listChatRuns(conversationId, user.uid) });
+});
 
-export async function POST(req: Request) {
+export const POST = authed(async (req: Request, user) => {
   let body: any;
   try {
     body = await req.json();
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
       conversationId:
         typeof body.conversationId === "string" ? body.conversationId : undefined,
       trigger: body.trigger,
+      owner: { uid: user.uid, orgId: user.orgId },
     });
 
     after(run.done);
@@ -56,4 +58,4 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-}
+});

@@ -201,13 +201,13 @@ export function TerminalBlock({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[var(--radius)] bg-bg-subtle pl-[30px] text-fg ${className}`}
+      className={`relative overflow-hidden rounded-[var(--radius-lg)] bg-bg-inset pl-[30px] text-fg ${running ? "beam-border" : ""} ${className}`}
       data-terminal=""
       data-running={running ? "" : undefined}
     >
       <div
         className={`-ml-[30px] flex max-h-[150px] items-start gap-3 overflow-y-auto py-2 pl-[30px] pr-3.5 ${
-          body ? "border-b border-border/60" : ""
+          body ? "border-b border-border bg-bg-surface-100" : "bg-bg-surface-100"
         }`}
       >
         <div className="flex min-w-0 flex-1 flex-col font-mono">
@@ -237,7 +237,7 @@ export function TerminalBlock({
           ))}
         </div>
         {status !== undefined && (
-          <span className="sticky top-0 flex h-[18px] shrink-0 items-center rounded-full bg-bg-hover px-2 text-[12px] leading-[18px] text-danger">
+          <span className="sticky top-0 flex h-[18px] shrink-0 items-center rounded-full border border-danger/30 bg-danger-soft px-2 font-mono text-[11px] leading-[18px] text-danger">
             {status}
           </span>
         )}
@@ -245,7 +245,7 @@ export function TerminalBlock({
           <button
             type="button"
             onClick={onCopy}
-            className="sticky top-0 h-[18px] shrink-0 bg-bg-subtle text-[13px] leading-[18px] text-fg-secondary transition-colors hover:text-fg"
+            className="sticky top-0 h-[18px] shrink-0 bg-bg-surface-100 text-[12px] leading-[18px] text-fg-secondary transition-colors hover:text-accent"
           >
             {copied ? labels.copied : labels.copy}
           </button>

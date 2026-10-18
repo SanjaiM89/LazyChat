@@ -101,6 +101,8 @@ export type ArtifactType =
 
 export interface ArtifactMeta {
   id: string;
+  /** Firebase uid of the creator; artifacts are private to them. */
+  ownerId?: string;
   conversationId?: string;
   title: string;
   type: ArtifactType;
@@ -153,6 +155,8 @@ export type AgentStatus =
 
 export interface AgentMeta {
   id: string;
+  /** Firebase uid of the user who started the agent. */
+  ownerId?: string;
   label: string;
   task: string;
   provider: ProviderId;

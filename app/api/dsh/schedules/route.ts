@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { readJSON } from "@/lib/store";
+import { listConversations, readJSON } from "@/lib/store";
+import { authed } from "@/lib/auth/context";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,12 +16,14 @@ interface ScheduleSummary {
   updated_at: number;
 }
 
-export async function GET(request: Request) {
+export const GET = authed(async (request, user) => {
   const { searchParams } = new URL(request.url);
   const convId = searchParams.get("conversationId");
 
-  const schedules: any[] = await readJSON("schedules.json", []);
-  const pending: any[] = await readJSON("pending-reminders.json", []);
+  // Schedules are tied to conversations, so a user sees only those of their own chats.
+  const mine = new Set((await listConversations(user.uid)).map((c) => c.id));
+  const schedules: any[] = (await readJSON<any[]>("schedules.json", [])).filter((s) => s.conversationId && mine.has(s.conversationId));
+  const pending: any[] = (await readJSON<any[]>("pending-reminders.json", [])).filter((r) => r.conversationId && mine.has(r.conversationId));
 
   const list: ScheduleSummary[] = schedules
     .filter((s) => (convId ? s.conversationId === convId : true))
@@ -37,4 +40,4 @@ export async function GET(request: Request) {
     .sort((a, b) => a.next_delivery - b.next_delivery);
 
   return NextResponse.json({ schedules: list, pending_reminders: pending.length });
-}
+});

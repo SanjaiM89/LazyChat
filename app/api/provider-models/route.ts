@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import { PROVIDERS } from "@/lib/models";
 import {
@@ -16,7 +17,7 @@ function bad(message: string) {
   return Response.json({ error: message }, { status: 400 });
 }
 
-export async function GET(req: NextRequest) {
+async function GET_impl(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get("provider") || "";
   if (provider) {
     if (!(provider in PROVIDERS)) return bad("Unknown provider.");
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
   return Response.json(out);
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   let body: any;
   try {
     body = await req.json();
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
   return Response.json({ provider, effective: await getEffectiveBuiltinModels(provider) });
 }
 
-export async function PUT(req: NextRequest) {
+async function PUT_impl(req: NextRequest) {
   let body: any;
   try {
     body = await req.json();
@@ -78,7 +79,7 @@ export async function PUT(req: NextRequest) {
   return Response.json({ provider, effective: await getEffectiveBuiltinModels(provider) });
 }
 
-export async function DELETE(req: NextRequest) {
+async function DELETE_impl(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get("provider") || "";
   const id = req.nextUrl.searchParams.get("id") || "";
   if (!provider || !(provider in PROVIDERS)) return bad("Unknown provider.");
@@ -90,3 +91,8 @@ export async function DELETE(req: NextRequest) {
   }
   return Response.json({ provider, effective: await getEffectiveBuiltinModels(provider) });
 }
+
+export const GET = scoped(GET_impl, { adminWrites: true });
+export const POST = scoped(POST_impl, { adminWrites: true });
+export const PUT = scoped(PUT_impl, { adminWrites: true });
+export const DELETE = scoped(DELETE_impl, { adminWrites: true });

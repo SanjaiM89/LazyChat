@@ -1,11 +1,11 @@
 import "server-only";
 
 import type { SkillDef } from "@/lib/types";
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
 
 
 export async function listSkills(): Promise<SkillDef[]> {
-  const data = await readJSON<SkillDef[]>("skills.json", []);
+  const data = await readScoped<SkillDef[]>("skills.json", []);
   return data.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
@@ -14,13 +14,13 @@ export async function saveSkill(skill: SkillDef): Promise<SkillDef[]> {
   const idx = all.findIndex((s) => s.id === skill.id);
   if (idx >= 0) all[idx] = skill;
   else all.unshift(skill);
-  await writeJSON("skills.json", all);
+  await writeScoped("skills.json", all);
   return all;
 }
 
 export async function deleteSkill(id: string): Promise<SkillDef[]> {
   const all = await listSkills();
-  await writeJSON("skills.json", all.filter((s) => s.id !== id));
+  await writeScoped("skills.json", all.filter((s) => s.id !== id));
   return all.filter((s) => s.id !== id);
 }
 

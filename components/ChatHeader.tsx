@@ -55,7 +55,7 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3 sm:px-4">
+      <header className="glass relative z-20 flex h-14 shrink-0 items-center gap-2 border-b border-border px-3 sm:px-4">
       <IconButton
         onClick={() => setSidebarOpen(!sidebarOpen)}
         title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
@@ -63,14 +63,15 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
         <PanelLeft size={16} />
       </IconButton>
 
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[14px] font-semibold text-fg">{title}</h1>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="hidden text-fg-faint sm:inline">/</span>
+        <h1 key={title} className="truncate text-[13.5px] font-medium text-fg animate-fade-in">{title}</h1>
       </div>
       {attached && activeConversationId && (
         <Tooltip text={`Workspace folder: ${attached.path} — click to open files, × to detach`}>
           <button
             onClick={() => openFiles("files")}
-            className="hidden items-center gap-1.5 rounded-full border border-border bg-bg-elevated px-2.5 py-1 text-[11.5px] text-fg-secondary hover:border-accent/40 sm:inline-flex"
+            className="hidden h-7 items-center gap-1.5 rounded-full border border-border bg-bg-surface-200 pl-2.5 pr-1 text-[11.5px] text-fg-secondary transition-colors hover:border-brand/40 hover:text-fg sm:inline-flex animate-scale-in"
           >
             <FolderOpen size={13} className="text-accent" />
             <span className="max-w-40 truncate">{attached.name}</span>
@@ -107,7 +108,7 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
             </IconButton>
           </Tooltip>
         ))}
-        <div className="mx-1 h-5 w-px bg-border" />
+        <div className="mx-1.5 h-5 w-px bg-border" />
         <Tooltip text="Display settings (font, size, width)">
           <IconButton onClick={() => setDisplayOpen(true)}>
             <Settings2 size={16} />
@@ -119,8 +120,8 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
             <span
               className={
                 opencodeReady
-                  ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-success"
-                  : "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning"
+                  ? "absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-success shadow-[0_0_6px_var(--success)]"
+                  : "absolute right-1.5 top-1.5 h-1.5 w-1.5 animate-pulse rounded-full bg-warning shadow-[0_0_6px_var(--warning)]"
               }
             />
           </IconButton>

@@ -47,7 +47,7 @@ function RunningTail() {
   return (
     <span
       aria-hidden="true"
-      className="relative inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center overflow-hidden text-info"
+      className="relative inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center overflow-hidden text-accent"
     >
       <svg
         width="14"
@@ -78,11 +78,11 @@ export function RunningStatus({ startTime }: { startTime?: number }) {
       : `Working for ${formatRunDuration(Math.max(1000, now - startTime))} ···`;
 
   return (
-    <div className="flex flex-col items-start text-info" data-chat-running>
+    <div className="flex flex-col items-start text-accent animate-fade-in" data-chat-running>
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         Working
       </span>
-      <span aria-hidden className="my-2.5 h-px w-full bg-border/70" />
+      <span aria-hidden className="my-2.5 h-px w-full bg-gradient-to-r from-brand/40 via-border to-transparent" />
       <span className="inline-flex min-w-0 items-center gap-1.5">
         <RunningTail />
         <TextShimmer active className="min-w-0 text-[12px] leading-[22px] [font-variant-numeric:tabular-nums]">

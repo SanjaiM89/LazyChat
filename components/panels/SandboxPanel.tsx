@@ -25,6 +25,8 @@ import {
   Maximize2,
   Minimize2,
 } from "lucide-react";
+import { BrandIcon, SiteFavicon } from "@/components/brand/BrandIcon";
+import { FileIcon } from "@/components/brand/FileIcon";
 import { cn, Button, IconButton, Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { SandboxMeta } from "@/lib/types";
@@ -56,10 +58,10 @@ export function SandboxPanel() {
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-info-soft text-info">
-          <Monitor size={14} />
+        <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-bg-surface-200">
+          <BrandIcon name="chrome" size={15} fallback={<Monitor size={14} />} />
         </span>
-        <h2 className="text-[14px] font-semibold text-fg flex-1">Chromium</h2>
+        <h2 className="flex-1 text-[13.5px] font-medium text-fg">Chromium</h2>
         <Badge tone={sandboxStatus === "ok" ? "success" : sandboxStatus === "unknown" ? "neutral" : "danger"}>
           {sandboxStatus === "ok" ? "online" : sandboxStatus === "unknown" ? "checking" : "offline"}
         </Badge>
@@ -68,17 +70,25 @@ export function SandboxPanel() {
         </IconButton>
       </div>
 
-      <div className="flex shrink-0 gap-1 border-b border-border px-2 py-1.5">
+      <div className="flex shrink-0 gap-4 border-b border-border px-3">
         {(["computer", "sandboxes"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "rounded-lg px-2.5 py-1 text-[12px] font-medium capitalize",
-              tab === t ? "bg-accent-soft text-accent" : "text-fg-muted hover:bg-bg-hover",
+              "relative flex items-center gap-1.5 py-2 text-[12px] font-medium transition-colors",
+              tab === t ? "text-fg" : "text-fg-muted hover:text-fg-secondary",
             )}
           >
+            <BrandIcon name={t === "computer" ? "chrome" : "docker"} size={12} className={tab === t ? "" : "opacity-60 grayscale"} />
             {t === "computer" ? "Computer" : `Agent sandboxes${sandboxes.length ? ` (${sandboxes.length})` : ""}`}
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-x-0 -bottom-px h-px bg-brand transition-transform duration-300 [transition-timing-function:var(--ease-out)]",
+                tab === t ? "scale-x-100" : "scale-x-0",
+              )}
+            />
           </button>
         ))}
       </div>
@@ -89,10 +99,10 @@ export function SandboxPanel() {
         <ChromiumComputer />
       ) : !active ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-info-soft text-info">
-            <Terminal size={20} />
+          <span className="brand-tile flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-bg-surface-200 animate-float">
+            <BrandIcon name="docker" size={24} fallback={<Terminal size={20} />} />
           </span>
-          <p className="text-[13px] text-fg-muted max-w-[260px]">
+          <p className="max-w-[260px] text-[13px] text-fg-muted">
             No agent sandbox running. Ask the model to run an agent task — a
             Docker VM will appear here.
           </p>
@@ -106,10 +116,10 @@ export function SandboxPanel() {
                   key={s.id}
                   onClick={() => setActiveSandbox(s.id)}
                   className={cn(
-                    "rounded-lg px-2.5 py-1 text-[12px] font-medium",
+                    "rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors",
                     s.id === active.id
-                      ? "bg-accent-soft text-accent"
-                      : "text-fg-muted hover:bg-bg-hover",
+                      ? "border-brand/40 bg-accent-soft text-accent"
+                      : "border-transparent text-fg-muted hover:bg-bg-hover",
                   )}
                 >
                   {s.label}
@@ -270,22 +280,26 @@ function ChromiumComputer() {
       <div className={wrap}>
         <div
           className={cn(
-            "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-[#0d0d0c] shadow-soft",
+            "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-[#0f0f0f] shadow-soft",
             full && "max-w-none",
           )}
         >
-          <div className="flex items-center gap-1.5 border-b border-border bg-bg-inset px-2.5 py-1.5">
-            <span className="h-2 w-2 rounded-full bg-danger/70" />
-            <span className="h-2 w-2 rounded-full bg-warning/70" />
-            <span className="h-2 w-2 rounded-full bg-success/70" />
-            <span className="ml-1 flex min-w-0 flex-1 items-center gap-1.5 truncate text-[11px] font-medium text-fg-muted">
-              <Globe size={11} className="shrink-0 text-accent" />
+          <div className="flex items-center gap-1.5 border-b border-border bg-bg-surface-200 px-2.5 py-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+            <span className="ml-1.5 flex min-w-0 flex-1 items-center gap-1.5 truncate rounded-md border border-border bg-bg-control px-2 py-0.5 text-[11px] font-medium text-fg-muted">
+              {shownUrl ? (
+                <SiteFavicon hostname={(() => { try { return new URL(shownUrl).hostname; } catch { return undefined; } })()} size={11} />
+              ) : (
+                <BrandIcon name="chrome" size={11} fallback={<Globe size={11} className="shrink-0 text-accent" />} />
+              )}
               <span className="truncate">{shownTitle || shownUrl || "Chromium"}</span>
             </span>
             <span
               className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                control === "user" ? "bg-warning-soft text-warning" : "bg-success-soft text-success",
+                "shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                control === "user" ? "border-warning/30 bg-warning-soft text-warning" : "border-brand/30 bg-success-soft text-success",
               )}
               title={control === "user" ? "You are driving — model tools yield" : "Model may drive — seize control anytime"}
             >
@@ -300,7 +314,7 @@ function ChromiumComputer() {
             </IconButton>
           </div>
 
-          <div className="flex items-center gap-1.5 border-b border-border bg-bg-elevated px-2 py-1.5">
+          <div className="flex items-center gap-1.5 border-b border-border bg-bg-surface-100 px-2 py-1.5">
             <IconButton title="Back" onClick={() => void drive("back")} className="h-7 w-7">
               <ChevronLeft size={14} />
             </IconButton>
@@ -329,7 +343,7 @@ function ChromiumComputer() {
               }}
               placeholder="Enter a URL — or type a search and press Enter"
               spellCheck={false}
-              className="min-w-0 flex-1 rounded-lg border border-border bg-bg-subtle px-2.5 py-1.5 font-mono text-[11.5px] text-fg placeholder:text-fg-muted/60 focus:border-accent/50 focus:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-1.5 font-mono text-[11.5px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
             />
             <Button
               size="sm"
@@ -348,7 +362,7 @@ function ChromiumComputer() {
 
           <div
             className={cn(
-              "relative w-full bg-[#0d0d0c]",
+              "relative w-full bg-[#0f0f0f]",
               control === "user" && !busy && "cursor-crosshair",
               full ? "min-h-0 flex-1" : "",
             )}
@@ -381,28 +395,28 @@ function ChromiumComputer() {
               </div>
             )}
             {frozen && (
-              <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white">
+              <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur animate-scale-in">
                 Step #{frozen.i} · {frozen.actor === "model" ? "model" : "you"} · {frozen.action}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setViewStep(null);
                   }}
-                  className="ml-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide hover:bg-accent-strong"
+                  className="ml-1 rounded-full bg-[#3ecf8e] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0b2e1e] transition-[filter] hover:brightness-110"
                 >
                   Live
                 </button>
               </div>
             )}
             {busy && (
-              <div className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 text-[11px] text-white">
+              <div className="absolute bottom-2 right-2 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/70 px-2.5 py-1 text-[11px] text-white backdrop-blur animate-scale-in">
                 <Loader2 size={12} className="animate-spin" /> working…
               </div>
             )}
           </div>
 
           {control === "user" ? (
-            <div className="flex items-center gap-1.5 border-t border-border bg-bg-elevated px-2 py-1.5">
+            <div className="flex items-center gap-1.5 border-t border-border bg-bg-surface-100 px-2 py-1.5">
               <Keyboard size={13} className="ml-1 shrink-0 text-fg-muted" />
               <input
                 value={typeInput}
@@ -414,7 +428,7 @@ function ChromiumComputer() {
                   }
                 }}
                 placeholder="Type into the page… (Enter = type + submit)"
-                className="min-w-0 flex-1 rounded-lg border border-border bg-bg-subtle px-2.5 py-1.5 text-[12px] text-fg placeholder:text-fg-muted/60 focus:border-accent/50 focus:outline-none"
+                className="min-w-0 flex-1 rounded-md border border-border-strong bg-bg-control transition-[border-color,box-shadow] duration-200 hover:border-border-stronger px-2.5 py-1.5 text-[12px] text-fg placeholder:text-fg-faint focus:outline-none focus:border-brand/60 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
               />
               <IconButton title="Scroll up" onClick={() => void drive("scroll", { direction: "up" })} className="h-7 w-7">
                 <ArrowUp size={13} />
@@ -427,7 +441,7 @@ function ChromiumComputer() {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 border-t border-border bg-bg-elevated px-3 py-2">
+            <div className="flex items-center gap-2 border-t border-border bg-bg-surface-100 px-3 py-2">
               <p className="min-w-0 flex-1 text-[11.5px] leading-snug text-fg-muted">
                 The model drives whenever it needs the web. Interrupt anytime and take the wheel.
               </p>
@@ -437,14 +451,14 @@ function ChromiumComputer() {
             </div>
           )}
           {err && (
-            <p className="border-t border-danger/20 bg-danger-soft/50 px-3 py-1.5 text-[12px] text-danger">{err}</p>
+            <p className="border-t border-danger/30 bg-danger-soft px-3 py-1.5 text-[12px] text-danger animate-fade-in">{err}</p>
           )}
         </div>
       </div>
 
       <div className="shrink-0 border-b border-border px-3 pb-2 pt-2">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-fg-muted">
+          <span className="flex items-center gap-1.5 eyebrow">
             <MousePointerClick size={12} className="text-accent" />
             Recording · {steps.length} step{steps.length === 1 ? "" : "s"}
           </span>
@@ -452,9 +466,9 @@ function ChromiumComputer() {
             {viewStep !== null && (
               <button
                 onClick={() => setViewStep(null)}
-                className="rounded-md bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent hover:bg-accent hover:text-white"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent transition-colors hover:bg-brand hover:text-[#0b2e1e]"
               >
-                ● Live
+                <span className="live-dot !h-1.5 !w-1.5" /> Live
               </button>
             )}
             <button
@@ -471,7 +485,7 @@ function ChromiumComputer() {
           </div>
         </div>
         {steps.length === 0 ? (
-          <p className="rounded-lg bg-bg-subtle/60 px-3 py-2.5 text-[12px] text-fg-muted">
+          <p className="rounded-md border border-dashed border-border px-3 py-2.5 text-[12px] text-fg-muted">
             Nothing recorded yet — every model and user action on this computer lands here with a screenshot.
           </p>
         ) : (
@@ -482,13 +496,13 @@ function ChromiumComputer() {
                 onClick={() => setViewStep((v) => (v === s.i ? null : s.i))}
                 title={`#${s.i} ${s.actor} ${s.action} — ${s.detail}\n${s.url || ""}\nClick to view, click again for live.`}
                 className={cn(
-                  "w-[92px] shrink-0 overflow-hidden rounded-lg border text-left transition-all",
+                  "w-[92px] shrink-0 overflow-hidden rounded-md border bg-bg-surface-100 text-left transition-all duration-200 hover:-translate-y-0.5 animate-scale-in",
                   viewStep === s.i
-                    ? "border-accent ring-1 ring-accent/60"
-                    : "border-border hover:border-accent/50",
+                    ? "border-brand shadow-[0_0_0_3px_var(--accent-soft)]"
+                    : "border-border hover:border-border-stronger",
                 )}
               >
-                <div className="relative h-[52px] w-full bg-[#0d0d0c]">
+                <div className="relative h-[52px] w-full bg-[#0f0f0f]">
                   {s.shot ? (
                     <img src={s.shot} alt="" className="h-full w-full object-cover" draggable={false} />
                   ) : (
@@ -499,7 +513,7 @@ function ChromiumComputer() {
                   <span
                     className={cn(
                       "absolute left-1 top-1 rounded px-1 text-[9.5px] font-bold",
-                      s.actor === "model" ? "bg-info text-white" : "bg-warning text-black",
+                      s.actor === "model" ? "bg-[#3ecf8e] text-[#0b2e1e]" : "bg-warning text-black",
                     )}
                   >
                     {s.i}
@@ -714,18 +728,17 @@ function SandboxScreen({ active, lines }: { active: SandboxMeta; lines: Activity
 
   return (
     <div className="shrink-0 border-b border-border p-3">
-      <div className="overflow-hidden rounded-xl border border-border bg-[#0d0d0c] shadow-soft">
-        <div className="flex items-center gap-1.5 bg-bg-inset px-2.5 py-1.5 border-b border-border">
-          <span className="h-2 w-2 rounded-full bg-danger/70" />
-          <span className="h-2 w-2 rounded-full bg-warning/70" />
-          <span className="h-2 w-2 rounded-full bg-success/70" />
+      <div className="overflow-hidden rounded-lg border border-border bg-[#0f0f0f] shadow-soft">
+        <div className="flex items-center gap-1.5 border-b border-border bg-bg-surface-200 px-2.5 py-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
           <span className="ml-1 flex items-center gap-1.5 text-[11px] text-fg-muted font-medium truncate">
             <span>{active.label}</span>
             {live && (
               <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-success">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-70" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
+                  <span className="live-dot !h-1.5 !w-1.5" />
                 </span>
                 live
               </span>
@@ -771,7 +784,7 @@ function SandboxScreen({ active, lines }: { active: SandboxMeta; lines: Activity
         </div>
 
         {showScreen ? (
-          <div className="relative flex h-64 items-center justify-center bg-[#0d0d0c]">
+          <div className="relative flex h-64 items-center justify-center bg-[#0f0f0f]">
             <img
               src={active.lastScreenshot}
               alt="sandbox screen"
@@ -779,22 +792,22 @@ function SandboxScreen({ active, lines }: { active: SandboxMeta; lines: Activity
             />
           </div>
         ) : (
-          <div className="bg-[#0d0d0c]">
+          <div className="bg-[#0f0f0f]">
             <div
               ref={outRef}
               className="max-h-64 min-h-[132px] overflow-y-auto p-2.5 font-mono text-[11px] leading-relaxed"
             >
               {lines.length === 0 && active.state === "starting" && (
-                <p className="text-fg-muted/70">Booting container…</p>
+                <p className="text-white/45">Booting container…</p>
               )}
               {lines.length === 0 && active.state !== "starting" && (
-                <div className="flex flex-col gap-1 py-2 text-fg-muted/70">
+                <div className="flex flex-col gap-1 py-2 text-white/45">
                   <p>
                     The agent is running headless (no browser) — the commands it
                     executes will stream here live.
                   </p>
-                  <p className="text-fg-muted/50">
-                    Tip: open the <span className="text-fg-secondary">Agents</span> panel to see the full run log.
+                  <p className="text-white/35">
+                    Tip: open the <span className="text-white/80">Agents</span> panel to see the full run log.
                   </p>
                 </div>
               )}
@@ -813,25 +826,25 @@ function ConsoleLine({ line }: { line: ActivityLine }) {
   const time = new Date(line.t).toLocaleTimeString([], { hour12: false });
   const tone =
     line.kind === "cmd"
-      ? "text-success"
+      ? "text-[#3ecf8e]"
       : line.kind === "tool"
-        ? "text-info"
+        ? "text-[#52a9ff]"
         : line.kind === "file"
-          ? "text-success"
+          ? "text-[#3ecf8e]"
           : line.kind === "thinking"
-            ? "text-accent"
+            ? "text-[#8fe5bc]"
             : line.kind === "error"
-              ? "text-danger"
+              ? "text-[#f56e4e]"
               : line.kind === "status"
-                ? "text-warning"
+                ? "text-[#f1a10d]"
                 : line.kind === "text"
-                  ? "text-fg-secondary"
-                  : "text-fg-muted";
+                  ? "text-white/80"
+                  : "text-white/50";
   return (
     <pre className={cn("whitespace-pre-wrap break-words", tone)}>
-      <span className="mr-1.5 text-fg-muted/40 select-none">{time}</span>
+      <span className="mr-1.5 text-white/30 select-none">{time}</span>
       {line.kind === "cmd" && (
-        <span className="mr-0.5 font-semibold text-success/80 select-none">$</span>
+        <span className="mr-0.5 font-semibold text-[#3ecf8e]/80 select-none">$</span>
       )}
       {line.text}
     </pre>
@@ -842,13 +855,13 @@ function ConsoleLine({ line }: { line: ActivityLine }) {
 function SandboxDown({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-soft text-danger">
+      <span className="flex h-12 w-12 items-center justify-center rounded-lg border border-danger/30 bg-danger-soft text-danger animate-scale-in">
         <AlertTriangle size={20} />
       </span>
       <p className="text-[14px] font-medium text-fg">Sandbox service offline</p>
       <p className="text-[12.5px] text-fg-muted max-w-[300px] leading-relaxed">
         The Docker sandbox service isn&apos;t running. Start it with{" "}
-        <code className="rounded bg-bg-inset px-1.5 py-0.5 text-[11px]">node sandbox/server.mjs</code>{" "}
+        <code className="rounded border border-border bg-bg-surface-200 px-1.5 py-0.5 font-mono text-[11px]">node sandbox/server.mjs</code>{" "}
         and make sure Docker is available.
       </p>
       <Button onClick={onRetry}>Retry connection</Button>
@@ -876,11 +889,11 @@ function SandboxFiles({ id }: { id: string }) {
   }, [id]);
 
   return (
-    <div className="rounded-xl border border-border bg-bg-elevated">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+    <div className="overflow-hidden rounded-lg border border-border bg-bg-surface-100">
+      <div className="flex items-center gap-2 border-b border-border bg-bg-surface-200 px-3 py-2">
         <FileText size={13} className="text-accent" />
-        <span className="text-[12px] font-medium text-fg-secondary">Output files</span>
-        <span className="text-[11px] text-fg-muted">/workspace/out</span>
+        <span className="eyebrow">Output files</span>
+        <span className="ml-auto font-mono text-[11px] text-fg-muted">/workspace/out</span>
       </div>
       <div className="p-2">
         {!files ? (
@@ -894,14 +907,14 @@ function SandboxFiles({ id }: { id: string }) {
             <a
               key={i}
               href={`/api/sandbox/${id}/download?path=${encodeURIComponent(f.path || `/workspace/out/${f.name}`)}`}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12.5px] text-fg-secondary hover:bg-bg-hover transition-colors"
+              className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-fg-secondary transition-colors hover:bg-bg-hover hover:text-fg"
             >
-              <FileText size={13} className="text-fg-muted" />
+              <FileIcon type={f.name} size={18} />
               <span className="truncate flex-1">{f.name}</span>
               {typeof f.size === "number" && (
                 <span className="text-[10.5px] text-fg-muted">{fmt(f.size)}</span>
               )}
-              <Download size={12} className="text-fg-muted" />
+              <Download size={12} className="text-fg-muted transition-transform duration-200 group-hover:translate-y-0.5 group-hover:text-accent" />
             </a>
           ))
         )}
@@ -946,15 +959,15 @@ function SandboxTerminal({ id, feed }: { id: string; feed: ActivityLine[] }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-[#121210]">
+    <div className="overflow-hidden rounded-lg border border-border bg-[#0f0f0f]">
       <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
-        <Terminal size={13} className="text-success" />
-        <span className="text-[12px] font-medium text-fg-secondary">Terminal</span>
+        <BrandIcon name="bash" size={13} fallback={<Terminal size={13} className="text-[#3ecf8e]" />} />
+        <span className="font-mono text-[11px] uppercase tracking-wider text-white/55">Terminal</span>
       </div>
-      <div ref={outRef} className="h-40 overflow-auto p-2.5 font-mono text-[11.5px] leading-relaxed text-fg-secondary">
+      <div ref={outRef} className="h-40 overflow-auto p-2.5 font-mono text-[11.5px] leading-relaxed text-white/80">
         {feed.length > 0 && (
           <div className="mb-1.5 border-b border-white/10 pb-1.5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-fg-muted/60">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-white/40">
               Agent activity
             </p>
             {feed.map((line, i) => (
@@ -963,21 +976,21 @@ function SandboxTerminal({ id, feed }: { id: string; feed: ActivityLine[] }) {
           </div>
         )}
         {feed.length === 0 && output.length === 0 && (
-          <p className="text-fg-muted/60">Run a command, e.g. <span className="text-fg-secondary">ls /workspace/out</span></p>
+          <p className="text-white/40">Run a command, e.g. <span className="text-white/80">ls /workspace/out</span></p>
         )}
         {output.map((line, i) => (
           <pre key={i} className="whitespace-pre-wrap">{line}</pre>
         ))}
-        {busy && <pre className="text-accent">…</pre>}
+        {busy && <pre className="text-[#8fe5bc]">…</pre>}
       </div>
       <div className="flex items-center gap-1.5 border-t border-white/10 px-2.5 py-2">
-        <span className="text-success font-mono text-[12px]">$</span>
+        <span className="text-[#3ecf8e] font-mono text-[12px]">$</span>
         <input
           value={cmd}
           onChange={(e) => setCmd(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && run(cmd)}
           placeholder="type a command"
-          className="flex-1 bg-transparent font-mono text-[12px] text-fg placeholder:text-fg-muted/50 focus:outline-none"
+          className="flex-1 bg-transparent font-mono text-[12px] text-white placeholder:text-white/35 focus:outline-none"
         />
         <Button size="sm" variant="ghost" onClick={() => run(cmd)} disabled={busy || !cmd.trim()}>
           Run

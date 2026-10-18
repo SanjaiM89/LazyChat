@@ -1,3 +1,6 @@
+import { buildGenUiTools } from "@/lib/genui/tools";
+import { buildDocumentTools } from "@/lib/documents/tool";
+import { currentUser } from "@/lib/auth/context";
 import "server-only";
 
 import { tool } from "ai";
@@ -439,7 +442,7 @@ function buildSessionQueryTools(opts: EnabledToolsOpts) {
       execute: async ({ query, limit }) => {
         const { listConversations, getConversation } = await import("@/lib/store");
         const { messageText } = await import("@/lib/brain/omnia-memory");
-        const all = await listConversations();
+        const all = await listConversations(currentUser()?.uid ?? "__none__");
         const q = query.toLowerCase();
         const results: Array<{
           id: string;
@@ -447,7 +450,8 @@ function buildSessionQueryTools(opts: EnabledToolsOpts) {
           snippet: string;
           score: number;
         }> = [];
-        for (const c of all) {
+        for (const meta of all.slice(0, 40)) {
+          const c = (await getConversation(meta.id)) ?? { ...meta, messages: [] };
           let bestScore = 0;
           let bestSnippet = "";
           // Match in title.
@@ -531,6 +535,10 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
     ...buildGoalTools(opts.conversationId),
     ...buildScheduleTools(opts.conversationId),
     ...buildPlanModeTool(opts),
+    // Generative UI (Prefab): always on, like the other interaction tools.
+    ...buildGenUiTools(),
+    // Real .docx/.pdf/.xlsx generation, no sandbox round-trip.
+    ...buildDocumentTools(opts.conversationId),
   };
   for (const n of names) {
     if (n === "computerUse") Object.assign(out, buildComputerTools());

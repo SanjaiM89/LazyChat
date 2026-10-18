@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import type { CustomModelDef, CustomProviderDef } from "@/lib/types";
 import {
@@ -44,11 +45,11 @@ function normalizeBaseUrl(u: string): string | null {
   return s.replace(/\/+$/, "");
 }
 
-export async function GET() {
+async function GET_impl() {
   return Response.json(await listPublicCustomProviders());
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   let body: any;
   try {
     body = await req.json();
@@ -102,9 +103,13 @@ export async function POST(req: NextRequest) {
   });
 }
 
-export async function DELETE(req: NextRequest) {
+async function DELETE_impl(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return bad("id required");
   await deleteCustomProvider(id);
   return Response.json({ providers: await listPublicCustomProviders() });
 }
+
+export const GET = scoped(GET_impl, { adminWrites: true });
+export const POST = scoped(POST_impl, { adminWrites: true });
+export const DELETE = scoped(DELETE_impl, { adminWrites: true });

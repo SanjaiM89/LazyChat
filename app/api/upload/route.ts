@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import { importArtifactFile } from "@/lib/artifacts";
 import type { ArtifactType } from "@/lib/types";
@@ -35,7 +36,7 @@ const EXT: Record<string, ArtifactType> = {
   ".sh": "code",
 };
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   const form = await req.formData();
   const files = form.getAll("files") as File[];
   const conversationId = (form.get("conversationId") as string) || undefined;
@@ -61,3 +62,5 @@ export async function POST(req: NextRequest) {
   }
   return Response.json({ artifacts: created });
 }
+
+export const POST = scoped(POST_impl);

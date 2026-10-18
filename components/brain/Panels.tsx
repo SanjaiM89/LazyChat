@@ -20,37 +20,39 @@ export function ReasoningTrace({
   if (trace.length === 0) return null;
 
   return (
-    <div className="mt-2 rounded-lg border border-border bg-bg-subtle">
+    <div className="mt-2 overflow-hidden rounded-lg border border-border bg-bg-surface-100 animate-fade-in-up">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-fg-secondary hover:bg-bg-hover"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-fg-secondary transition-colors hover:bg-bg-hover"
       >
-        <span className="font-medium text-fg">
-          {open ? "▾" : "▸"} Reasoning trace
+        <span className="flex items-center gap-1.5 font-medium text-fg">
+          <span className={`inline-block text-fg-muted transition-transform duration-300 ${open ? "rotate-90" : ""}`}>▸</span>
+          Reasoning trace
         </span>
-        <span className="rounded-full bg-bg-elevated px-1.5 py-0.5 text-[10px]">
+        <span className="rounded-full border border-border bg-bg-surface-200 px-1.5 font-mono text-[10px] leading-4">
           {trace.length} tool call{trace.length === 1 ? "" : "s"}
         </span>
-        <span className="rounded-full bg-bg-elevated px-1.5 py-0.5 text-[10px]">
+        <span className="rounded-full border border-border bg-bg-surface-200 px-1.5 font-mono text-[10px] leading-4 tabular-nums">
           {total.toFixed(1)}ms
         </span>
-        <span className="ml-auto text-[10px] text-fg-muted">
+        <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand" />
           grounded in FalkorDB
         </span>
       </button>
 
       {open && (
-        <ol className="space-y-2 border-t border-border p-2">
+        <ol className="relative space-y-2 border-t border-border p-2 stagger [--stagger:40ms]">
           {trace.map((s, i) => (
-            <li key={`${s.tool}-${i}`} className="rounded-md bg-bg-elevated p-2">
+            <li key={`${s.tool}-${i}`} className="rounded-md border border-border-muted bg-bg-elevated p-2.5">
               <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                <span className="rounded bg-accent-soft px-1.5 py-0.5 font-mono text-accent-strong">
+                <span className="rounded border border-brand/30 bg-accent-soft px-1.5 py-0.5 font-mono text-accent">
                   {i + 1}. {s.tool}
                 </span>
-                <span className="text-fg-muted">{s.row_count ?? 0} rows</span>
-                <span className="text-fg-muted">{s.duration_ms ?? 0}ms</span>
+                <span className="font-mono text-fg-muted">{s.row_count ?? 0} rows</span>
+                <span className="font-mono text-fg-muted">{s.duration_ms ?? 0}ms</span>
                 {s.error && (
-                  <span className="rounded bg-danger-soft px-1.5 py-0.5 text-danger">
+                  <span className="rounded border border-danger/30 bg-danger-soft px-1.5 py-0.5 text-danger">
                     {s.error}
                   </span>
                 )}
@@ -64,7 +66,7 @@ export function ReasoningTrace({
                 <p className="mt-1 text-xs leading-snug text-fg">{s.result_summary}</p>
               )}
               {s.cypher && (
-                <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap rounded bg-bg-inset p-1.5 font-mono text-[10px] leading-relaxed text-fg-secondary">
+                <pre className="mt-1.5 overflow-x-auto whitespace-pre-wrap rounded-md border border-border-muted bg-bg-inset p-2 font-mono text-[10px] leading-relaxed text-fg-secondary">
                   {s.cypher}
                 </pre>
               )}
@@ -84,16 +86,16 @@ export function AgentActivity({ activity }: { activity: ActivityItem[] }) {
       {activity.map((a, i) => (
         <div
           key={i}
-          className={`rounded-md border p-2 text-[11px] ${
+          className={`rounded-md border p-2 text-[11px] animate-fade-in-up ${
             a.kind === "handoff"
-              ? "border-accent/40 bg-accent-soft"
+              ? "border-brand/40 bg-accent-soft"
               : "border-border bg-bg-elevated"
           }`}
         >
           <div className="flex items-center gap-1.5">
             <span
               className={`rounded px-1.5 py-0.5 font-mono ${
-                a.kind === "handoff" ? "bg-accent text-white" : "bg-bg-inset"
+                a.kind === "handoff" ? "border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)]" : "border border-border bg-bg-surface-200"
               }`}
             >
               {a.agent}
@@ -143,14 +145,14 @@ export function ProceduresPanel({
       key={p.id}
       className={`rounded-md border p-2 ${
         justLearned?.id === p.id
-          ? "border-accent bg-accent-soft"
-          : "border-border bg-bg-elevated"
+          ? "border-brand/60 bg-accent-soft shadow-glow animate-scale-in"
+          : "border-border bg-bg-elevated transition-colors hover:border-border-strong"
       }`}
     >
       <div className="flex items-center gap-1.5">
         <span
           className={`rounded px-1.5 py-0.5 text-[10px] ${
-            p.learned ? "bg-accent text-white" : "bg-bg-inset text-fg-muted"
+            p.learned ? "border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)]" : "border border-border bg-bg-surface-200 text-fg-muted"
           }`}
         >
           {p.learned ? "learned" : "seeded"}
@@ -161,7 +163,7 @@ export function ProceduresPanel({
           </span>
         )}
         {justLearned?.id === p.id && (
-          <span className="ml-auto text-[10px] text-accent-strong">just learned</span>
+          <span className="ml-auto flex items-center gap-1.5 text-[10px] text-accent"><span className="live-dot !h-1.5 !w-1.5" />just learned</span>
         )}
       </div>
       <p className="mt-1 text-[11px] font-medium text-fg">{p.task_pattern}</p>
@@ -190,7 +192,7 @@ export function ProceduresPanel({
     <div className="space-y-2">
       {learned.length > 0 && (
         <div>
-          <p className="pb-1 text-[10px] font-medium uppercase tracking-wide text-fg-muted">
+          <p className="eyebrow pb-1.5 !text-[10px]">
             Written by the agent ({learned.length})
           </p>
           <div className="space-y-1.5">{learned.map(card)}</div>
@@ -198,7 +200,7 @@ export function ProceduresPanel({
       )}
       {seeded.length > 0 && (
         <div>
-          <p className="pb-1 text-[10px] font-medium uppercase tracking-wide text-fg-muted">
+          <p className="eyebrow pb-1.5 !text-[10px]">
             Shipped with the project ({seeded.length})
           </p>
           <div className="space-y-1.5">{seeded.map(card)}</div>
@@ -233,7 +235,7 @@ export function MemoryPanel({
           {Object.entries(stats).map(([k, v]) => (
             <span
               key={k}
-              className="rounded-full bg-bg-inset px-2 py-0.5 text-[10px] text-fg-secondary"
+              className="rounded-full border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[10px] text-fg-secondary"
             >
               {k}: {v}
             </span>
@@ -244,14 +246,14 @@ export function MemoryPanel({
         <button
           key={m.id}
           onClick={() => onPick?.(m.id)}
-          className="block w-full rounded-md border border-border bg-bg-elevated p-2 text-left hover:bg-bg-hover"
+          className="lift block w-full rounded-md border border-border bg-bg-elevated p-2 text-left hover:border-border-strong hover:bg-bg-hover"
         >
           <div className="flex items-center gap-1.5">
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] ${
                 m.kind === "episodic"
-                  ? "bg-success-soft text-success"
-                  : "bg-info-soft text-info"
+                  ? "border border-brand/30 bg-success-soft text-success"
+                  : "border border-info/30 bg-info-soft text-info"
               }`}
             >
               {m.kind}

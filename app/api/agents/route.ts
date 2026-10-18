@@ -1,16 +1,16 @@
-import { NextRequest } from "next/server";
+import { authed } from "@/lib/auth/context";
 import { getAgents, spawnAgent, cleanupFinishedAgents } from "@/lib/agents";
 import { defaultModelForProvider } from "@/lib/custom-providers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export const GET = authed(async (_req, user) => {
   cleanupFinishedAgents();
-  return Response.json(getAgents());
-}
+  return Response.json(getAgents(user.uid));
+});
 
-export async function POST(req: NextRequest) {
+export const POST = authed(async (req) => {
   const body = await req.json();
   if (!body.task || !body.task.trim()) {
     return Response.json({ error: "task required" }, { status: 400 });
@@ -32,4 +32,4 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     return Response.json({ error: e.message }, { status: 500 });
   }
-}
+});

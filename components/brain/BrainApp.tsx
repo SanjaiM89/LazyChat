@@ -2,11 +2,14 @@
 
 import * as React from "react";
 import { api, streamChat, API_URL, type ActivityItem, type GraphNode, type MemoryNode, type Procedure, type SchemaInfo, type SessionSummary, type SubGraph, type TraceStep, type Turn } from "@/lib/brainApi";
-import { GraphCanvas, Legend } from "./GraphCanvas";
+import { GraphCanvas, Legend, nodeColor } from "./GraphCanvas";
 import { AgentActivity, MemoryPanel, ProceduresPanel, ReasoningTrace } from "./Panels";
-import { Button, cn } from "@/components/ui";
+import { Button, cn, Segmented, SpotlightCard, Toggle } from "@/components/ui";
+import { OmniaMark } from "@/components/brand/OmniaLogo";
+import { BrandIcon } from "@/components/brand/BrandIcon";
+import { ArrowUp, ArrowUpRight, Network, Plus, RefreshCw } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
-const USER_ID = "demo-user";
 
 const SUGGESTIONS = [
   "Which tickets are blocked by the auth migration?",
@@ -41,6 +44,8 @@ function mergeProcedures(current: Procedure[], incoming: Procedure[]): Procedure
 }
 
 export function BrainApp() {
+  // The server ignores any client-supplied id and uses the verified uid; this is only the URL key.
+  const USER_ID = useAuth().user?.uid ?? "me";
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -328,117 +333,164 @@ export function BrainApp() {
   return (
     <div className="flex h-full w-full overflow-hidden bg-bg text-fg">
       {/* ---------------- sidebar ---------------- */}
-      <aside className="flex w-72 shrink-0 flex-col border-r border-border bg-bg-subtle">
+      <aside className="flex w-72 shrink-0 flex-col border-r border-border bg-bg-alternative animate-slide-in-left">
         <div className="border-b border-border p-3">
-          <h1 className="text-sm font-semibold">Company Brain</h1>
-          <p className="mt-0.5 text-[11px] text-fg-muted">
-            {connected === null ? "connecting…" : connected ? "FalkorDB connected" : "backend unreachable"}
-          </p>
-          <div className="mt-2 flex gap-1.5">
-            <Button size="sm" variant="primary" onClick={newSession}>New session</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setTab("memory"); api.memory(USER_ID).then((r) => { setMemories(r.memories); setMemStats(r.stats); }); }}>
-              Refresh memory
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg-surface-200 text-accent">
+              <Network size={15} />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-[13.5px] font-medium tracking-tight">Company Brain</h1>
+              <p className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-wider text-fg-muted">
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    connected === null ? "animate-pulse bg-warning" : connected ? "bg-brand shadow-[0_0_6px_var(--brand)]" : "bg-danger",
+                  )}
+                />
+                {connected === null ? "connecting…" : connected ? "FalkorDB connected" : "backend unreachable"}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-1.5">
+            <Button size="sm" variant="primary" className="group" onClick={newSession}>
+              <Plus size={13} className="transition-transform duration-300 group-hover:rotate-90" /> New session
+            </Button>
+            <Button size="sm" variant="secondary" className="group" onClick={() => { setTab("memory"); api.memory(USER_ID).then((r) => { setMemories(r.memories); setMemStats(r.stats); }); }}>
+              <RefreshCw size={12} className="transition-transform duration-500 group-hover:rotate-180" /> Refresh memory
             </Button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          <p className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-fg-muted">
+          <p className="eyebrow px-1.5 pb-1.5 pt-2 !text-[10.5px]">
             Past sessions
           </p>
           {sessions.length === 0 && (
-            <p className="px-1 text-[11px] text-fg-muted">No sessions yet.</p>
+            <p className="mx-1 rounded-md border border-dashed border-border px-3 py-3 text-[11.5px] text-fg-muted">No sessions yet.</p>
           )}
+          <div className="stagger [--stagger:25ms]">
           {sessions.map((s) => (
             <button
               key={s.session_id}
               onClick={() => loadSession(s.session_id)}
               className={cn(
-                "mb-1 block w-full rounded-md border p-2 text-left transition",
+                "group relative mb-px block w-full rounded-md px-2.5 py-2 text-left transition-colors",
                 s.session_id === sessionId
-                  ? "border-accent bg-accent-soft"
-                  : "border-border bg-bg-elevated hover:bg-bg-hover",
+                  ? "bg-bg-surface-300 text-fg"
+                  : "text-fg-secondary hover:bg-bg-hover hover:text-fg",
               )}
             >
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand transition-all duration-300",
+                  s.session_id === sessionId ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0",
+                )}
+              />
               <div className="flex items-center gap-1.5">
-                <span className="truncate text-[11px] font-medium">
+                <span className="truncate text-[12px]">
                   {s.preview || s.session_id.slice(0, 22)}
                 </span>
-                <span className="ml-auto shrink-0 rounded bg-bg-inset px-1 text-[9px] text-fg-muted">
+                <span className="ml-auto shrink-0 rounded-full border border-border bg-bg-surface-200 px-1.5 font-mono text-[9.5px] leading-4 text-fg-muted">
                   {s.turn_count}
                 </span>
               </div>
               {s.last_active_at && (
-                <p className="mt-0.5 text-[10px] text-fg-muted">
+                <p className="mt-0.5 font-mono text-[10px] text-fg-muted">
                   {s.last_active_at.slice(0, 16).replace("T", " ")}
                 </p>
               )}
             </button>
           ))}
+          </div>
         </div>
 
-        <div className="border-t border-border p-2">
-          <p className="text-[10px] text-fg-muted">
-            API: <span className="font-mono">{API_URL}</span>
+        <div className="border-t border-border p-2.5">
+          <p className="truncate font-mono text-[10px] text-fg-muted">
+            <span className="uppercase tracking-wider">API</span> <span className="text-fg-secondary">{API_URL}</span>
           </p>
         </div>
       </aside>
 
       {/* ---------------- chat ---------------- */}
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-          <span className="text-xs font-medium text-fg-secondary">Ask the company</span>
+        <div className="glass flex h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+          <span className="shrink-0 whitespace-nowrap text-[13.5px] font-medium text-fg">Ask the company</span>
           {messages.length === 0 && (
-            <span className="text-[11px] text-fg-muted">
-              every answer is a graph traversal — nothing is invented
+            <span className="hidden truncate text-[11.5px] text-fg-muted md:inline animate-fade-in">
+              · every answer is a graph traversal — nothing is invented
             </span>
           )}
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
+        <div ref={scrollRef} className="relative flex-1 overflow-y-auto px-4 py-3">
           {messages.length === 0 && (
-            <div className="mx-auto max-w-2xl pt-8">
-              <p className="mb-3 text-center text-sm text-fg-muted">
-                Try one of these — each one needs a different graph traversal:
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => send(s)}
-                    className="rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-xs hover:border-accent hover:bg-bg-hover"
-                  >
-                    {s}
-                  </button>
-                ))}
+            <>
+              <div className="hero-backdrop" aria-hidden>
+                <div className="hero-grid" />
+                <div className="hero-aurora" />
+                <span className="hero-beam" style={{ top: "30%", animationDelay: "1s" }} />
               </div>
-            </div>
+              <div className="relative z-10 mx-auto max-w-2xl pt-10 stagger [--stagger:60ms]">
+                <div className="mb-4 flex justify-center">
+                  <span className="flex items-center gap-2 rounded-full border border-border bg-bg-surface-100/80 px-3 py-1 text-[11.5px] text-fg-secondary backdrop-blur">
+                    <BrandIcon name="neo4j" size={12} monochrome className="text-accent" />
+                    FalkorDB knowledge graph
+                  </span>
+                </div>
+                <h2 className="text-center text-[26px] font-medium tracking-[-0.02em]">
+                  Ask the <span className="text-brand-gradient">Company Brain</span>
+                </h2>
+                <p className="mb-6 mt-2 text-center text-[13px] text-fg-muted">
+                  Try one of these — each one needs a different graph traversal:
+                </p>
+                <div className="flex flex-col gap-1.5 stagger [--stagger:45ms]">
+                  {SUGGESTIONS.map((s) => (
+                    <SpotlightCard
+                      as="button"
+                      key={s}
+                      onClick={() => send(s)}
+                      className="group flex items-center gap-2 rounded-md border border-border bg-bg-surface-100 px-3 py-2.5 text-left text-[12.5px] text-fg-secondary transition-colors hover:border-border-strong hover:text-fg"
+                    >
+                      <span className="flex-1">{s}</span>
+                      <ArrowUpRight size={13} className="text-fg-faint transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-accent" />
+                    </SpotlightCard>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.map((m) =>
               m.role === "user" ? (
-                <div key={m.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-xl rounded-br-sm bg-accent px-3.5 py-2 text-sm text-white">
+                <div key={m.id} className="flex justify-end animate-fade-in-up">
+                  <div className="max-w-[85%] whitespace-pre-wrap rounded-xl rounded-br-sm border border-border bg-bg-surface-200 px-4 py-2.5 text-[14px] leading-relaxed text-fg">
                     {m.content}
                   </div>
                 </div>
               ) : (
-                <div key={m.id} className="rounded-xl border border-border bg-bg-elevated p-3">
+                <div key={m.id} className="flex gap-3 animate-fade-in-up">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
+                  <OmniaMark size={22} animated={!!m.streaming} />
+                </span>
+                <div className="min-w-0 flex-1">
                   {m.agents && m.agents.length > 1 && (
                     <div className="mb-1.5 flex gap-1">
                       {m.agents.map((a) => (
                         <span
                           key={a}
-                          className="rounded bg-bg-inset px-1.5 py-0.5 font-mono text-[10px] text-fg-secondary"
+                          className="rounded-full border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[10px] text-fg-secondary"
                         >
                           {a}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {m.content || (m.streaming ? <span className="animate-pulse">…</span> : "")}
+                  <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-fg">
+                    {m.content}
+                    {m.streaming && (m.content ? <span className="stream-caret" aria-hidden /> : <span className="text-shine text-[13px]">Traversing the graph…</span>)}
                   </div>
                   {m.trace && m.trace.length > 0 && (
                     <ReasoningTrace trace={m.trace} defaultOpen={showReasoning} />
@@ -454,7 +506,7 @@ export function BrainApp() {
                               const node = graph.nodes.find((n) => n.id === id);
                               if (node) onNodeClick(node);
                             }}
-                            className="rounded border border-border bg-bg-subtle px-1.5 py-0.5 font-mono text-[10px] text-fg-secondary hover:border-accent hover:text-accent-strong"
+                            className="rounded-md border border-border bg-bg-surface-200 px-1.5 py-0.5 font-mono text-[10px] text-fg-secondary transition-colors hover:border-brand/50 hover:text-accent"
                             title="Highlight this source in the graph"
                           >
                             {s}
@@ -464,13 +516,17 @@ export function BrainApp() {
                     </div>
                   )}
                 </div>
+                </div>
               ),
             )}
           </div>
         </div>
 
-        <div className="border-t border-border p-3">
-          <div className="mx-auto flex max-w-3xl gap-2">
+        <div className="p-3 pt-1">
+          <div className={cn(
+            "mx-auto flex max-w-3xl items-end gap-2 rounded-xl border border-border-strong bg-bg-surface-100 p-2 shadow-soft transition-[border-color,box-shadow] duration-300 hover:border-border-stronger focus-within:border-brand/50 focus-within:shadow-[0_0_0_4px_var(--accent-soft),var(--shadow-soft)]",
+            busy && "beam-border",
+          )}>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -482,14 +538,14 @@ export function BrainApp() {
               }}
               rows={2}
               placeholder="Ask about people, services, tickets, decisions…  (Enter to send)"
-              className="flex-1 resize-none rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm outline-none focus:border-accent"
+              className="flex-1 resize-none bg-transparent px-2 py-1.5 text-[14px] text-fg outline-none placeholder:text-fg-faint"
             />
-            <Button variant="primary" onClick={() => send(input)} disabled={busy || !input.trim()}>
-              {busy ? "Thinking…" : "Send"}
+            <Button variant="primary" className="group" onClick={() => send(input)} disabled={busy || !input.trim()}>
+              {busy ? "Thinking…" : <>Send <ArrowUp size={13} className="transition-transform duration-300 group-hover:-translate-y-0.5" /></>}
             </Button>
           </div>
           {error && (
-            <p className="mx-auto mt-2 max-w-3xl rounded bg-danger-soft px-2 py-1 text-[11px] text-danger">
+            <p className="mx-auto mt-2 max-w-3xl rounded-md border border-danger/30 bg-danger-soft px-3 py-1.5 text-[12px] text-danger animate-scale-in">
               {error}
             </p>
           )}
@@ -497,33 +553,27 @@ export function BrainApp() {
       </section>
 
       {/* ---------------- graph panel ---------------- */}
-      <aside className="flex w-[460px] shrink-0 flex-col border-l border-border bg-bg-subtle">
-        <div className="flex gap-1 border-b border-border p-2">
-          {(["graph", "activity", "memory"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-xs capitalize transition",
-                tab === t ? "bg-accent text-white" : "text-fg-secondary hover:bg-bg-hover",
-              )}
-            >
-              {t === "activity" ? "Agent activity" : t}
-            </button>
-          ))}
-          <label className="ml-auto flex items-center gap-1 text-[11px] text-fg-secondary">
-            <input
-              type="checkbox"
-              checked={showReasoning}
-              onChange={(e) => setShowReasoning(e.target.checked)}
-            />
-            show trace
+      <aside className="flex w-[460px] shrink-0 flex-col border-l border-border bg-bg-alternative animate-slide-in-right">
+        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-3">
+          <Segmented
+            className="w-[280px]"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "graph", label: "Graph" },
+              { value: "activity", label: "Agent activity" },
+              { value: "memory", label: "Memory" },
+            ]}
+          />
+          <label className="ml-auto flex items-center gap-2 text-[11.5px] text-fg-secondary">
+            <Toggle checked={showReasoning} onChange={setShowReasoning} label="show trace" />
+            trace
           </label>
         </div>
 
         {tab === "graph" && (
           <>
-            <div className="h-[52%] border-b border-border">
+            <div className="relative h-[52%] border-b border-border bg-bg dot-grid">
               <GraphCanvas
                 data={graph}
                 highlight={highlight}
@@ -531,22 +581,22 @@ export function BrainApp() {
                 onNodeClick={onNodeClick}
               />
             </div>
-            <div className="border-b border-border p-2">
+            <div className="border-b border-border p-3">
               <Legend
                 labels={schema?.labels ?? []}
                 active={highlight}
                 onToggle={() => {}}
               />
-              <p className="mt-1.5 text-[10px] text-fg-muted">
-                {graph.nodes.length} nodes · {graph.edges.length} edges contributed to
+              <p className="mt-2 text-[10.5px] text-fg-muted">
+                <span className="font-mono text-fg-secondary">{graph.nodes.length}</span> nodes · <span className="font-mono text-fg-secondary">{graph.edges.length}</span> edges contributed to
                 the last answer. Click a node to expand its neighbourhood.
               </p>
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-3">
               {detail ? (
-                <NodeDetail node={detail} />
+                <NodeDetail key={detail.id} node={detail} />
               ) : (
-                <p className="text-[11px] text-fg-muted">
+                <p className="rounded-md border border-dashed border-border px-3 py-3 text-[11.5px] text-fg-muted">
                   Click any node to inspect its properties and neighbours.
                 </p>
               )}
@@ -555,33 +605,25 @@ export function BrainApp() {
         )}
 
         {tab === "activity" && (
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto p-3 animate-fade-in">
+            {activity.length === 0 && (
+              <p className="rounded-md border border-dashed border-border px-3 py-3 text-[11.5px] text-fg-muted">No agent activity yet for this session.</p>
+            )}
             <AgentActivity activity={activity} />
           </div>
         )}
 
         {tab === "memory" && (
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="mb-1 flex gap-1">
-              <button
-                onClick={() => setMemView("memories")}
-                className={cn(
-                  "rounded px-2 py-0.5 text-[11px]",
-                  memView === "memories" ? "bg-bg-inset font-medium" : "text-fg-muted",
-                )}
-              >
-                Memories
-              </button>
-              <button
-                onClick={() => setMemView("procedures")}
-                className={cn(
-                  "rounded px-2 py-0.5 text-[11px]",
-                  memView === "procedures" ? "bg-bg-inset font-medium" : "text-fg-muted",
-                )}
-              >
-                Procedures ({procedures.filter((p) => p.learned).length} learned)
-              </button>
-            </div>
+          <div className="flex-1 overflow-y-auto p-3 animate-fade-in">
+            <Segmented
+              className="mb-3"
+              value={memView}
+              onChange={setMemView}
+              options={[
+                { value: "memories", label: "Memories" },
+                { value: "procedures", label: `Procedures (${procedures.filter((p) => p.learned).length} learned)` },
+              ]}
+            />
             {memView === "procedures" ? (
               <ProceduresPanel procedures={procedures} justLearned={justLearned} />
             ) : (
@@ -599,22 +641,24 @@ function NodeDetail({ node }: { node: GraphNode }) {
     ([, v]) => v !== null && v !== undefined && typeof v !== "object",
   );
   return (
-    <div>
-      <div className="flex items-center gap-1.5">
-        <span
-          className="h-2.5 w-2.5 rounded-full"
-          style={{ background: node.color || "#64748b" }}
-        />
-        <span className="text-sm font-medium">{node.name}</span>
-        <span className="rounded bg-bg-inset px-1.5 py-0.5 text-[10px] text-fg-muted">
-          {node.label}
-        </span>
+    <div className="overflow-hidden rounded-lg border border-border bg-bg-surface-100 animate-fade-in-up">
+      <div className="border-b border-border px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ background: nodeColor(node.label, node.color), boxShadow: `0 0 8px ${nodeColor(node.label, node.color)}` }}
+          />
+          <span className="text-[13.5px] font-medium">{node.name}</span>
+          <span className="rounded-full border border-border bg-bg-surface-200 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+            {node.label}
+          </span>
+        </div>
+        <p className="mt-1 truncate font-mono text-[10px] text-fg-muted">{node.id}</p>
       </div>
-      <p className="mt-0.5 font-mono text-[10px] text-fg-muted">{node.id}</p>
-      <dl className="mt-2 space-y-1">
+      <dl className="divide-y divide-border-muted">
         {entries.map(([k, v]) => (
-          <div key={k} className="flex gap-2 text-[11px]">
-            <dt className="w-28 shrink-0 text-fg-muted">{k}</dt>
+          <div key={k} className="flex gap-2 px-3 py-1.5 text-[11.5px]">
+            <dt className="w-28 shrink-0 font-mono text-[10.5px] text-fg-muted">{k}</dt>
             <dd className="min-w-0 flex-1 break-words text-fg-secondary">{String(v)}</dd>
           </div>
         ))}

@@ -227,9 +227,14 @@ export function useChatController() {
           return false;
         }
         const snap = await res.json();
-        const messages: UIMessage[] = Array.isArray(snap?.messages)
+        let messages: UIMessage[] = Array.isArray(snap?.messages)
           ? snap.messages
           : [];
+        // The events stream replays the whole run from chunk 0 into a fresh assistant message, so the partial
+        // assistant message in the snapshot must not also be on screen (it would render twice).
+        if (snap?.run?.status === "running" && snap?.assistantId) {
+          messages = messages.filter((m) => m.id !== snap.assistantId);
+        }
         const run = snap?.run as ChatRunSummary | undefined;
         noteStoredSubchatIds(messages);
 
