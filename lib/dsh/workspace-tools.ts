@@ -16,6 +16,14 @@ import { z } from "zod";
 import { FalkorClient } from "@/lib/brain/graph";
 import { addTodo, listTodos, setTodoStatus, storeShared, writeWorkspaceRecord } from "@/lib/dsh/memory";
 import { getWorkspace } from "@/lib/dsh/workspaces";
+import {
+  openTerminal,
+  sendToTerminal,
+  readFromTerminal,
+  closeTerminal,
+  signalTerminal,
+  listTerminalSessions,
+} from "@/lib/dsh/terminal-sessions";
 
 /** Max results before we spill the full list to a file. */
 const GLOB_MAX = 100;
@@ -690,6 +698,141 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
           duration_ms: Date.now(),
         });
         return { command: cmd, exit_code: result.code, output: truncate(result.out) };
+      },
+    }),
+
+    ws_terminal_open: tool({
+      description: `Open a new persistent terminal session in the workspace. Returns a session id. Subsequent commands should use ws_terminal_send to write to and ws_terminal_read to read from this session.`,
+      inputSchema: z.object({
+        cwd: z.string().optional().describe("Optional subdirectory to start in (workspace-relative)"),
+      }),
+      execute: async ({ cwd: rel }) => {
+        const sessionCwd = rel ? resolveIn(root, rel) : cwdFor(workspaceId, root);
+        const id = openTerminal(sessionCwd);
+        // Give the shell a moment to produce its ready prompt.
+        await new Promise((r) => setTimeout(r, 300));
+        const { output } = readFromTerminal(id, true);
+        return { session_id: id, cwd: sessionCwd, ready: output.includes("TERMINAL_READY") };
+      },
+    }),
+
+    ws_terminal_send: tool({
+      description: `Send input to a persistent terminal session. Appends a newline by default. Use ws_terminal_read to get the output.`,
+      inputSchema: z.object({
+        id: z.string().describe("Session id from ws_terminal_open"),
+        input: z.string().describe("Text to send to the terminal (command, keystroke, etc.)"),
+        newline: z.boolean().default(true).describe("Append newline to input"),
+      }),
+      execute: async ({ id, input, newline }) => {
+        const ok = sendToTerminal(id, input + (newline ? "\n" : ""));
+        if (!ok) return { error: `Terminal session not found: ${id}` };
+        return { session_id: id, sent: input };
+      },
+    }),
+
+    ws_terminal_read: tool({
+      description: `Read accumulated output from a persistent terminal session. Clears the buffer by default so subsequent reads only return new output.`,
+      inputSchema: z.object({
+        id: z.string().describe("Session id from ws_terminal_open"),
+        clear: z.boolean().default(true).describe("Clear the buffer after reading"),
+        timeout_ms: z.number().min(0).max(10000).default(1000).describe("Optional wait for output before reading"),
+      }),
+      execute: async ({ id, clear, timeout_ms }) => {
+        if (timeout_ms > 0) await new Promise((r) => setTimeout(r, timeout_ms));
+        const { output, exited } = readFromTerminal(id, clear);
+        if (exited) return { session_id: id, output, exited: true };
+        return { session_id: id, output: truncate(output), exited: false };
+      },
+    }),
+
+    ws_terminal_close: tool({
+      description: `Close a persistent terminal session, sending SIGTERM.`,
+      inputSchema: z.object({
+        id: z.string().describe("Session id from ws_terminal_open"),
+        signal: z.string().optional().describe("Signal to send (default SIGTERM)"),
+      }),
+      execute: async ({ id, signal }) => {
+        const ok = closeTerminal(id, signal as NodeJS.Signals | undefined);
+        if (!ok) return { error: `Terminal session not found: ${id}` };
+        return { session_id: id, closed: true };
+      },
+    }),
+
+    ws_terminal_list: tool({
+      description: `List all open persistent terminal sessions.`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const sessions = listTerminalSessions();
+        return {
+          count: sessions.length,
+          sessions: sessions.map((s) => ({
+            id: s.id,
+            cwd: s.cwd,
+            age_ms: Date.now() - s.lastActivity,
+          })),
+        };
+      },
+    }),
+
+    ws_terminal_signal: tool({
+      description: `Send a signal (e.g. SIGINT, SIGKILL) to a persistent terminal session.`,
+      inputSchema: z.object({
+        id: z.string().describe("Session id from ws_terminal_open"),
+        signal: z.string().default("SIGINT").describe("Signal name (SIGINT, SIGTERM, SIGKILL, etc.)"),
+      }),
+      execute: async ({ id, signal }) => {
+        const ok = signalTerminal(id, signal as NodeJS.Signals);
+        if (!ok) return { error: `Terminal session not found: ${id}` };
+        return { session_id: id, signal_sent: signal };
+      },
+    }),
+
+    ws_list_commands: tool({
+      description: `List available commands in the workspace — npm scripts (from package.json), Makefile targets, and Cargo commands. Helps discover what the project can do.`,
+      inputSchema: z.object({}),
+      execute: async () => {
+        const cwd = cwdFor(workspaceId, root);
+        const result: Record<string, string[]> = {};
+
+        // npm/yarn/pnpm scripts
+        const pkgPath = path.join(cwd, "package.json");
+        if (fs.existsSync(pkgPath)) {
+          try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+            if (pkg.scripts) result["npm scripts"] = Object.keys(pkg.scripts);
+          } catch {}
+        }
+
+        // Makefile targets
+        const mkPath = path.join(cwd, "Makefile");
+        if (fs.existsSync(mkPath)) {
+          const content = fs.readFileSync(mkPath, "utf8");
+          const targets = content
+            .split("\n")
+            .filter((l) => /^[a-zA-Z0-9_-]+:/.test(l.trim()))
+            .map((l) => l.split(":")[0].trim());
+          result["make targets"] = targets;
+        }
+
+        // Cargo commands
+        const cargoToml = path.join(cwd, "Cargo.toml");
+        if (fs.existsSync(cargoToml)) {
+          result["cargo"] = ["build", "check", "run", "test", "clippy", "fmt"];
+        }
+
+        // Dockerfile targets via docker buildx bake (optional)
+        const bakePath = path.join(cwd, "docker-bake.hcl");
+        if (fs.existsSync(bakePath)) {
+          const content = fs.readFileSync(bakePath, "utf8");
+          const targets = content
+            .split("\n")
+            .filter((l) => /^target /.test(l.trim()))
+            .map((l) => l.match(/^target "([^"]+)"/)?.[1])
+            .filter(Boolean) as string[];
+          result["docker bake targets"] = targets;
+        }
+
+        return { cwd, commands: result };
       },
     }),
   };

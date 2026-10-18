@@ -234,4 +234,28 @@ describe("workspace tools in chat", () => {
     };
     assert.equal(reset.path, ".");
   });
+
+  it("ws_list_commands detects npm scripts and Makefile targets", async () => {
+    const client = await FalkorClient.get();
+    const root = tmpRoot();
+    fs.writeFileSync(
+      path.join(root, "package.json"),
+      JSON.stringify({ scripts: { build: "next build", test: "jest" } }),
+    );
+    fs.writeFileSync(
+      path.join(root, "Makefile"),
+      "build:\n\tcargo build\n\ntest:\n\tcargo test\n",
+    );
+    const ws = await createWorkspace(client, { name: "Cmds WS", path: root });
+    WS_IDS.push(ws.id);
+    const tools = buildWorkspaceTools({ workspaceId: ws.id, root });
+
+    const result = (await call(tools.ws_list_commands, {})) as unknown as {
+      commands: Record<string, string[]>;
+    };
+    assert.ok(result.commands["npm scripts"]);
+    assert.ok(result.commands["npm scripts"].includes("build"));
+    assert.ok(result.commands["make targets"]);
+    assert.ok(result.commands["make targets"].includes("build"));
+  });
 });
