@@ -154,6 +154,9 @@ const TOOL_ACTIVITY: Record<string, string> = {
   session_event_search: "Searching conversation…",
   session_trace: "Tracing conversation…",
   run_code: "Running code…",
+  create_worktree: "Creating worktree…",
+  plugin_manager: "Managing plugins…",
+  present: "Presenting artifact…",
 };
 
 function isTerminal(status: ChatRunStatus): boolean {

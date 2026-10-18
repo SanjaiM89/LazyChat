@@ -593,10 +593,9 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
           case "bash": cmd = `bash ${filename}`; break;
           default: cmd = `cat ${filename}`;
         }
-        cmd = `cd "${cwd}" && ${cmd}`;
         const result = await new Promise<{ code: number; out: string }>((resolve) => {
           execFile(
-            "bash", ["-lc", cmd],
+            "bash", ["-lc", `cd "${cwd}" && ${cmd}`],
             { cwd, timeout: (timeout_s || 30) * 1000, maxBuffer: 4 * 1024 * 1024 },
             (err, stdout, stderr) => {
               const out = (stdout || "") + (stderr ? `\n[stderr]\n${stderr}` : "");
@@ -611,6 +610,40 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
           exit_code: result.code,
           output: truncate(result.out),
         };
+      },
+    }),
+
+    create_worktree: tool({
+      description: `Create a git worktree in a subdirectory of the workspace, linked to a branch (new branch if it doesn't exist). Returns the worktree path. Use for parallel development across branches. Confined to the workspace root.`,
+      inputSchema: z.object({
+        path: z.string().describe("Workspace-relative directory for the worktree"),
+        branch: z.string().describe("Git branch name (new branches are created automatically)"),
+        base: z.string().optional().describe("Optional base branch/commit to branch from (default: main)"),
+      }),
+      execute: async ({ path: rel, branch, base }) => {
+        const target = resolveIn(root, rel);
+        if (fs.existsSync(target)) throw new Error(`Path already exists: ${rel}`);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        const gitDir = path.join(root, ".git");
+        if (!fs.existsSync(gitDir)) throw new Error("Workspace is not a git repository.");
+        const args = base
+          ? ["worktree", "add", `"${target}"`, branch, base]
+          : ["worktree", "add", `"${target}"`, branch];
+        try {
+          await new Promise<{ code: number; out: string }>((resolve, reject) => {
+            execFile(
+              "git", args,
+              { cwd: root, timeout: 15000, maxBuffer: 1024 * 1024 },
+              (err, stdout, stderr) => {
+                if (err) reject(new Error(`${(stderr || stdout || "").toString()}`));
+                else resolve({ code: 0, out: (stdout || "").toString() });
+              },
+            );
+          });
+          return { path: rel, branch, worktree_path: target, message: `Worktree created at ${rel} (branch: ${branch}).` };
+        } catch (e: any) {
+          throw new Error(`git worktree failed: ${e.message}`);
+        }
       },
     }),
   };

@@ -23,6 +23,7 @@ import { buildGoalTools } from "@/lib/goals";
 import { buildPlanModeTool } from "@/lib/plan-mode";
 import { buildScheduleTools } from "@/lib/schedules";
 import { buildAgentTools } from "@/lib/agent-tools";
+import { buildPluginManagerTool } from "@/lib/plugins";
 
 
 const ARTIFACT_TYPES: ArtifactType[] = [
@@ -690,6 +691,39 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
 
   // Skill inspection tool (dsh-tool-skill).
   Object.assign(out, buildSkillTool());
+
+  // Present tool — thin wrapper around createArtifact for presenting
+  // tool results as standalone artifacts (dsh-tool-present).
+  out["present"] = tool({
+    description: `Present content as a standalone artifact rendered in the side panel. Use when a tool result or analysis deserves its own window (code, data, report, etc.).`,
+    inputSchema: z.object({
+      title: z.string().describe("Short descriptive title for the artifact"),
+      type: z.enum(ARTIFACT_TYPES).default("code").describe("Artifact kind"),
+      language: z.string().optional().describe("Language for code artifacts"),
+      content: z.string().describe("Full artifact content"),
+    }),
+    execute: async ({ title, type, language, content }) => {
+      const { createArtifactFile } = await import("@/lib/artifacts");
+      const meta = await createArtifactFile({
+        title,
+        type,
+        content,
+        language,
+        conversationId: opts.conversationId,
+      });
+      return {
+        artifactId: meta.id,
+        title: meta.title,
+        type: meta.type,
+        filename: meta.filename,
+        url: `/api/files/${meta.id}/${encodeURIComponent(meta.filename)}`,
+        message: `Artifact "${meta.title}" presented.`,
+      };
+    },
+  });
+
+  // Plugin manager tool (dsh-plugin-manager).
+  Object.assign(out, buildPluginManagerTool());
 
   for (const n of names) {
     if (n === "computerUse") Object.assign(out, buildComputerTools());
