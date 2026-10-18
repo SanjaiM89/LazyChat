@@ -1,3 +1,4 @@
+import { currentUser } from "@/lib/auth/context";
 import "server-only";
 
 import { nanoid } from "nanoid";
@@ -7,6 +8,7 @@ import {
   deleteSandbox,
   sandboxDownload,
   sandboxResultFiles,
+  sandboxHeaders,
 } from "@/lib/sandbox";
 import { importArtifactFile } from "@/lib/artifacts";
 import { isBuiltinProvider, getOpencodeTransport } from "@/lib/models";
@@ -86,12 +88,15 @@ function pushLog(id: string, entry: AgentLogEntry) {
   emit(id);
 }
 
-export function getAgents(): AgentMeta[] {
-  return [...agents.values()].map(snapshot).sort((a, b) => b.createdAt - a.createdAt);
+export function getAgents(ownerId?: string): AgentMeta[] {
+  return [...agents.values()]
+    .filter((r) => !ownerId || r.ownerId === ownerId)
+    .map(snapshot).sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export function getAgent(id: string): AgentMeta | null {
+export function getAgent(id: string, ownerId?: string): AgentMeta | null {
   const r = agents.get(id);
+  if (r && ownerId && r.ownerId !== ownerId) return null;
   return r ? snapshot(r) : null;
 }
 
@@ -119,6 +124,7 @@ export async function spawnAgent(input: SpawnAgentInput): Promise<AgentMeta> {
   const research = !!input.research || RESEARCH_RE.test(input.task || "");
   const record: AgentRecord = {
     id,
+    ownerId: currentUser()?.uid,
     label: input.label || input.task.slice(0, 60),
     task: input.task,
     provider: input.provider as any,
@@ -154,6 +160,10 @@ async function runSandboxedAgent(id: string) {
   let sandboxId = "";
   try {
     const env: Record<string, string> = { ...(process.env as any) };
+    // Never hand the platform's own secrets to code running inside a tenant's sandbox.
+    for (const k of ["SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL", "OMNIA_INTERNAL_TOKEN", "SANDBOX_SECRET", "FALKORDB_PASSWORD"]) {
+      delete env[k];
+    }
 
     if (isBuiltinProvider(r.provider)) {
       const keyEnv = PROVIDERS[r.provider as BuiltinProviderId]?.keyEnv;
@@ -232,7 +242,7 @@ async function streamAgentEvents(id: string, sandboxId: string) {
   r.abort = ctrl;
 
   try {
-    const res = await fetch(url, { signal: ctrl.signal });
+    const res = await fetch(url, { signal: ctrl.signal, headers: sandboxHeaders() });
     if (!res.ok || !res.body) {
       pushLog(id, { t: Date.now(), level: "error", message: `events: ${res.status}` });
       return;

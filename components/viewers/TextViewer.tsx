@@ -239,7 +239,7 @@ export function HtmlViewer({ url }: { url: string }) {
         title="HTML preview"
         srcDoc={srcDoc ?? undefined}
         className="h-full w-full border-0 bg-white"
-        sandbox="allow-same-origin allow-scripts allow-popups"
+        sandbox="allow-scripts allow-popups"
       />
     </div>
   );

@@ -18,6 +18,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { cn, Tooltip } from "@/components/ui";
+import { UserMenu } from "@/components/UserMenu";
 import { AttachWorkspaceDialog } from "@/components/workspace/AttachWorkspaceDialog";
 import { RenameWorkspaceDialog } from "@/components/workspace/RenameWorkspaceDialog";
 import { dshApi } from "@/lib/dsh/client";
@@ -463,6 +464,7 @@ export function Sidebar({
                 <Plug size={15} className="text-accent" />
                 Connections
               </button>
+              <UserMenu />
             </div>
           </div>
         )}

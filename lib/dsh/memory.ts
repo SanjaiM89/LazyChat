@@ -16,6 +16,7 @@
  * `superseded_by` chain via REPLACED_BY edge); everything survives restarts
  * because it is just graph data.
  */
+import { currentUser } from "@/lib/auth/context";
 import { createHash } from "node:crypto";
 
 import { FalkorClient } from "@/lib/brain/graph";
@@ -253,6 +254,13 @@ export async function recentCommands(client: FalkorClient, workspaceId: string, 
 // Shared memory (global + per-workspace scopes)
 // ---------------------------------------------------------------------------
 
+/** "global" memory is shared across a user's own workspaces, never across users. */
+export function globalScope(): string {
+  const u = currentUser();
+  return u ? `global:${u.uid}` : "global";
+}
+const resolveScope = (scope: string): string => (scope === "global" ? globalScope() : scope);
+
 function rowToMemory(r: Record<string, unknown>): MemoryRecord {
   return {
     id: r.id as string,
@@ -278,7 +286,7 @@ export async function storeShared(
 ): Promise<MemoryRecord> {
   const text = redactSecrets(input.text).trim().slice(0, 4000);
   if (!text) throw new Error("Cannot store empty memory.");
-  const scope = input.scope;
+  const scope = resolveScope(input.scope);
   const kind = input.kind.trim().toLowerCase().slice(0, 40) || "note";
   const slot = input.slot?.trim() || null;
   const tags = (input.tags ?? []).map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 12);
@@ -343,7 +351,7 @@ export async function recallShared(
   query = "",
   limit = 12,
 ): Promise<MemoryRecord[]> {
-  const scopes = ["global", `workspace:${workspaceId}`];
+  const scopes = [globalScope(), `workspace:${workspaceId}`];
   const rows = await client.query(
     "MATCH (m:SharedMemory) WHERE m.scope IN $scopes RETURN m.id AS id, m.scope AS scope, " +
       "m.kind AS kind, m.text AS text, m.slot AS slot, m.tags AS tags, m.use_count AS use_count, " +
@@ -362,7 +370,7 @@ export async function recallShared(
     let overlap = 0;
     for (const t of terms) if (hay.includes(t)) overlap += 1;
     // Global memories slightly outrank workspace ones on ties (shared first).
-    return { mem, score: overlap + (mem.scope === "global" ? 0.1 : 0) };
+    return { mem, score: overlap + (mem.scope.startsWith("global") ? 0.1 : 0) };
   });
   scored.sort((a, b) => b.score - a.score);
   const relevant = scored.filter((s) => s.score > 0.1);

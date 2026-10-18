@@ -46,6 +46,19 @@ const nextConfig: NextConfig = {
     "@redis/time-series",
   ],
 
+  // The Prefab renderer runs in an opaque-origin sandboxed iframe, so its module scripts are fetched cross-origin.
+  async headers() {
+    return [
+      {
+        source: "/prefab/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Cache-Control", value: "public, max-age=3600" },
+        ],
+      },
+    ];
+  },
+
   webpack: (config) => {
     // --- 1. Keep webpack from walking the vendored trees -----------------
     // `managedPaths` tells webpack these are package-manager directories whose

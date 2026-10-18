@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   FileText,
   SquareTerminal,
-  Sparkles,
   ChevronDown,
   ChevronUp,
   Boxes,
@@ -27,6 +26,8 @@ import { AskUserCard } from "@/components/AskUserCard";
 import { TerminalBlock } from "@/components/dsh/TerminalBlock";
 import { terminalCardModel, terminalFailed } from "@/components/dsh/terminal-card-model";
 import { TextShimmer } from "@/components/dsh/TextShimmer";
+import { GenUiCard } from "@/components/genui/GenUiCard";
+import { DocumentCard } from "@/components/DocumentCard";
 
 
 export function ToolCard({
@@ -79,8 +80,11 @@ export function ToolCard({
       />
     );
   }
-  if (toolName === "createArtifact") {
-    return <ArtifactCard args={args} result={result} streaming={streaming} />;
+  if (toolName === "render_ui") {
+    return <GenUiCard args={args} result={result} streaming={streaming} errorText={errorText} />;
+  }
+  if (toolName === "createArtifact" || toolName === "generate_document") {
+    return <DocumentCard toolName={toolName} args={args} result={result} streaming={streaming} errorText={errorText} />;
   }
   if (toolName === "runAgentTask") {
     return (
@@ -139,51 +143,6 @@ function SearchCardWrapper({
       selected={selectedCitation}
       onSelect={onSelectCitation}
     />
-  );
-}
-
-function ArtifactCard({
-  args,
-  result,
-  streaming,
-}: {
-  args?: Record<string, any>;
-  result?: any;
-  streaming: boolean;
-}) {
-  const openArtifact = useAppStore((s) => s.openArtifact);
-
-  if (streaming) {
-    return (
-      <div className="flex items-center gap-2.5 rounded-xl border border-border bg-bg-elevated px-4 py-3 mb-2 animate-fade-in-up">
-        <Sparkles size={15} className="text-accent animate-pulse" />
-        <span className="text-[13px] text-fg-secondary font-medium">
-          Creating artifact…
-        </span>
-      </div>
-    );
-  }
-
-  const artifactId = result?.artifactId;
-  const title = result?.title || args?.title || "Artifact";
-  const type = result?.type || args?.type || "text";
-
-  return (
-    <button
-      onClick={() => artifactId && openArtifact(artifactId)}
-      className="group flex items-center gap-3 rounded-xl border border-border bg-bg-elevated px-4 py-3 mb-2 w-full text-left hover:border-accent/40 hover:bg-bg-hover transition-all animate-fade-in-up"
-    >
-      <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
-        <FileText size={15} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-medium text-fg truncate">{title}</span>
-        <span className="text-[12px] text-fg-muted capitalize">{type} artifact</span>
-      </span>
-      <span className="flex items-center gap-1.5 text-[12px] text-accent opacity-0 group-hover:opacity-100 transition-opacity">
-        Open <ArrowUpRight size={13} />
-      </span>
-    </button>
   );
 }
 

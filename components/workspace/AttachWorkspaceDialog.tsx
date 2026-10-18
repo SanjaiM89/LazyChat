@@ -4,7 +4,7 @@
  * New-workspace flow, launched from the sidebar + menu.
  *
  * Attach an existing workspace to a fresh chat, or create one: name it, pick
- * a folder by browsing the server filesystem (confined to the home dir) or
+ * a folder by browsing the server filesystem (confined to your own workspace area) or
  * typing an absolute path, and the new chat is bound to that folder — file
  * and shell tools then run there, memory scopes to it.
  */
@@ -73,8 +73,8 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
 
   async function create() {
     const target = path.trim();
-    if (!target) {
-      setError("Pick a folder below or type an absolute path.");
+    if (!target && !name.trim()) {
+      setError("Enter a name to create a new folder, or pick an existing one below.");
       return;
     }
     setBusy(true);
@@ -139,7 +139,7 @@ export function AttachWorkspaceDialog({ chat, onClose }: { chat: ChatController;
               value={path}
               onChange={(e) => pickFolder(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void create()}
-              placeholder="/absolute/path/to/project"
+              placeholder="Folder (optional - leave empty to create one from the name)"
               className="min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 py-2 font-mono text-[12px] outline-none focus:border-accent"
             />
             <button

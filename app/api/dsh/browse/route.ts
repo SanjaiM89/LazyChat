@@ -1,21 +1,22 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { insideRoot, workspaceRoot } from "@/lib/dsh/access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
  * Server directory browser for folder attach. Confined to the user's home
- * directory — anything outside is rejected, and only directories are listed.
+ * workspace area — anything outside is rejected, and only directories are listed.
  */
-export async function GET(request: Request) {
-  const home = path.resolve(os.homedir());
+export const GET = authed(async (request, user) => {
+  const home = workspaceRoot(user.uid);
   const rel = new URL(request.url).searchParams.get("path") ?? "";
   const target = path.resolve(home, rel.startsWith("/") ? path.relative(home, rel) : rel);
-  if (target !== home && !target.startsWith(home + path.sep)) {
-    return NextResponse.json({ detail: "outside the home directory" }, { status: 400 });
+  if (!insideRoot(home, target)) {
+    return NextResponse.json({ detail: "outside your workspace area" }, { status: 400 });
   }
   let stat: fs.Stats;
   try {
@@ -45,4 +46,17 @@ export async function GET(request: Request) {
     parent: target === home ? null : path.dirname(target),
     dirs: names.slice(0, 500),
   });
-}
+});
+
+/** Create a sub-folder (inside the user's workspace area) to use as a workspace. */
+export const POST = authed(async (request, user) => {
+  const root = workspaceRoot(user.uid);
+  const body = (await request.json().catch(() => ({}))) as { path?: string; name?: string };
+  const name = (body.name ?? "").trim().replace(/[^A-Za-z0-9 _.-]/g, "").slice(0, 60);
+  if (!name) return NextResponse.json({ detail: "name required" }, { status: 400 });
+  const parent = path.resolve(root, body.path ?? "");
+  if (!insideRoot(root, parent)) return NextResponse.json({ detail: "outside your workspace area" }, { status: 400 });
+  const dir = path.join(parent, name);
+  fs.mkdirSync(dir, { recursive: true });
+  return NextResponse.json({ cwd: dir }, { status: 201 });
+});

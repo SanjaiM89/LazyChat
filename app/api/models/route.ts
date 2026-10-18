@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import { PROVIDERS } from "@/lib/models";
 import { getEffectiveBuiltinModels } from "@/lib/provider-models";
@@ -153,7 +154,7 @@ async function fetchLive(provider: string): Promise<LiveModel[]> {
   }
 }
 
-export async function GET(req: NextRequest) {
+async function GET_impl(req: NextRequest) {
   const only = req.nextUrl.searchParams.get("provider") || "";
   const ids = only ? [only] : Object.keys(PROVIDERS);
   const out: Record<string, unknown> = {};
@@ -188,3 +189,5 @@ export async function GET(req: NextRequest) {
   }
   return Response.json(only ? (out[only] ?? { provider: only, effective: [] }) : out);
 }
+
+export const GET = scoped(GET_impl);

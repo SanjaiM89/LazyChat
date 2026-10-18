@@ -2,6 +2,8 @@ import "server-only";
 
 import fs from "node:fs";
 import path from "node:path";
+import { currentUser } from "@/lib/auth/context";
+import { scopeKey } from "@/lib/auth/server";
 
 
 export const DATA_DIR = path.join(process.cwd(), "data");
@@ -33,48 +35,46 @@ export async function writeJSON<T>(name: string, data: T): Promise<void> {
   fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf8");
 }
 
-
-export interface StoredConversation {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  provider: string;
-  model: string;
-  messages: unknown[];
-  /** Cumulative token usage across runs (dsh-style accounting). */
-  usage?: { inputTokens: number; outputTokens: number };
-  /** Last finished run: freshness for speed + context pressure. */
-  lastRun?: { inputTokens: number; outputTokens: number; decodeMs: number; at: number };
+/**
+ * Per-org (or, for users without an org, per-user) config files live in
+ * data/scopes/<org-ID|user-UID>/. Reads fall back to the legacy global file so
+ * pre-auth data stays usable as platform defaults; writes never touch it.
+ * Outside a signed-in request there is no scope and the global file is used.
+ */
+function scopedPath(name: string): string | null {
+  const u = currentUser();
+  if (!u) return null;
+  const safe = name.replace(/\.\./g, "").replace(/[\/\\]/g, "");
+  const dir = path.join(DATA_DIR, "scopes", scopeKey(u).replace(/[^A-Za-z0-9_-]/g, "_"));
+  ensureDir(dir);
+  return path.join(dir, safe);
 }
 
-export async function listConversations(): Promise<StoredConversation[]> {
-  const data = await readJSON<StoredConversation[]>("conversations.json", []);
-  return data.sort((a, b) => b.updatedAt - a.updatedAt);
+export async function readScoped<T>(name: string, fallback: T): Promise<T> {
+  const fp = scopedPath(name);
+  if (!fp) return readJSON(name, fallback);
+  try {
+    if (fs.existsSync(fp)) return JSON.parse(fs.readFileSync(fp, "utf8")) as T;
+  } catch {
+    return fallback;
+  }
+  return readJSON(name, fallback);
 }
 
-export async function getConversation(id: string): Promise<StoredConversation | null> {
-  const all = await listConversations();
-  return all.find((c) => c.id === id) ?? null;
+export async function writeScoped<T>(name: string, data: T): Promise<void> {
+  const fp = scopedPath(name);
+  if (!fp) return writeJSON(name, data);
+  fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf8");
 }
 
-export async function saveConversation(conv: StoredConversation): Promise<void> {
-  const all = await listConversations();
-  const idx = all.findIndex((c) => c.id === conv.id);
-  if (idx >= 0) all[idx] = conv;
-  else all.unshift(conv);
-  const trimmed = all.slice(0, 200);
-  await writeJSON("conversations.json", trimmed);
-}
-
-export async function deleteConversation(id: string): Promise<void> {
-  const all = await listConversations();
-  await writeJSON(
-    "conversations.json",
-    all.filter((c) => c.id !== id),
-  );
-}
-
-export async function clearConversations(): Promise<void> {
-  await writeJSON("conversations.json", []);
-}
+// Conversations live in Firestore; see lib/chat-store.ts.
+export {
+  type StoredConversation,
+  type ConversationMeta,
+  listConversations,
+  getConversation,
+  getConversationMeta,
+  saveConversation,
+  deleteConversation,
+  clearConversations,
+} from "@/lib/chat-store";

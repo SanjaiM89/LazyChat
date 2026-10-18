@@ -2,6 +2,7 @@ import "server-only";
 
 import { buildSkillsPrompt } from "@/lib/skills";
 import { isPlanMode } from "@/lib/plan-mode";
+import { GENUI_PROMPT } from "@/lib/genui/prompt";
 
 
 export async function buildSystemPrompt(opts: {
@@ -40,7 +41,7 @@ Writing style:
 - Write like a person, not a template: natural, warm, specific prose; vary sentence length; no boilerplate filler.
 - Think through hard problems before answering; for reasoning-heavy requests, you can reason step by step.
 
-For document generation requests (PDF, spreadsheet, Word doc, markdown deliverable, deep research), prefer dispatching to the Docker sandbox via runAgentTask so real files are produced.` + planSection;
+For document generation requests, use generate_document to produce a real Word (.docx), PDF or Excel (.xlsx) file directly from structured content (reports, letters, proposals, invoices, budgets, trackers with formulas). Reserve runAgentTask for jobs that genuinely need code execution, scraping or a browser.` + planSection;
 
-  return base + skills;
+  return base + GENUI_PROMPT + skills;
 }

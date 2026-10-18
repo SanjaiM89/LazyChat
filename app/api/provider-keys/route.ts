@@ -1,3 +1,4 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import type { BuiltinProviderId } from "@/lib/types";
 import { PROVIDERS } from "@/lib/models";
@@ -20,7 +21,7 @@ function keyedProviders(): BuiltinProviderId[] {
   );
 }
 
-export async function GET() {
+async function GET_impl() {
   const out: Record<string, { configured: boolean; source: string }> = {};
   for (const id of keyedProviders()) {
     const source = await builtinKeySource(id);
@@ -29,7 +30,7 @@ export async function GET() {
   return Response.json(out);
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   let body: any;
   try {
     body = await req.json();
@@ -48,10 +49,14 @@ export async function POST(req: NextRequest) {
   return Response.json({ provider, configured: source !== "none", source });
 }
 
-export async function DELETE(req: NextRequest) {
+async function DELETE_impl(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get("provider") || "";
   if (!provider || !(provider in PROVIDERS)) return bad("Unknown provider.");
   await deleteStoredProviderKey(provider);
   const source = await builtinKeySource(provider as BuiltinProviderId);
   return Response.json({ provider, configured: source !== "none", source });
 }
+
+export const GET = scoped(GET_impl, { adminWrites: true });
+export const POST = scoped(POST_impl, { adminWrites: true });
+export const DELETE = scoped(DELETE_impl, { adminWrites: true });

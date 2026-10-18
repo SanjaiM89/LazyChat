@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
+import { sessionOwned } from "@/lib/brain/access";
 
 import { knownServices, knownTopics } from "@/lib/brain/agent";
 import { ensureReady } from "@/lib/brain/bootstrap";
@@ -10,10 +12,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Force consolidation of a session (used by the demo flow). */
-export async function POST(request: Request, { params }: { params: Promise<{ userId: string }> }) {
+export const POST = authed<{ userId: string }>(async (request, user, { params }) => {
   await ensureReady();
   const { userId } = await params;
-  const uid = decodeURIComponent(userId);
+  const uid = user.uid;
+  if (decodeURIComponent(userId) !== uid) return NextResponse.json({ detail: "not found" }, { status: 404 });
   let body: { session_id?: string };
   try {
     body = (await request.json()) as { session_id?: string };
@@ -25,6 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
   }
   try {
     const client = await FalkorClient.get();
+    if (!(await sessionOwned(client, body.session_id, uid))) return NextResponse.json({ detail: "not found" }, { status: 404 });
     const out = await consolidateSession(client, body.session_id, uid, {
       force: true,
       llm: getLlm({
@@ -39,4 +43,4 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
     }
     throw err;
   }
-}
+});

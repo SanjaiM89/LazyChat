@@ -20,6 +20,7 @@ import { SearchProvidersDialog } from "@/components/dialogs/SearchProvidersDialo
 
 
 import type { MainView } from "@/lib/app-store";
+import { setGenUiMessageHandler } from "@/lib/genui/bus";
 
 export function App({ initialView }: { initialView?: MainView }) {
   const theme = useAppStore((s) => s.theme);
@@ -30,6 +31,11 @@ export function App({ initialView }: { initialView?: MainView }) {
   const chat = useChatController();
   const subchat = useSubchatController(chat);
   useSandboxRegistry();
+  const sendChat = chat.send;
+  useEffect(() => {
+    setGenUiMessageHandler((text) => sendChat(text));
+    return () => setGenUiMessageHandler(null);
+  }, [sendChat]);
   const [modal, setModal] = useState<null | "skills" | "connections" | "search">(null);
 
   useEffect(() => {

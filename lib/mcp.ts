@@ -5,7 +5,9 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { jsonSchema, tool, type Schema, type ToolSet } from "ai";
 import type { MCPServerDef, MCPToolInfo } from "@/lib/types";
-import { readJSON, writeJSON } from "@/lib/store";
+import { readScoped, writeScoped } from "@/lib/store";
+import { currentUser } from "@/lib/auth/context";
+import { scopeKey } from "@/lib/auth/server";
 
 
 interface Session {
@@ -14,18 +16,29 @@ interface Session {
   tools: MCPToolInfo[];
 }
 
+/** Connections are keyed per org/user so tenants never see or call each other's servers. */
 const sessions = new Map<string, Session>();
 
+function scopeId(): string {
+  const u = currentUser();
+  return u ? scopeKey(u) : "global";
+}
+const skey = (id: string) => `${scopeId()}::${id}`;
+function mine(): Session[] {
+  const prefix = `${scopeId()}::`;
+  return [...sessions].filter(([k]) => k.startsWith(prefix)).map(([, v]) => v);
+}
+
 export async function listMCPServers(): Promise<MCPServerDef[]> {
-  const data = await readJSON<MCPServerDef[]>("mcp-servers.json", []);
+  const data = await readScoped<MCPServerDef[]>("mcp-servers.json", []);
   return data.map((d) => {
-    const s = sessions.get(d.id);
+    const s = sessions.get(skey(d.id));
     return { ...d, status: s ? "connected" : d.status || "disconnected" };
   });
 }
 
 export async function saveMCPServers(servers: MCPServerDef[]): Promise<void> {
-  await writeJSON("mcp-servers.json", servers);
+  await writeScoped("mcp-servers.json", servers);
 }
 
 function stdioEnv(def: MCPServerDef): Record<string, string> {
@@ -67,45 +80,45 @@ export async function connectMCPServer(def: MCPServerDef): Promise<{
       inputSchema: (t.inputSchema as Record<string, unknown>) || {},
     }));
 
-    sessions.set(def.id, { client, def: { ...def, status: "connected" }, tools });
+    sessions.set(skey(def.id), { client, def: { ...def, status: "connected" }, tools });
 
     const servers = await listMCPServers();
     const updated = servers.map((s) =>
       s.id === def.id ? { ...s, status: "connected" as const, tools: tools.map((t) => t.name) } : s,
     );
-    await writeJSON("mcp-servers.json", updated);
+    await writeScoped("mcp-servers.json", updated);
 
     return { ok: true, tools };
   } catch (e: any) {
-    const servers = await readJSON<MCPServerDef[]>("mcp-servers.json", []);
+    const servers = await readScoped<MCPServerDef[]>("mcp-servers.json", []);
     const updated = servers.map((s) =>
       s.id === def.id ? { ...s, status: "error" as const, error: e.message } : s,
     );
-    await writeJSON("mcp-servers.json", updated);
+    await writeScoped("mcp-servers.json", updated);
     return { ok: false, error: e.message };
   }
 }
 
 export async function disconnectMCPServer(id: string): Promise<void> {
-  const s = sessions.get(id);
+  const s = sessions.get(skey(id));
   if (s) {
     try {
       await s.client.close();
     } catch {
     }
-    sessions.delete(id);
+    sessions.delete(skey(id));
   }
 }
 
 export async function allMCPTools(): Promise<MCPToolInfo[]> {
   const out: MCPToolInfo[] = [];
-  for (const s of sessions.values()) out.push(...s.tools);
+  for (const s of mine()) out.push(...s.tools);
   return out;
 }
 
 export async function buildMCPToolSet(): Promise<ToolSet> {
   const set: ToolSet = {};
-  for (const [serverId, s] of sessions) {
+  for (const s of mine()) {
     for (const t of s.tools) {
       const inputSchema = (t.inputSchema || {}) as Record<string, unknown>;
       set[t.name] = tool({

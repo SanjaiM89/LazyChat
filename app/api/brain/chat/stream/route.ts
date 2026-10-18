@@ -15,6 +15,8 @@
  *   done             {"type":"done", ...full answer payload...}
  *   error            {"type":"error", "message":str}
  */
+import { authed } from "@/lib/auth/context";
+import { sessionAllowed } from "@/lib/brain/access";
 import { askAgent, knownServices, knownTopics } from "@/lib/brain/agent";
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { RESEARCHER, SYNTHESIZER } from "@/lib/brain/crew";import { FalkorClient, GraphError } from "@/lib/brain/graph";
@@ -52,7 +54,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function POST(request: Request) {
+export const POST = authed(async (request, user) => {
   await ensureReady();
   let body: StreamBody;
   try {
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
   }
   const message = (body.message ?? "").trim();
   if (!message) return sseError("message is required");
-  const userId = body.user_id || "demo";
+  const userId = user.uid; // never trust a client-supplied user id
   const requestedSession = body.session_id ?? null;
 
   const stream = new ReadableStream<Uint8Array>({
@@ -85,6 +87,11 @@ export async function POST(request: Request) {
       }
 
       try {
+        if (requestedSession && !(await sessionAllowed(client, requestedSession, userId))) {
+          send({ type: "error", message: "session not found" });
+          controller.close();
+          return;
+        }
         const sessionId = await ensureSession(client, userId, requestedSession);
         send({ type: "start", session_id: sessionId });
 
@@ -213,7 +220,7 @@ export async function POST(request: Request) {
       "X-Accel-Buffering": "no",
     },
   });
-}
+});
 
 /** A stream that carries a single error (for requests that fail upfront). */
 function sseError(message: string): Response {

@@ -1,18 +1,15 @@
-import { NextRequest } from "next/server";
+import { authed } from "@/lib/auth/context";
 import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
+export const GET = authed<{ path: string[] }>(async (_req, user, { params }) => {
   const { path } = await params;
   if (!path || path.length < 2) {
     return Response.json({ error: "bad path" }, { status: 400 });
   }
   const [id, ...rest] = path;
-  const meta = getArtifact(id);
+  const meta = getArtifact(id, user.uid);
   if (!meta) return Response.json({ error: "artifact not found" }, { status: 404 });
 
   const buf = readArtifactBuffer(meta);
@@ -37,8 +34,8 @@ export async function GET(
     headers: {
       "content-type": meta.mime || "application/octet-stream",
       "content-disposition": `inline; filename="${downloadName.replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
-      "cache-control": "public, max-age=3600",
+      "cache-control": "private, max-age=3600",
       ...(isText ? { "x-content-type-options": "nosniff" } : {}),
     },
   });
-}
+});

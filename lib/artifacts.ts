@@ -1,3 +1,4 @@
+import { currentUser } from "@/lib/auth/context";
 import "server-only";
 
 import fs from "node:fs";
@@ -94,6 +95,7 @@ export async function createArtifactFile(input: {
 
   const meta: ArtifactMeta = {
     id,
+    ownerId: currentUser()?.uid,
     conversationId: input.conversationId,
     title: input.title,
     type: input.type,
@@ -128,6 +130,7 @@ export async function importArtifactFile(input: {
 
   const meta: ArtifactMeta = {
     id,
+    ownerId: currentUser()?.uid,
     conversationId: input.conversationId,
     title: input.title,
     type: input.type,
@@ -144,14 +147,15 @@ export async function importArtifactFile(input: {
   return meta;
 }
 
-export function listArtifacts(conversationId?: string): ArtifactMeta[] {
-  const list = index();
+export function listArtifacts(conversationId?: string, ownerId?: string): ArtifactMeta[] {
+  const list = index().filter((a) => !ownerId || a.ownerId === ownerId);
   if (!conversationId) return list;
   return list.filter((a) => a.conversationId === conversationId);
 }
 
-export function getArtifact(id: string): ArtifactMeta | null {
-  return index().find((a) => a.id === id) ?? null;
+export function getArtifact(id: string, ownerId?: string): ArtifactMeta | null {
+  const a = index().find((a) => a.id === id) ?? null;
+  return a && ownerId && a.ownerId !== ownerId ? null : a;
 }
 
 export function artifactFilePath(meta: ArtifactMeta): string {
@@ -166,7 +170,8 @@ export function readArtifactBuffer(meta: ArtifactMeta): Buffer | null {
   }
 }
 
-export function deleteArtifact(id: string): void {
+export function deleteArtifact(id: string, ownerId?: string): void {
+  if (ownerId && !getArtifact(id, ownerId)) return;
   const list = index().filter((a) => a.id !== id);
   writeIdx(list);
   try {

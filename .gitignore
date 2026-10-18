@@ -74,3 +74,6 @@ hyperframes/
 compositions/work-*/
 compositions/.out.hf-transaction-*
 compositions/.hyperframes/
+
+# Prefab renderer copied from node_modules by scripts/copy-prefab.mjs
+/public/prefab/

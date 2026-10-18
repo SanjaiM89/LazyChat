@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { UI_MESSAGE_STREAM_HEADERS } from "ai";
+import { authed } from "@/lib/auth/context";
 import {
   ChatRunConflictError,
   chatRunStream,
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 3600;
 
-export async function POST(req: Request) {
+export const POST = authed(async (req: Request, user) => {
   let body: any;
   try {
     body = await req.json();
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
         typeof body.conversationId === "string" ? body.conversationId : undefined,
       trigger: body.trigger,
       workspaceId: typeof body.workspaceId === "string" ? body.workspaceId : undefined,
+      owner: { uid: user.uid, orgId: user.orgId },
     });
 
     after(run.done);
@@ -67,7 +69,7 @@ export async function POST(req: Request) {
       400,
     );
   }
-}
+});
 
 function jsonError(message: string, status = 400) {
   return new Response(JSON.stringify({ error: message }), {

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { scoped } from "@/lib/auth/context";
 import {
   sandboxHealth,
   sandboxExec,
@@ -11,12 +12,14 @@ import {
   startSandbox,
   listSandboxes,
   deleteSandbox,
+  assertSandboxOwner,
+  sandboxHeaders,
 } from "@/lib/sandbox";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
+async function GET_impl(req: NextRequest) {
   const seg = req.nextUrl.pathname.split("/").filter(Boolean);
   if (!seg[2]) {
     return Response.json(await sandboxHealth());
@@ -38,7 +41,9 @@ async function handle(req: NextRequest) {
     switch (op) {
       case "events": {
         const signal = req.signal;
+        assertSandboxOwner(id);
         const up = await fetch(`${SANDBOX_URL}/containers/${id}/events`, {
+          headers: sandboxHeaders(),
           cache: "no-store",
           signal,
         });
@@ -80,7 +85,7 @@ async function handle(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   const segments = req.nextUrl.pathname.split("/").filter(Boolean);
   const [, , id, op] = segments;
   let body: any = {};
@@ -118,7 +123,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
+async function DELETE_impl(req: NextRequest) {
   const segments = req.nextUrl.pathname.split("/").filter(Boolean);
   const [, , id] = segments;
   if (!id) return Response.json({ error: "sandbox id required" }, { status: 400 });
@@ -129,3 +134,7 @@ export async function DELETE(req: NextRequest) {
     return Response.json({ error: e.message }, { status: 500 });
   }
 }
+
+export const GET = scoped(GET_impl);
+export const POST = scoped(POST_impl);
+export const DELETE = scoped(DELETE_impl);

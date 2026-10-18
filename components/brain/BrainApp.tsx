@@ -5,8 +5,8 @@ import { api, streamChat, API_URL, type ActivityItem, type GraphNode, type Memor
 import { GraphCanvas, Legend } from "./GraphCanvas";
 import { AgentActivity, MemoryPanel, ProceduresPanel, ReasoningTrace } from "./Panels";
 import { Button, cn } from "@/components/ui";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
-const USER_ID = "demo-user";
 
 const SUGGESTIONS = [
   "Which tickets are blocked by the auth migration?",
@@ -41,6 +41,8 @@ function mergeProcedures(current: Procedure[], incoming: Procedure[]): Procedure
 }
 
 export function BrainApp() {
+  // The server ignores any client-supplied id and uses the verified uid; this is only the URL key.
+  const USER_ID = useAuth().user?.uid ?? "me";
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);

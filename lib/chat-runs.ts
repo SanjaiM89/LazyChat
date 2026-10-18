@@ -67,11 +67,16 @@ async function withWorkspaceBriefing(run: ChatRunRecord, system: string): Promis
   }
 }
 import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
-import { getConversation, saveConversation } from "@/lib/store";
+import { getConversationMeta, saveConversation } from "@/lib/store";
+import { currentUser } from "@/lib/auth/context";
+import { HEARTBEAT_CHUNK, coalesceChunks, formatFrame } from "@/lib/sse";
 
 
 export interface ChatRunRecord {
   id: string;
+  /** Firebase uid / org of the user who started this run. */
+  ownerId?: string;
+  orgId?: string | null;
   conversationId?: string;
   /** Attached workspace (folder-bound execution + memory scope), if any. */
   workspaceId?: string;
@@ -137,6 +142,9 @@ const TOOL_ACTIVITY: Record<string, string> = {
   create_goal: "Setting a goal…",
   get_goal: "Checking goal…",
   update_goal: "Updating goal…",
+  render_ui: "Building interface…",
+  generate_document: "Writing document…",
+  search_ui_components: "Looking up UI components…",
   schedule_create: "Scheduling reminder…",
   schedule_list: "Listing reminders…",
   schedule_delete: "Deleting reminder…",
@@ -180,9 +188,14 @@ export function getChatRun(id: string): ChatRunSummary | null {
   return r ? summary(r) : null;
 }
 
-export function listChatRuns(conversationId?: string): ChatRunSummary[] {
+export function getRunOwner(id: string): string | undefined {
+  return runs.get(id)?.ownerId;
+}
+
+export function listChatRuns(conversationId?: string, ownerId?: string): ChatRunSummary[] {
   return [...runs.values()]
     .filter((r) => !conversationId || r.conversationId === conversationId)
+    .filter((r) => !ownerId || r.ownerId === ownerId)
     .map(summary)
     .sort((a, b) => b.startedAt - a.startedAt);
 }
@@ -217,6 +230,7 @@ export interface CreateChatRunInput {
   conversationId?: string;
   trigger?: "submit-message" | "regenerate-message";
   workspaceId?: string;
+  owner?: { uid: string; orgId: string | null };
 }
 
 export async function prepareChatRun(
@@ -275,6 +289,12 @@ function sanitizeToolHistory(messages: UIMessage[]): UIMessage[] {
 export async function createChatRun(input: CreateChatRunInput): Promise<ChatRunRecord> {
   const settings: ChatSettings = { ...DEFAULT_SETTINGS, ...(input.settings || {}) };
   const conversationId = input.conversationId;
+  const owner = input.owner ?? (currentUser() ? { uid: currentUser()!.uid, orgId: currentUser()!.orgId } : undefined);
+  if (conversationId && owner) {
+    // null both when absent and when someone else owns it (the rules answer 403): either way we may proceed,
+    // and saving over another user's id is rejected by Firestore.
+    await getConversationMeta(conversationId, owner.uid);
+  }
   if (conversationId) {
     const live = activeChatRuns(conversationId)[0];
     if (live) throw new ChatRunConflictError(live.id);
@@ -307,6 +327,8 @@ export async function createChatRun(input: CreateChatRunInput): Promise<ChatRunR
 
   const run: ChatRunRecord = {
     id: nanoid(10),
+    ownerId: owner?.uid,
+    orgId: owner?.orgId ?? null,
     conversationId,
     workspaceId: input.workspaceId,
     status: "running",
@@ -582,6 +604,12 @@ async function finishRun(
 ) {
   if (isTerminal(run.status)) return;
   if (run.aborted && status === "done") status = "stopped";
+  // Every stream must end with an explicit terminal frame so clients never have to infer the outcome.
+  if (status === "failed" && !run.chunks.some((c) => c.type === "error")) {
+    pushChunk(run, { type: "error", errorText: error || run.error || "Generation failed." });
+  } else if (status === "stopped" && !run.chunks.some((c) => c.type === "abort")) {
+    pushChunk(run, { type: "abort" } as UIMessageChunk);
+  }
   run.status = status;
   run.error =
     status === "failed" ? error || run.error || "Generation failed." : undefined;
@@ -607,7 +635,7 @@ function checkpoint(run: ChatRunRecord, track: boolean): Promise<void> {
 
 async function persistRun(run: ChatRunRecord) {
   if (!run.conversationId) return;
-  const existing = await getConversation(run.conversationId);
+  const existing = await getConversationMeta(run.conversationId, run.ownerId);
   const assistant = await materialize(run);
   const messages = assistant ? [...run.history, assistant] : [...run.history];
   await saveConversation({
@@ -630,7 +658,7 @@ async function persistRun(run: ChatRunRecord) {
           at: Date.now(),
         }
       : existing?.lastRun,
-  });
+  }, run.ownerId ? { uid: run.ownerId, orgId: run.orgId ?? null } : undefined);
   // Mirror the turn into FalkorDB so Omnia remembers across conversations.
   // Fire-and-forget: memory must never fail a chat.
   void recordOmniaMemory(run.conversationId, messages).catch(() => {});
@@ -650,7 +678,7 @@ async function recordWorkspaceSession(run: ChatRunRecord): Promise<void> {
   if (!run.workspaceId || !run.conversationId) return;
   const { FalkorClient } = await import("@/lib/brain/graph");
   const client = await FalkorClient.get();
-  const existing = await getConversation(run.conversationId);
+  const existing = await getConversationMeta(run.conversationId, run.ownerId);
   const sid = `chatsession:${run.conversationId}`;
   await client.write(
     "MERGE (s:AgentSession {id: $sid}) ON CREATE SET s.started_at = $ts " +
@@ -704,9 +732,24 @@ function deriveTitle(messages: UIMessage[]): string {
   return text.slice(0, 80) || "New chat";
 }
 
+const materialized = new WeakMap<ChatRunRecord, { n: number; message: UIMessage | null }>();
+
+/** The assistant message built from the first `n` chunks (cached while the run has not advanced). */
+async function materializeAt(run: ChatRunRecord): Promise<{ message: UIMessage | null; cursor: number }> {
+  const n = run.chunks.length;
+  const hit = materialized.get(run);
+  if (hit && hit.n === n) return { message: hit.message, cursor: n };
+  const message = await materializeChunks(run.chunks.slice(0, n));
+  materialized.set(run, { n, message });
+  return { message, cursor: n };
+}
+
 async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {
-  if (!run.chunks.length) return null;
-  const recorded = run.chunks.slice();
+  return (await materializeAt(run)).message;
+}
+
+async function materializeChunks(recorded: UIMessageChunk[]): Promise<UIMessage | null> {
+  if (!recorded.length) return null;
   const stream = new ReadableStream<UIMessageChunk>({
     start(controller) {
       for (const chunk of recorded) controller.enqueue(chunk);
@@ -723,7 +766,12 @@ async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {
 
 export interface ChatRunSnapshot {
   run: ChatRunSummary;
+  /** History plus (if any) the in-progress assistant message, as of `cursor`. */
   messages: UIMessage[];
+  /** Number of run chunks folded into `messages`; the events stream can resume from exactly here. */
+  cursor: number;
+  /** The id of the in-progress assistant message (clients replaying from 0 must drop it first). */
+  assistantId: string;
 }
 
 export async function getChatRunSnapshot(
@@ -731,80 +779,103 @@ export async function getChatRunSnapshot(
 ): Promise<ChatRunSnapshot | null> {
   const run = runs.get(id);
   if (!run) return null;
-  const assistant = await materialize(run);
+  const { message: assistant, cursor } = await materializeAt(run);
   return {
     run: summary(run),
     messages: assistant ? [...run.history, assistant] : [...run.history],
+    cursor,
+    assistantId: run.messageId,
   };
 }
 
+/**
+ * SSE stream for a run: replays chunks from `cursor`, then follows live until the run is terminal.
+ * Frames carry `id: <cursor after this frame>` (see lib/sse.ts) so a dropped connection resumes exactly where
+ * it left off. Adjacent deltas are coalesced, writes respect backpressure, and `data-heartbeat` frames let the
+ * client detect a stalled connection. Cancelling only unsubscribes: background runs outlive their viewers.
+ */
 export function chatRunStream(
   id: string,
-  opts: { cursor?: number; keepAliveMs?: number } = {},
+  opts: { cursor?: number; heartbeatMs?: number } = {},
 ): ReadableStream<Uint8Array> {
   const run = runs.get(id);
   const encoder = new TextEncoder();
   let cursor = Math.max(0, opts.cursor ?? 0);
   let unsubscribe: () => void = () => {};
-  let keepAlive: ReturnType<typeof setInterval> | undefined;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let ctrl: ReadableStreamDefaultController<Uint8Array> | undefined;
+  let closed = false;
 
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      const cleanup = () => {
-        unsubscribe();
-        if (keepAlive) clearInterval(keepAlive);
-        keepAlive = undefined;
-      };
-      const write = (text: string): boolean => {
-        try {
-          controller.enqueue(encoder.encode(text));
-          return true;
-        } catch {
-          cleanup();
-          return false;
-        }
-      };
-      const flush = () => {
-        if (!runs.has(id)) {
-          write("data: [DONE]\n\n");
+  const cleanup = () => {
+    closed = true;
+    unsubscribe();
+    if (heartbeat) clearInterval(heartbeat);
+    heartbeat = undefined;
+  };
+  const write = (text: string): boolean => {
+    try {
+      ctrl!.enqueue(encoder.encode(text));
+      return true;
+    } catch {
+      cleanup();
+      return false;
+    }
+  };
+  const close = () => {
+    cleanup();
+    try {
+      ctrl!.close();
+    } catch {
+      /* already closed */
+    }
+  };
+  const flush = () => {
+    if (closed || !ctrl) return;
+    if (!run || !runs.has(id)) {
+      write(formatFrame("[DONE]"));
+      close();
+      return;
+    }
+    while (cursor < run.chunks.length) {
+      const frames = coalesceChunks(run.chunks, cursor, run.chunks.length);
+      for (const f of frames) {
+        if ((ctrl.desiredSize ?? 1) <= 0) return; // slow reader: pull() resumes us
+        if (!write(formatFrame(JSON.stringify(f.chunk), f.id))) return;
+        cursor = f.id;
+      }
+    }
+    if (isTerminal(run.status)) {
+      write(formatFrame("[DONE]"));
+      close();
+    }
+  };
+
+  return new ReadableStream<Uint8Array>(
+    {
+      start(controller) {
+        ctrl = controller;
+        write("retry: 1500\n\n");
+        if (!run) {
+          write(formatFrame("[DONE]"));
           close();
           return;
         }
-        while (cursor < run!.chunks.length) {
-          if (!write(`data: ${JSON.stringify(run!.chunks[cursor++])}\n\n`)) return;
-        }
-        if (isTerminal(run!.status)) {
-          write("data: [DONE]\n\n");
-          close();
-        }
-      };
-      const close = () => {
+        unsubscribe = subscribeChatRun(id, flush);
+        heartbeat = setInterval(() => {
+          if (!closed) write(formatFrame(HEARTBEAT_CHUNK));
+        }, opts.heartbeatMs ?? 10_000);
+        (heartbeat as unknown as { unref?: () => void }).unref?.();
+        flush();
+      },
+      pull() {
+        flush();
+      },
+      cancel() {
         cleanup();
-        try {
-          controller.close();
-        } catch {
-        }
-      };
-
-      if (!run) {
-        write("data: [DONE]\n\n");
-        close();
-        return;
-      }
-
-      unsubscribe = subscribeChatRun(id, flush);
-      keepAlive = setInterval(() => {
-        write(": keepalive\n\n");
-      }, opts.keepAliveMs ?? 15_000);
-      (keepAlive as any).unref?.();
-      flush();
+      },
     },
-    cancel() {
-      unsubscribe();
-      if (keepAlive) clearInterval(keepAlive);
-      keepAlive = undefined;
-    },
-  });
+    { highWaterMark: 256 },
+  );
 }
 
 

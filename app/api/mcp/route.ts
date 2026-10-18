@@ -1,16 +1,17 @@
+import { scoped } from "@/lib/auth/context";
 import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { listMCPServers, saveMCPServers, connectMCPServer, disconnectMCPServer, allMCPTools } from "@/lib/mcp";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function GET_impl() {
   const servers = await listMCPServers();
   const tools = await allMCPTools();
   return Response.json({ servers, tools });
 }
 
-export async function POST(req: NextRequest) {
+async function POST_impl(req: NextRequest) {
   const body = await req.json();
   if (!body.name) return Response.json({ error: "name required" }, { status: 400 });
   if (!["stdio", "http"].includes(body.type)) {
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
   return Response.json({ servers: await listMCPServers(), tools: await allMCPTools() });
 }
 
-export async function DELETE(req: NextRequest) {
+async function DELETE_impl(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
   await disconnectMCPServer(id);
@@ -49,7 +50,7 @@ export async function DELETE(req: NextRequest) {
   return Response.json({ servers, tools: await allMCPTools() });
 }
 
-export async function PUT(req: NextRequest) {
+async function PUT_impl(req: NextRequest) {
   const body = await req.json();
   const id = body.id;
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
@@ -69,3 +70,8 @@ export async function PUT(req: NextRequest) {
   }
   return Response.json({ error: "unknown action" }, { status: 400 });
 }
+
+export const GET = scoped(GET_impl, { adminWrites: true });
+export const POST = scoped(POST_impl, { adminWrites: true });
+export const DELETE = scoped(DELETE_impl, { adminWrites: true });
+export const PUT = scoped(PUT_impl, { adminWrites: true });

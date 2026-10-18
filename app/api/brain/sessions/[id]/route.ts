@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authed } from "@/lib/auth/context";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
@@ -8,9 +9,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /** Past conversations for one user, newest first. */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = authed<{ id: string }>(async (_request, user, { params }) => {
   await ensureReady();
   const { id: userId } = await params;
+  if (decodeURIComponent(userId) !== user.uid) return NextResponse.json({ detail: "not found" }, { status: 404 });
   try {
     const client = await FalkorClient.get();
     const sessions = await listSessions(client, decodeURIComponent(userId));
@@ -21,4 +23,4 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
     throw err;
   }
-}
+});
