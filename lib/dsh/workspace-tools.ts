@@ -835,6 +835,64 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
         return { cwd, commands: result };
       },
     }),
+
+    ws_list_deps: tool({
+      description: `List installed workspace dependencies. Reads package-lock.json (or yarn.lock), requirements.txt, Cargo.lock, etc. to produce a compact list of installed packages with versions.`,
+      inputSchema: z.object({
+        max: z.number().min(1).max(500).default(50).describe("Max packages to return"),
+      }),
+      execute: async ({ max }) => {
+        const cwd = cwdFor(workspaceId, root);
+        const result: Record<string, Array<{ name: string; version: string }>> = {};
+
+        // npm/yarn/pnpm from package-lock.json
+        const lockPath = path.join(cwd, "package-lock.json");
+        if (fs.existsSync(lockPath) && fs.existsSync(path.join(cwd, "package.json"))) {
+          try {
+            const lock = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+            const deps: Array<{ name: string; version: string }> = [];
+            for (const name of Object.keys((lock.packages || {}) as Record<string, any>)) {
+              if (name.startsWith("node_modules/")) {
+                const ver = (lock.packages as Record<string, any>)[name].version;
+                deps.push({ name: name.replace("node_modules/", ""), version: ver });
+              }
+            }
+            result["npm"] = deps.slice(0, max);
+          } catch {}
+        }
+
+        // Python requirements
+        const reqPath = path.join(cwd, "requirements.txt");
+        if (fs.existsSync(reqPath)) {
+          const lines = fs.readFileSync(reqPath, "utf8").split("\n");
+          const deps = lines
+            .filter((l) => l.trim() && !l.startsWith("#"))
+            .map((l) => {
+              const [name, ...rest] = l.trim().split(/[>=<~!]/);
+              return { name, version: rest.join("") || "latest" };
+            })
+            .slice(0, max);
+          result["python"] = deps;
+        }
+
+        // Cargo.lock
+        const cargolock = path.join(cwd, "Cargo.lock");
+        if (fs.existsSync(cargolock)) {
+          try {
+            const { parse } = require("toml");
+            const content = fs.readFileSync(cargolock, "utf8");
+            const deps: Array<{ name: string; version: string }> = [];
+            const toml = parse(content);
+            for (const pkg of (toml.package || []) as Array<{ name: string; version: string }>) {
+              deps.push({ name: pkg.name, version: pkg.version });
+            }
+            result["cargo"] = deps.slice(0, max);
+          } catch {}
+        }
+
+        return { cwd, dependencies: result };
+      },
+    }),
   };
 }
 

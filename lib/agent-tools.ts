@@ -173,5 +173,34 @@ export function buildAgentTools(opts: BuildAgentToolsOpts) {
         };
       },
     }),
+
+    agent_summon: tool({
+      description: `Summon an agent using a skill prompt. The skill's prompt text is used as the agent's system prompt, and the optional task is appended. The agent runs sandboxed in Docker, just like subagent. Use list_agents to track progress.`,
+      inputSchema: z.object({
+        skill_id: z.string().describe("Skill id from the skill tool (list action)"),
+        task: z.string().describe("Task to give the summoned agent"),
+      }),
+      execute: async ({ skill_id, task }) => {
+        const { listSkills } = await import("@/lib/skills");
+        const skills = await listSkills();
+        const skill = skills.find((s) => s.id === skill_id);
+        if (!skill) return { error: `Skill not found: ${skill_id}` };
+        if (!skill.enabled) return { error: `Skill is disabled: ${skill_id}` };
+
+        const input: SpawnAgentInput = {
+          task: `${skill.prompt}\n\nTask: ${task}`,
+          provider: opts.provider || "anthropic",
+          model: opts.model || "claude-sonnet-5",
+          engine: "tool-loop",
+          conversationId: opts.conversationId,
+        };
+        const agent = await spawnAgent(input);
+        return {
+          agentId: agent.id,
+          skill: skill_id,
+          message: `Summoned agent ${agent.id} with skill "${skill.name}" for task: "${task.slice(0, 80)}". Track with list_agents.`,
+        };
+      },
+    }),
   };
 }

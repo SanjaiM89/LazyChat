@@ -154,7 +154,7 @@ const TOOL_ACTIVITY: Record<string, string> = {
   session_event_search: "Searching conversation…",
   session_trace: "Tracing conversation…",
   run_code: "Running code…",
-  ws_load_deps: "Installing dependencies…",
+  ws_list_deps: "Listing dependencies…",
   ws_terminal_open: "Opening terminal…",
   ws_terminal_send: "Sending to terminal…",
   ws_terminal_read: "Reading terminal output…",
@@ -163,7 +163,8 @@ const TOOL_ACTIVITY: Record<string, string> = {
   ws_terminal_signal: "Sending signal…",
   ws_list_commands: "Listing commands…",
   create_worktree: "Creating worktree…",
-  plugin_manager: "Managing plugins…",
+  list_mcp_tools: "Listing MCP tools…",
+  agent_summon: "Summoning agent…",
   present: "Presenting artifact…",
 };
 

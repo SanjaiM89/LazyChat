@@ -689,6 +689,24 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
     },
   });
 
+  // MCP tools discovery (dsh-tool-mcp-tools).
+  out["list_mcp_tools"] = tool({
+    description: `List all MCP tools available from connected MCP servers. Returns tool name, description, and parameter schema for each. These tools can be called directly by the model — list them first to discover what's available.`,
+    inputSchema: z.object({}),
+    execute: async () => {
+      const { allMCPTools } = await import("@/lib/mcp");
+      const tools = await allMCPTools();
+      return {
+        count: tools.length,
+        tools: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          server: t.serverId,
+        })),
+      };
+    },
+  });
+
   // Skill inspection tool (dsh-tool-skill).
   Object.assign(out, buildSkillTool());
 
