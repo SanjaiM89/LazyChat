@@ -120,12 +120,25 @@ curl -X POST localhost:3000/api/dsh/workspaces \
 
 ## Validation checklist
 
-- [ ] Chat tab works exactly as before (streaming, history, input, artifacts).
-- [ ] Workspace tab: create → list → switch workspaces; validation rejects bad paths.
-- [ ] Run agent: task executes with workspace as cwd; tool timeline + output stream; Stop works.
-- [ ] Workspace memory saved (plans/decisions/errors/todos/commands) and visible in tabs; survives dev-server restart.
-- [ ] Shared memory: store global + workspace scopes; recall in every workspace; view/edit/delete in Memory tab; secrets redacted.
-- [ ] `npm run test:brain` green; `next build --webpack` green.
+- [x] Chat tab works exactly as before (streaming, history, input, artifacts).
+- [x] Workspace tab: create → list → switch workspaces; validation rejects bad paths.
+- [x] Run agent: task executes with workspace as cwd; tool timeline + output stream; Stop works.
+- [x] Workspace memory saved (plans/decisions/errors/todos/commands) and visible in tabs; survives dev-server restart.
+- [x] Shared memory: store global + workspace scopes; recall in every workspace; view/edit/delete in Memory tab; secrets redacted.
+- [x] Native workspace tools: ws_list, ws_read, ws_write, ws_shell, ws_todo, ws_remember, **ws_glob**, **ws_grep** (ripgrep-backed), **ws_read_image**, **ws_str_replace_editor** (str_replace_editor). All confined to workspace root.
+- [x] **Session query tools**: session_search (search across conversation history), session_event_read (read messages from prior conversations). Always available.
+- [x] **Plan mode**: `/plan` command enters plan mode → system prompt directs model to draft a plan → `exit_plan_mode` tool submits for approval.
+- [x] **Goals**: create_goal, get_goal, update_goal with JSON persistence. Single active goal per session. Drives auto-continuation (future).
+- [x] **Schedules/reminders**: schedule_create, schedule_list, schedule_delete, schedule_update. Background 1s scheduler delivers reminders as system messages. API at `/api/dsh/schedules`.
+- [x] `npm run test:brain` green; `next build --webpack` green.
+
+## Recently ported (from the audit gap list)
+
+- **Workspace file tools**: ws_glob (glob pattern matching with mtime sort + spill file), ws_grep (tries ripgrep, falls back to node regex walk), ws_read_image (PNG/JPEG/WebP/GIF/BMP/TIFF → base64 data URL), ws_str_replace_editor (view/create/str_replace/insert — unique-match enforcement on str_replace). Tests in `tests/dsh/workspace-tools.test.ts`.
+- **Session query** (`dsh-tool-session-query`): session_search + session_event_read, wired as always-available tools alongside ask_user_question. Tests in `tests/unit/session-query.test.ts`.
+- **Plan mode** (`dsh-plan-mode`): per-conversation in-memory state, `/plan` command, exit_plan_mode tool, plan-mode system prompt. Tests in `tests/unit/plan-mode.test.ts`.
+- **Goals** (`dsh-tool-goal`): create_goal/get_goal/update_goal with JSON persistence, single-active-goal rule, edit/pause/resume/complete/blocked actions. Tests in `tests/unit/goals-schedules.test.ts`.
+- **Schedules** (`dsh-tool-schedule`): schedule_create (once/every/daily/weekly/cron timing), schedule_list, schedule_delete, schedule_update, background scheduler (1s tick), API endpoint. Tests in `tests/unit/goals-schedules.test.ts`.
 
 ## Known limitations
 
