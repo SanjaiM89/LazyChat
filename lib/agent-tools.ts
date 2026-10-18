@@ -201,6 +201,39 @@ export function buildAgentTools(opts: BuildAgentToolsOpts) {
           message: `Summoned agent ${agent.id} with skill "${skill.name}" for task: "${task.slice(0, 80)}". Track with list_agents.`,
         };
       },
+      }),
+
+    agent_fork: tool({
+      description: `Fork a completed agent into a new run with an optional new task appended. The forked agent inherits the provider/model from the original. Use to retry a failed agent or continue from where one left off.`,
+      inputSchema: z.object({
+        agent_id: z.string().describe("Agent id from list_agents (completed runs only)"),
+        task: z.string().optional().describe("Optional new task to append to the original task"),
+      }),
+      execute: async ({ agent_id, task }) => {
+        const agent = getAgent(agent_id);
+        if (!agent) return { error: `Agent not found: ${agent_id}` };
+        if (agent.status === "running" || agent.status === "queued") {
+          return { error: `Agent ${agent_id} is still ${agent.status}. Wait for it to finish.` };
+        }
+
+        const originalTask = agent.task || "untitled task";
+        const forkedTask = task ? `${originalTask}\n\nContinuation: ${task}` : originalTask;
+
+        const input: SpawnAgentInput = {
+          task: forkedTask,
+          provider: agent.provider,
+          model: agent.model,
+          engine: agent.engine,
+          conversationId: opts.conversationId,
+          label: `Fork of ${agent.label || agent_id}`,
+        };
+        const forked = await spawnAgent(input);
+        return {
+          agentId: forked.id,
+          forked_from: agent_id,
+          message: `Forked agent ${agent_id} → ${forked.id}. Track with list_agents.`,
+        };
+      },
     }),
   };
 }

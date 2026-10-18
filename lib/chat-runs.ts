@@ -164,7 +164,8 @@ const TOOL_ACTIVITY: Record<string, string> = {
   ws_list_commands: "Listing commands…",
   create_worktree: "Creating worktree…",
   list_mcp_tools: "Listing MCP tools…",
-  agent_summon: "Summoning agent…",
+  agent_fork: "Forking agent…",
+  title_session: "Generating title…",
   present: "Presenting artifact…",
 };
 
@@ -715,6 +716,7 @@ async function recordOmniaMemory(conversationId: string, messages: UIMessage[]):
   }
 }
 
+/** Derive a conversation title from the first user message text. */
 function deriveTitle(messages: UIMessage[]): string {
   const firstUser = messages.find(
     (m) => m.role === "user" && !(m as any)?.metadata?.["subchat-context"],
@@ -726,6 +728,32 @@ function deriveTitle(messages: UIMessage[]): string {
     .join(" ")
     .trim();
   return text.slice(0, 80) || "New chat";
+}
+
+/** Generate a descriptive session title using an LLM call. */
+export async function generateSessionTitle(provider: string, model: string, messages: UIMessage[]): Promise<string> {
+  if (!messages.length) return "New chat";
+  try {
+    const { generateText } = await import("ai");
+    const { buildLanguageModel } = await import("@/lib/providers");
+    const languageModel = await buildLanguageModel({ provider: provider as any, model });
+    if (!languageModel) return deriveTitle(messages);
+
+    const summary = messages.slice(0, 10).map((m) => {
+      const text = (m.parts || []).filter((p: any) => p.type === "text").map((p: any) => p.text ?? "").join(" ").trim();
+      return `${m.role}: ${text.slice(0, 200)}`;
+    }).join("\n\n");
+
+    const { text } = await generateText({
+      model: languageModel,
+      system: "You are a concise title generator. Given the following conversation, output a title of 3-8 words that captures the main topic. No quotes, no explanation.",
+      prompt: summary,
+      temperature: 0.3,
+    });
+    return text.trim().slice(0, 80) || deriveTitle(messages);
+  } catch {
+    return deriveTitle(messages);
+  }
 }
 
 async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {

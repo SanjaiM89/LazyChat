@@ -633,6 +633,40 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
     ...buildGoalTools(opts.conversationId),
     ...buildScheduleTools(opts.conversationId),
     ...buildPlanModeTool(opts),
+
+    // Session title generation (dsh-tool-session-title).
+    title_session: tool({
+      description: `Generate or override the title of the current session. Uses an LLM to summarize the conversation. If no title is provided, a descriptive title is generated from the conversation content.`,
+      inputSchema: z.object({
+        title: z.string().optional().describe("Explicit title to set (skips LLM call)"),
+      }),
+      execute: async ({ title }) => {
+        const convId = opts.conversationId || "";
+        const { getConversation, updateConversationTitle } = await import("@/lib/store");
+        const { generateSessionTitle } = await import("@/lib/chat-runs");
+        if (title) {
+          await updateConversationTitle(convId, title);
+          return { title, message: "Session title updated." };
+        }
+        const conv = await getConversation(convId);
+        if (!conv || !conv.messages.length) {
+          await updateConversationTitle(convId, "New chat");
+          return { title: "New chat" };
+        }
+        const messages = (conv.messages || []) as Array<{
+          id?: string; role: string; parts?: any[]; content?: string; tool_calls?: any;
+        }>;
+        const converted = messages.map((m) => ({
+          id: m.id || crypto.randomUUID(),
+          role: m.role as "user" | "assistant" | "system",
+          parts: m.parts || [{ type: "text" as const, text: m.content || "" }],
+          ...(m.tool_calls ? { tool_calls: m.tool_calls } : {}),
+        }));
+        const generated = await generateSessionTitle(opts.provider, opts.model, converted);
+        await updateConversationTitle(convId, generated);
+        return { title: generated, message: "Session title generated and saved." };
+      },
+    }),
   };
 
   // Agent management + subagent delegation (dsh-tool-subagent,

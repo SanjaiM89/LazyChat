@@ -69,12 +69,15 @@ export async function saveConversation(conv: StoredConversation): Promise<void> 
 
 export async function deleteConversation(id: string): Promise<void> {
   const all = await listConversations();
-  await writeJSON(
-    "conversations.json",
-    all.filter((c) => c.id !== id),
-  );
+  await writeJSON("conversations.json", all.filter((c) => c.id !== id));
 }
 
+export async function updateConversationTitle(id: string, title: string): Promise<void> {
+  const all = await listConversations();
+  const idx = all.findIndex((c) => c.id === id);
+  if (idx >= 0) all[idx].title = title;
+  await writeJSON("conversations.json", all);
+}
 export async function clearConversations(): Promise<void> {
   await writeJSON("conversations.json", []);
 }
