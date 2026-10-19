@@ -115,8 +115,41 @@ function clearOutbox(uid: string, id: string) {
 
 /** id -> (message doc id -> hash) as last seen in Firestore, so saves can be incremental. */
 const synced = new Map<string, Map<string, string>>();
-const metaCache = new Map<string, { at: number; meta: ConversationMeta | null }>();
 const META_TTL = 20_000;
+
+// Caches are pinned to globalThis: in dev, Fast Refresh re-evaluates this
+// module between requests, and a plain module-level Map would silently come
+// back empty — turning the stale-serving fallbacks below into 500s exactly
+// when Firestore is unreachable. Symbol.for makes the slot stable across
+// re-evaluation (same trick as the brain caches).
+const CACHE_SLOT = Symbol.for("lazychat.chat-store.caches");
+const caches = ((globalThis as Record<symbol, unknown>)[CACHE_SLOT] ??= {
+  meta: new Map<string, { at: number; meta: ConversationMeta | null }>(),
+  list: new Map<string, ConversationMeta[]>(),
+  conv: new Map<string, StoredConversation>(),
+}) as {
+  meta: Map<string, { at: number; meta: ConversationMeta | null }>;
+  list: Map<string, ConversationMeta[]>;
+  conv: Map<string, StoredConversation>;
+};
+const metaCache = caches.meta;
+
+// Last-known-good copies served only when Firestore itself is unreachable
+// (network error, not a Firestore answer), so a flaky route degrades reads
+// instead of failing them. Fresh TTLs still apply to the happy path above.
+const listCache = caches.list;
+const convCache = caches.conv;
+const CONV_CACHE_MAX = 40;
+
+function putConvCache(conv: StoredConversation): void {
+  convCache.delete(conv.id);
+  convCache.set(conv.id, conv);
+  while (convCache.size > CONV_CACHE_MAX) {
+    const oldest = convCache.keys().next().value;
+    if (oldest === undefined) break;
+    convCache.delete(oldest);
+  }
+}
 
 const metaFrom = (d: Doc): ConversationMeta => ({
   id: d.id,
@@ -156,6 +189,13 @@ export async function getConversationMeta(id: string, ownerId?: string): Promise
   } catch (e) {
     // The rules answer 403 for someone else's conversation: indistinguishable from "not found" to the caller.
     if (e instanceof FirestoreError && e.status === 403) return null;
+    if (!(e instanceof FirestoreError)) {
+      // Firestore unreachable (flaky route): fall back to the last meta this
+      // process saw so run persistence and reads keep working. With nothing
+      // remembered, let it propagate to the caller's own fallback.
+      const hit = metaCache.get(id);
+      if (hit && hit.meta && hit.meta.ownerId === uid) return hit.meta;
+    }
     throw e;
   }
   metaCache.set(id, { at: Date.now(), meta });
@@ -167,11 +207,24 @@ export async function getConversation(id: string, ownerId?: string): Promise<Sto
   if (!uid) return null;
   const parked = readOutbox(uid, id);
   if (parked) return parked;
-  const meta = await getConversationMeta(id, uid);
-  if (!meta) return null;
-  const docs = await listDocs(tokenFor(uid), `conversations/${id}/messages`);
-  synced.set(id, new Map(docs.map((d) => [d.id, String(d.data.h ?? "")])));
-  return { ...meta, messages: fromMessageDocs(docs) };
+  try {
+    const meta = await getConversationMeta(id, uid);
+    if (!meta) return null;
+    const docs = await listDocs(tokenFor(uid), `conversations/${id}/messages`);
+    synced.set(id, new Map(docs.map((d) => [d.id, String(d.data.h ?? "")])));
+    const conv: StoredConversation = { ...meta, messages: fromMessageDocs(docs) };
+    putConvCache(conv);
+    return conv;
+  } catch (e) {
+    // Unreachable Firestore: serve the last successfully loaded copy rather
+    // than 500ing the conversation/usage routes. `synced` stays untouched so
+    // a later save never diffs against fabricated state.
+    if (!(e instanceof FirestoreError)) {
+      const stale = convCache.get(id);
+      if (stale && stale.ownerId === uid) return stale;
+    }
+    throw e;
+  }
 }
 
 /** The user's conversations (metadata only, newest first). */
@@ -179,10 +232,20 @@ export async function listConversations(ownerId?: string): Promise<ConversationM
   const uid = who(ownerId);
   if (!uid) return [];
   const byId = new Map<string, ConversationMeta>();
+  let queried = false;
   try {
     for (const d of await queryEquals(tokenFor(uid), "conversations", "ownerId", uid)) byId.set(d.id, metaFrom(d));
+    queried = true;
   } catch (e) {
-    if (!(e instanceof FirestoreError && e.authRelated)) throw e;
+    if (!(e instanceof FirestoreError && e.authRelated)) {
+      if (e instanceof FirestoreError) throw e;
+      // Firestore unreachable: fall back to the last list this process saw
+      // (re-merged with the outbox below) so a flaky route doesn't blank the
+      // sidebar or 500. With nothing remembered yet, propagate.
+      const stale = listCache.get(uid);
+      if (!stale) throw e;
+      for (const m of stale) byId.set(m.id, m);
+    }
   }
   try {
     for (const f of fs.readdirSync(outboxDir(uid))) {
@@ -196,7 +259,9 @@ export async function listConversations(ownerId?: string): Promise<ConversationM
   } catch {
     /* no outbox */
   }
-  return [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+  const list = [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+  if (queried) listCache.set(uid, list);
+  return list;
 }
 
 export async function saveConversation(

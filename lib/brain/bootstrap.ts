@@ -9,18 +9,43 @@
 import { FalkorClient } from "./graph";
 import { installProcedures } from "./memory/consolidation";
 import { initSchema } from "./schema";
+import { msFromEnv, withTimeout } from "./timeout";
 
 const READY_KEY = Symbol.for("lazychat.brain.ready");
 
 type ReadyState = { promise: Promise<void> };
 
-/** Ensure indexes + seeded procedures exist. Safe to call per request. */
+/**
+ * Ensure indexes + seeded procedures exist. Safe to call per request.
+ *
+ * The bootstrap promise is bounded and dropped when it expires: a graph that
+ * never answers must cost a request a few seconds at most, and the next caller
+ * must be able to start over instead of awaiting a promise that stays pending
+ * for the life of the process (which froze chat runs — `pump()` recalls memory
+ * before the model is ever called — and every FalkorDB-backed route).
+ */
 export function ensureReady(): Promise<void> {
   const store = globalThis as unknown as Record<symbol, ReadyState | undefined>;
   let state = store[READY_KEY];
   if (!state) {
-    state = { promise: bootstrap() };
-    store[READY_KEY] = state;
+    const entry: ReadyState = { promise: Promise.resolve() };
+    entry.promise = (async () => {
+      try {
+        await withTimeout(
+          bootstrap(),
+          msFromEnv("BRAIN_BOOTSTRAP_TIMEOUT_MS", 6_000),
+          "brain bootstrap",
+        );
+      } catch (err) {
+        // bootstrap() logs its own failures; a timeout just means the graph is
+        // slow or wedged. Serve the request without memory rather than hold it
+        // open, and let the next caller start a fresh bootstrap.
+        console.warn(`[brain] ${err instanceof Error ? err.message : String(err)} — continuing without graph`);
+        if (store[READY_KEY] === entry) store[READY_KEY] = undefined;
+      }
+    })();
+    store[READY_KEY] = entry;
+    state = entry;
   }
   return state.promise;
 }

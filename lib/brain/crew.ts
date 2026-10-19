@@ -71,10 +71,14 @@ export async function writeFinding(
   opts: { nodeIds?: string[]; cypher?: string | null; turnRef?: string | null } = {},
 ): Promise<string> {
   const fid = `finding:${uid(10)}`;
+  // The param is named `stmt`, not `cypher`: the driver inlines parameters as
+  // a `CYPHER k=v ...` query prefix, and the server lexes that keyword
+  // case-insensitively — a parameter literally named `cypher` made every
+  // Finding write fail with a syntax error. The stored property stays `f.cypher`.
   await client.write(
     "MERGE (f:Finding {id: $fid}) " +
       "SET f.session_id = $sid, f.agent = $agent, f.content = $content, " +
-      "    f.timestamp = $ts, f.about = $about, f.cypher = $cypher, f.turn_ref = $turnRef",
+      "    f.timestamp = $ts, f.about = $about, f.cypher = $stmt, f.turn_ref = $turnRef",
     {
       fid,
       sid: sessionId,
@@ -82,7 +86,7 @@ export async function writeFinding(
       content,
       ts: nowIso(),
       about: opts.nodeIds ?? [],
-      cypher: opts.cypher ?? null,
+      stmt: opts.cypher ?? null,
       turnRef: opts.turnRef ?? null,
     },
   );

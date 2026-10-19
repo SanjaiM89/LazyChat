@@ -26,9 +26,25 @@ import { cancelRunQuestions, forgetRun } from "@/lib/ask-user";
 import { buildMCPToolSet } from "@/lib/mcp";
 import { buildSystemPrompt } from "@/lib/system";
 import { captureOmniaMemory, messageText, recallForOmnia, recordOmniaTurn } from "@/lib/brain/omnia-memory";
+import { msFromEnv, withBudget } from "@/lib/brain/timeout";
 // Start the schedule/reminder scheduler on server boot.
 import { startScheduler, getPendingReminders, clearPendingReminder } from "@/lib/schedules";
 void startScheduler();
+
+/**
+ * The workspace briefing sits on the chat's critical path — tools and system
+ * prompt are both built before the model is called — so it carries the same
+ * budget as memory recall: optional context may be slow, it may never block.
+ */
+async function budgetedBriefing(run: ChatRunRecord) {
+  if (!run.workspaceId) return null;
+  const { workspaceBriefing } = await import("@/lib/dsh/workspace-tools");
+  return withBudget(
+    workspaceBriefing(run.workspaceId),
+    msFromEnv("BRAIN_PREP_BUDGET_MS", 6_000),
+    null,
+  );
+}
 
 /**
  * Workspace attachment for a run: folder-bound tools + memory briefing.
@@ -38,8 +54,8 @@ void startScheduler();
 async function buildRunWorkspaceTools(run: ChatRunRecord): Promise<Record<string, unknown>> {
   if (!run.workspaceId) return {};
   try {
-    const { workspaceBriefing, buildWorkspaceTools } = await import("@/lib/dsh/workspace-tools");
-    const brief = await workspaceBriefing(run.workspaceId);
+    const { buildWorkspaceTools } = await import("@/lib/dsh/workspace-tools");
+    const brief = await budgetedBriefing(run);
     if (!brief) return {};
     return buildWorkspaceTools({ workspaceId: run.workspaceId, root: brief.root }) as Record<string, unknown>;
   } catch {
@@ -50,8 +66,7 @@ async function buildRunWorkspaceTools(run: ChatRunRecord): Promise<Record<string
 async function withWorkspaceBriefing(run: ChatRunRecord, system: string): Promise<string> {
   if (!run.workspaceId) return system;
   try {
-    const { workspaceBriefing } = await import("@/lib/dsh/workspace-tools");
-    const brief = await workspaceBriefing(run.workspaceId);
+    const brief = await budgetedBriefing(run);
     if (!brief) return system;
     return (
       system +
@@ -292,8 +307,10 @@ export async function createChatRun(input: CreateChatRunInput): Promise<ChatRunR
   const owner = input.owner ?? (currentUser() ? { uid: currentUser()!.uid, orgId: currentUser()!.orgId } : undefined);
   if (conversationId && owner) {
     // null both when absent and when someone else owns it (the rules answer 403): either way we may proceed,
-    // and saving over another user's id is rejected by Firestore.
-    await getConversationMeta(conversationId, owner.uid);
+    // and saving over another user's id is rejected by Firestore (or parked in the owner's outbox when
+    // Firestore is unreachable). This read is a discarded preflight, so a network failure here must
+    // never block starting a chat — the save path carries the real ownership guard.
+    await getConversationMeta(conversationId, owner.uid).catch(() => null);
   }
   if (conversationId) {
     const live = activeChatRuns(conversationId)[0];
@@ -853,24 +870,37 @@ export function chatRunStream(
       /* already closed */
     }
   };
+  let flushing = false;
   const flush = () => {
     if (closed || !ctrl) return;
-    if (!run || !runs.has(id)) {
-      write(formatFrame("[DONE]"));
-      close();
-      return;
-    }
-    while (cursor < run.chunks.length) {
-      const frames = coalesceChunks(run.chunks, cursor, run.chunks.length);
-      for (const f of frames) {
-        if ((ctrl.desiredSize ?? 1) <= 0) return; // slow reader: pull() resumes us
-        if (!write(formatFrame(JSON.stringify(f.chunk), f.id))) return;
-        cursor = f.id;
+    // Reentrancy guard: enqueue() synchronously invokes pull() when the queue
+    // has room, and pull() calls flush(). A nested flush would start from the
+    // outer call's still-unadvanced cursor and re-write the frame currently
+    // being written — doubling every frame on the wire. The client then sees
+    // duplicate events (a second reasoning-/text-end for a part the first one
+    // already closed) and aborts the message, so nothing renders.
+    if (flushing) return;
+    flushing = true;
+    try {
+      if (!run || !runs.has(id)) {
+        write(formatFrame("[DONE]"));
+        close();
+        return;
       }
-    }
-    if (isTerminal(run.status)) {
-      write(formatFrame("[DONE]"));
-      close();
+      while (cursor < run.chunks.length) {
+        const frames = coalesceChunks(run.chunks, cursor, run.chunks.length);
+        for (const f of frames) {
+          if ((ctrl.desiredSize ?? 1) <= 0) return; // slow reader: pull() resumes us
+          if (!write(formatFrame(JSON.stringify(f.chunk), f.id))) return;
+          cursor = f.id;
+        }
+      }
+      if (isTerminal(run.status)) {
+        write(formatFrame("[DONE]"));
+        close();
+      }
+    } finally {
+      flushing = false;
     }
   };
 

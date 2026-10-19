@@ -420,7 +420,12 @@ export function buildWorkspaceTools(ctx: WorkspaceToolCtx) {
         const regex = new RegExp(pattern);
         const results: Array<{ file: string; matches: Array<{ line: number; text: string }> }> = [];
         let total = 0;
-        for (const f of files) {
+        for (const entry of files) {
+          // walkFiles returns workspace-relative entries (the single-file case
+          // pushes an absolute path) — resolve both shapes against the search
+          // root before touching disk, or every stat/read lands in process.cwd()
+          // and silently yields zero matches.
+          const f = path.isAbsolute(entry) ? entry : path.resolve(target, entry);
           if (!regex.source) break;
           if (total >= GREP_MAX) break;
           try {

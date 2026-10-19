@@ -380,6 +380,26 @@ of its content words do. The model may re-segment and re-word a finding; it may 
 invent one. That guard is the reason "the agent summarises" can never quietly
 become "the agent makes things up".
 
+### When the graph is unreachable
+
+FalkorDB is optional context, so **no chat ever waits on it**. Every graph await
+is bounded; when a budget expires the chat runs without memory, the bootstrap
+cache is cleared so the next request retries, and the health endpoint reports
+`degraded` with the reason instead of hanging. Defaults, tunable from the
+environment (`.env.local`):
+
+| Variable | Default | Bounds |
+|---|---|---|
+| `BRAIN_CONNECT_TIMEOUT_MS` | 6000 | opening the driver connection |
+| `BRAIN_QUERY_TIMEOUT_MS` | 10000 | a single Cypher query |
+| `BRAIN_BOOTSTRAP_TIMEOUT_MS` | 6000 | startup schema/seed bootstrap |
+| `BRAIN_RECALL_BUDGET_MS` | 4000 | per-message memory recall (empty on expiry) |
+| `BRAIN_PREP_BUDGET_MS` | 6000 | workspace briefing folded into the system prompt |
+
+`GET /api/brain/health` distinguishes `ok` from `degraded`, and graph-backed
+routes fail fast with a bounded error rather than an unbounded 500 — a dead or
+blackholed graph costs requests a few seconds, never a stalled UI.
+
 ---
 
 ## API

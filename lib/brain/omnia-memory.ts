@@ -12,6 +12,7 @@ import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient } from "@/lib/brain/graph";
 import { factId, normalizeFact } from "@/lib/brain/memory/consolidation";
 import { ensureSession, recallMemories, recordTurn } from "@/lib/brain/memory/session";
+import { msFromEnv, withBudget } from "@/lib/brain/timeout";
 
 /** Memory is per signed-in user; "omnia" is only the legacy single-user fallback. */
 function omniaUser(): string {
@@ -35,9 +36,21 @@ async function brainClient(): Promise<FalkorClient | null> {
 /**
  * Memories relevant to `question`, formatted for a system prompt. Empty when
  * the graph is unreachable or knows nothing — never throws.
+ *
+ * Bounded: recall runs before the model is called, so a wedged graph may add
+ * at most `BRAIN_RECALL_BUDGET_MS` to first-token latency — after that the
+ * turn simply starts without remembered context.
  */
 export async function recallForOmnia(question: string, limit = 4): Promise<string> {
   if (!question.trim()) return "";
+  return withBudget(
+    remember(question, limit),
+    msFromEnv("BRAIN_RECALL_BUDGET_MS", 4_000),
+    "",
+  );
+}
+
+async function remember(question: string, limit: number): Promise<string> {
   try {
     const client = await brainClient();
     if (!client) return "";

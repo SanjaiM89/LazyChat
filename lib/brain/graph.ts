@@ -11,9 +11,10 @@
  * Both are handled once, here.
  */
 import { FalkorDB } from "falkordb";
-import type { Graph } from "falkordb";
+import type { FalkorDBOptions, Graph } from "falkordb";
 
 import { brainConfig } from "./config";
+import { msFromEnv, withTimeout } from "./timeout";
 import type { BrainEdge, BrainNode } from "./types";
 
 export class GraphError extends Error {}
@@ -152,7 +153,52 @@ export function collectSubgraph(rows: Row[]): { nodes: BrainNode[]; edges: Brain
 /** Marker key for the process-wide connection (survives HMR in dev). */
 const CONNECTION_KEY = Symbol.for("lazychat.brain.falkordb");
 
-type CachedConnection = { promise: Promise<FalkorClient> };
+type CachedConnection = { promise: Promise<FalkorClient>; client?: FalkorClient };
+
+/**
+ * Driver knobs the FalkorDB package passes straight through to node-redis but
+ * does not declare on its own options type.
+ */
+type DriverKnobs = {
+  /**
+   * Bound the retry loop: node-redis otherwise keeps `connect()` pending
+   * forever while the endpoint is unreachable, and a pending promise cached
+   * process-wide poisons every later awaiter.
+   */
+  reconnectStrategy?: (retries: number, cause: Error) => false | number;
+  /** Fail fast while reconnecting instead of queueing commands indefinitely. */
+  disableOfflineQueue?: boolean;
+};
+
+/** Deadlines for every round trip — env-overridable so tests can shrink them. */
+const connectTimeoutMs = () => msFromEnv("BRAIN_CONNECT_TIMEOUT_MS", 6_000);
+const queryTimeoutMs = () => msFromEnv("BRAIN_QUERY_TIMEOUT_MS", 10_000);
+
+/**
+ * A driver-level failure (dead socket, closed client, auth) as opposed to a
+ * bad Cypher statement — the former must evict the connection, the latter must
+ * leave it alone.
+ */
+function isConnectionFault(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /(closed|closing|reconnect|connection|socket|timed? ?out|timeout|ECONN[A-Z]*|ENETUNREACH|EHOSTUNREACH|ENOTFOUND|EAI_AGAIN|NOAUTH|LOADING)/i.test(
+    msg,
+  );
+}
+
+/**
+ * Readable text for a driver error. node-redis reports refused connections as
+ * an `AggregateError` whose `.message` is empty — the causes (one per resolved
+ * address) live in `.errors`.
+ */
+function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const causes = (err as Error & { errors?: Error[] }).errors;
+  if (!err.message && Array.isArray(causes) && causes.length) {
+    return causes.map((cause) => cause.message).join("; ");
+  }
+  return err.message;
+}
 
 export class FalkorClient {
   readonly graphName: string;
@@ -165,49 +211,100 @@ export class FalkorClient {
     this.graph = db.selectGraph(graphName);
   }
 
-  /** Process-wide singleton. */
+  /**
+   * Process-wide singleton.
+   *
+   * The cached promise is bounded: a connect that never settles would hang
+   * every later awaiter (routes and chat runs alike) for the life of the
+   * process, so a wedged entry is dropped instead of awaited forever — and if
+   * it eventually connects anyway, that orphan socket is closed rather than
+   * leaked.
+   */
   static async get(): Promise<FalkorClient> {
     const globalStore = globalThis as unknown as Record<symbol, CachedConnection | undefined>;
-    let cached = globalStore[CONNECTION_KEY];
-    if (!cached) {
-      cached = { promise: FalkorClient.create() };
-      globalStore[CONNECTION_KEY] = cached;
+    let entry = globalStore[CONNECTION_KEY];
+    if (!entry) {
+      const fresh: CachedConnection = { promise: FalkorClient.create() };
+      globalStore[CONNECTION_KEY] = fresh;
+      fresh.promise.then(
+        (client) => {
+          if (globalStore[CONNECTION_KEY] !== fresh) {
+            void client.close().catch(() => {});
+            return;
+          }
+          fresh.client = client;
+        },
+        () => {
+          // Rejection is handled by the awaiter below.
+        },
+      );
+      entry = fresh;
     }
     try {
-      return await cached.promise;
+      return await withTimeout(entry.promise, connectTimeoutMs(), "FalkorDB connect");
     } catch (err) {
       // Do not cache a failed connection — the next request should retry.
-      globalStore[CONNECTION_KEY] = undefined;
-      throw err;
+      if (globalStore[CONNECTION_KEY] === entry) globalStore[CONNECTION_KEY] = undefined;
+      throw err instanceof GraphError
+        ? err
+        : new GraphError(
+            `Cannot connect to FalkorDB at ${brainConfig().falkordb.host}:${brainConfig().falkordb.port}: ${describeError(err)}`,
+          );
     }
   }
 
   private static async create(): Promise<FalkorClient> {
     const { falkordb } = brainConfig();
+    const options: FalkorDBOptions & DriverKnobs = {
+      host: falkordb.host,
+      port: falkordb.port,
+      username: falkordb.username || undefined,
+      password: falkordb.password || undefined,
+      socket: { connectTimeout: 5_000, keepAlive: 30_000, noDelay: true },
+      // Give up after a few attempts instead of retrying for the life of the
+      // process; the cached entry is evicted on failure, so the next caller
+      // reconnects from scratch.
+      reconnectStrategy: (retries) => (retries >= 3 ? false : Math.min(500 * 2 ** retries, 2_000)),
+      disableOfflineQueue: true,
+    };
     try {
-      const db = await FalkorDB.connect({
-        host: falkordb.host,
-        port: falkordb.port,
-        username: falkordb.username || undefined,
-        password: falkordb.password || undefined,
-      });
+      const db = await withTimeout(FalkorDB.connect(options), connectTimeoutMs(), "FalkorDB connect");
       return new FalkorClient(db, falkordb.graphName);
     } catch (err) {
       throw new GraphError(
-        `Cannot connect to FalkorDB at ${falkordb.host}:${falkordb.port}: ${(err as Error).message}`,
+        `Cannot connect to FalkorDB at ${falkordb.host}:${falkordb.port}: ${describeError(err)}`,
       );
     }
+  }
+
+  /**
+   * Forget (and close) this connection so the next `get()` reconnects: a
+   * socket that timed out or lost its link must not serve the next request
+   * either — that is how a single dead connection used to wedge the process.
+   */
+  private evict(): void {
+    const store = globalThis as unknown as Record<symbol, CachedConnection | undefined>;
+    if (store[CONNECTION_KEY]?.client === this) store[CONNECTION_KEY] = undefined;
+    void this.close().catch(() => {});
   }
 
   /** Execute a Cypher query and return its rows. */
   async query<T = Row>(cypher: string, params: Record<string, unknown> = {}): Promise<T[]> {
     const start = Date.now();
     try {
-      const reply = await this.graph.query(cypher, { params: params as QueryParams });
+      const reply = await withTimeout(
+        this.graph.query(cypher, { params: params as QueryParams }),
+        queryTimeoutMs(),
+        "Cypher query",
+      );
       const rows = (reply.data ?? []) as T[];
       this.log(cypher, params, rows.length, Date.now() - start);
       return rows;
     } catch (err) {
+      // A round trip that never returns (half-open socket, reconnect queue) is
+      // a dead connection rather than a slow query: surface it to the caller
+      // and make the next attempt start from a fresh socket.
+      if (isConnectionFault(err)) this.evict();
       throw new GraphError(`Cypher failed: ${(err as Error).message}; query=${JSON.stringify(cypher)}`);
     }
   }
@@ -231,7 +328,7 @@ export class FalkorClient {
 
   async deleteGraph(): Promise<void> {
     try {
-      await this.graph.delete();
+      await withTimeout(this.graph.delete(), queryTimeoutMs(), "graph delete");
     } catch {
       // A fresh FalkorDB has no graph to delete; that is not an error here.
     }
