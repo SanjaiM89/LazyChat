@@ -275,12 +275,20 @@ export function ChatView({ chat }: { chat: ChatController }) {
           <div className="mx-auto mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger animate-fade-in-up" style={{ maxWidth: contentWidth }}>
             <span className="font-medium">Something went wrong:</span>{" "}
             {chat.error.message || "Unknown error"}
-            <button
-              onClick={() => chat.clearError()}
-              className="ml-2 text-danger/80 underline underline-offset-2 hover:text-danger"
-            >
-              Dismiss
-            </button>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => chat.regenerate()}
+                className="rounded-md border border-danger/40 bg-danger/10 px-2.5 py-1 text-[12px] font-medium text-danger transition-colors hover:bg-danger/20"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => chat.clearError()}
+                className="text-danger/80 underline underline-offset-2 hover:text-danger text-[12px]"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
         {streaming && <RunningStatus startTime={runStartedAt} />}

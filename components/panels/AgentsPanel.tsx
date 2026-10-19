@@ -175,8 +175,8 @@ function SpawnAgent() {
             title="Which provider runs the agent (Auto picks your first configured provider)"
           >
             <option value="">Auto · {autoProvider()}</option>
-            {agentProviders.map((p) => (
-              <option key={p} value={p}>
+            {agentProviders.map((p, i) => (
+              <option key={`${p}-${i}`} value={p}>
                 {providerLabel(p)}
               </option>
             ))}
@@ -371,7 +371,29 @@ function AgentCard({ agent }: { agent: AgentMeta }) {
             </div>
           )}
           {agent.error && (
-            <p className="px-3 pb-2.5 text-[12px] text-danger">{agent.error}</p>
+            <div className="flex items-center gap-2 px-3 pb-2.5">
+              <p className="flex-1 text-[12px] text-danger">{agent.error}</p>
+              <button
+                onClick={async () => {
+                  try {
+                    await fetch("/api/agents", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({
+                        task: agent.task,
+                        provider: agent.provider,
+                        model: agent.model,
+                        engine: agent.engine,
+                      }),
+                    });
+                  } catch {
+                  }
+                }}
+                className="rounded-md border border-danger/40 bg-danger/10 px-2.5 py-1 text-[12px] font-medium text-danger transition-colors hover:bg-danger/20"
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
       )}
