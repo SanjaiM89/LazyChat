@@ -1,17 +1,47 @@
 #!/usr/bin/env node
+/**
+ * Local sandbox service.
+ *
+ * DeepSeek Harness does not run agent work in a container. It confines the
+ * child process to a file-effect policy with the host kernel: bubblewrap on
+ * Linux, Seatbelt on macOS, Landlock where bubblewrap is unavailable. This
+ * service applies the same `workspace-write` policy to Omnia agent runs:
+ *
+ *   - the host filesystem is mounted read-only,
+ *   - the sandbox workspace (and a private /tmp) is writable,
+ *   - a private PID namespace/procfs is provided,
+ *   - no network namespace is created, exactly like dsh's process sandbox.
+ *
+ * The HTTP API is unchanged so the existing chat UI, agent runner, and
+ * Chromium panel keep working without Docker or a remote CodeSandbox.
+ */
 import http from "node:http";
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.SANDBOX_PORT || 8787);
+const SECRET = process.env.SANDBOX_SECRET || "";
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(process.cwd(), "data"));
-const IMAGE_DEFAULT = process.env.SANDBOX_IMAGE || "omnia-sandbox:latest";
 const SANDBOX_DIR = path.join(DATA_DIR, "sandboxes");
+const BWRAP = process.env.BWRAP_BIN || "bwrap";
+const PLATFORM = process.platform;
+// When the desktop app is packaged, Node and the runner live on an AppImage
+// FUSE submount. bubblewrap's `--ro-bind / /` does not recursively include
+// FUSE submounts, so the AppImage mount must be bound into the sandbox
+// explicitly (after /tmp becomes a tmpfs).
+const APPIMAGE_MOUNT = (() => {
+  const m = /^(\/tmp\/\.mount_[^/]+)/.exec(process.execPath);
+  return m ? m[1] : null;
+})();
+const RUNNER = path.join(ROOT, "sandbox", "container", "runner.mjs");
+const BROWSER_DAEMON = path.join(ROOT, "sandbox", "container", "browser-daemon.mjs");
+const DEFAULT_IMAGE = "local";
 fs.mkdirSync(SANDBOX_DIR, { recursive: true });
-
 
 const sandboxes = new Map();
 
@@ -19,7 +49,7 @@ function makeSandbox(id) {
   return {
     id,
     containerId: null,
-    image: IMAGE_DEFAULT,
+    image: DEFAULT_IMAGE,
     label: "sandbox",
     state: "starting", // starting | ready | busy | idle | error | stopped
     hasBrowser: true,
@@ -29,6 +59,9 @@ function makeSandbox(id) {
     events: new Set(),
     lastScreenshot: null,
     env: {},
+    runnerSpec: null,
+    child: null,
+    browser: null,
   };
 }
 
@@ -56,143 +89,319 @@ function snapshot(s) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Process confinement (same profile as @deepseek-ai/dsh-sandbox-local)
+// ---------------------------------------------------------------------------
 
-function docker(args, opts = {}) {
-  return spawnSync("docker", args, { encoding: "utf8", ...opts });
+const BWRAP_ARGS = ["--ro-bind", "/", "/", "--dev", "/dev", "--unshare-pid", "--proc", "/proc", "--die-with-parent"];
+
+function sbplString(p) {
+  return JSON.stringify(String(p));
 }
 
-function dockerOk() {
-  const r = docker(["info", "--format", "{{.ServerVersion}}"]);
-  return r.status === 0 ? { ok: true, version: (r.stdout || "").trim() } : { ok: false, error: (r.stderr || "").trim().split("\n")[0] };
+/** dsh's Seatbelt `workspace-write` profile (macOS). */
+function seatbeltProfile(workspaceDir) {
+  const writable = ["/tmp", workspaceDir].map((p) => `(subpath ${sbplString(p)})`).join(" ");
+  return [
+    "(version 1)",
+    "(allow default)",
+    "(deny file-write*)",
+    `(allow file-write* (literal ${sbplString("/dev/null")}) (literal ${sbplString("/dev/stdout")}) (literal ${sbplString("/dev/stderr")}) ${writable})`,
+  ].join(" ");
 }
 
-function runningImages() {
-  const r = docker(["images", "--format", "{{.Repository}}:{{.Tag}}"]);
-  if (r.status !== 0) return [];
-  return r.stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+let probeCache = null;
+
+function sandboxSupport() {
+  if (probeCache && Date.now() - probeCache.at < 10_000) return probeCache.value;
+  let value;
+  if (PLATFORM === "linux") {
+    const r = spawnSync(BWRAP, ["--version"], { encoding: "utf8", timeout: 5000 });
+    const version = r.status === 0 ? (r.stdout || "").trim() : "";
+    if (!version) {
+      value = {
+        ok: false,
+        backend: "unavailable",
+        error: `bubblewrap (${BWRAP}) is not installed. Install it (e.g. apt install bubblewrap) and retry.`,
+      };
+    } else {
+      const probe = spawnSync(BWRAP, [...BWRAP_ARGS, "--", "true"], { timeout: 5000, stdio: "ignore" });
+      value =
+        probe.status === 0
+          ? { ok: true, backend: "bubblewrap", version }
+          : {
+              ok: false,
+              backend: "unavailable",
+              version,
+              error:
+                "bubblewrap cannot create an unprivileged namespace on this host; check user namespaces / AppArmor.",
+            };
+    }
+  } else if (PLATFORM === "darwin") {
+    const probe = spawnSync("sandbox-exec", ["-p", "(version 1)(allow default)", "--", "true"], {
+      timeout: 5000,
+      stdio: "ignore",
+    });
+    value =
+      probe.status === 0
+        ? { ok: true, backend: "seatbelt", version: "sandbox-exec" }
+        : {
+            ok: false,
+            backend: "unavailable",
+            error: "sandbox-exec is unavailable; refusing to run commands unconfined.",
+          };
+  } else {
+    value = {
+      ok: false,
+      backend: "unavailable",
+      error: `no sandbox backend for ${PLATFORM}; refusing to run commands unconfined.`,
+    };
+  }
+  probeCache = { at: Date.now(), value };
+  return value;
 }
 
-function imageExists(image) {
-  const r = docker(["image", "inspect", image], { timeout: 15_000 });
-  return r.status === 0;
+/** Wrap argv in dsh's `workspace-write` confinement profile. */
+function confine(argv, workspaceDir) {
+  if (PLATFORM === "darwin") {
+    return ["sandbox-exec", "-p", seatbeltProfile(workspaceDir), "--", ...argv];
+  }
+  const args = [BWRAP, ...BWRAP_ARGS, "--tmpfs", "/tmp"];
+  if (APPIMAGE_MOUNT) {
+    args.push("--dir", APPIMAGE_MOUNT, "--ro-bind", APPIMAGE_MOUNT, APPIMAGE_MOUNT);
+  }
+  args.push("--bind", workspaceDir, workspaceDir, "--", ...argv);
+  return args;
 }
 
-function cleanDockerError(stderr, stdout) {
-  const raw = (stderr || stdout || "").trim();
-  if (!raw) return "unknown docker error";
-  const lines = raw
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .filter((l) => !/^Run 'docker .* --help'/.test(l));
-  return lines.join("\n") || raw;
+function killChild(child) {
+  if (!child || child.killed) return;
+  try {
+    // Spawned detached: signal the whole process group so the runner's
+    // children (browser, shell commands) do not outlive their sandbox.
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    try {
+      child.kill("SIGTERM");
+    } catch {
+      // already gone
+    }
+  }
 }
 
-function activeContainers() {
-  const r = docker(["ps", "-q", "--filter", "name=omnia-"]);
-  return r.status === 0 ? (r.stdout || "").split("\n").filter(Boolean).length : 0;
-}
-
+// ---------------------------------------------------------------------------
+// Environment
+// ---------------------------------------------------------------------------
 
 const ENV_RE =
   /^(AGENT|OMNIA|ANTHROPIC|OPENAI|GOOGLE|GEMINI|OLLAMA|LMSTUDIO|DEEPSEEK|GROQ|XAI|MISTRAL|OPENROUTER|AZURE|GITHUB|FIREWORKS|TOGETHER|NVIDIA|AWS|SANDBOX|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)_|_API_KEY$|_BASE_URL$|_API_KEY_ID$|_SECRET$|_TOKEN$/i;
 
-function envForContainer(bodyEnv = {}, extra = {}) {
-  const source = typeof bodyEnv === "object" && bodyEnv ? bodyEnv : process.env;
+const NEVER_FORWARD = new Set([
+  "SUPER_ADMIN_EMAIL",
+  "SUPER_ADMIN_PASSWORD",
+  "NEXT_PUBLIC_SUPER_ADMIN_EMAIL",
+  "OMNIA_INTERNAL_TOKEN",
+  "SANDBOX_SECRET",
+  "FALKORDB_PASSWORD",
+  "CSB_API_KEY",
+  "CODESANDBOX_API_KEY",
+  "SARVAM_API_KEY",
+]);
+
+function filteredEnv(source = {}) {
   const env = {};
   for (const [k, v] of Object.entries(source)) {
     if (!v || typeof v !== "string") continue;
+    if (k.startsWith("NEXT_PUBLIC_")) continue;
+    if (NEVER_FORWARD.has(k)) continue;
     if (ENV_RE.test(k)) env[k] = v;
   }
-  Object.assign(env, extra);
   return env;
 }
 
-
-function writeEnvFile(id, env) {
-  const dir = path.join(SANDBOX_DIR, id);
-  fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, "container.env");
-  const lines = [];
+function sandboxEnv(s, extra = {}) {
+  const home = path.join(s.workspaceDir, ".home");
+  const env = {
+    PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
+    HOME: home,
+    TMPDIR: "/tmp",
+    LANG: process.env.LANG || "C.UTF-8",
+    LC_ALL: process.env.LC_ALL || "",
+    TZ: process.env.TZ || "UTC",
+    XDG_CACHE_HOME: path.join(s.workspaceDir, ".cache"),
+    XDG_CONFIG_HOME: path.join(s.workspaceDir, ".config"),
+    XDG_DATA_HOME: path.join(s.workspaceDir, ".local", "share"),
+    PLAYWRIGHT_BROWSERS_PATH:
+      process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(os.homedir(), ".cache", "ms-playwright"),
+    NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS || "",
+    SSL_CERT_FILE: process.env.SSL_CERT_FILE || "",
+    SSL_CERT_DIR: process.env.SSL_CERT_DIR || "",
+    HTTP_PROXY: process.env.HTTP_PROXY || process.env.http_proxy || "",
+    HTTPS_PROXY: process.env.HTTPS_PROXY || process.env.https_proxy || "",
+    NO_PROXY: process.env.NO_PROXY || process.env.no_proxy || "",
+    ...filteredEnv(s.rawEnv || {}),
+    AGENT_TASK: s.runnerSpec?.task || "",
+    AGENT_MODE: s.rawEnv?.AGENT_MODE || "",
+    SANDBOX_HOST: `http://127.0.0.1:${PORT}`,
+    SANDBOX_SECRET: SECRET,
+    SANDBOX_ID: s.id,
+    SANDBOX_LABEL: s.label,
+    OMNIA_WORKSPACE: s.workspaceDir,
+    ...extra,
+  };
   for (const [k, v] of Object.entries(env)) {
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) continue;
-    const safe = String(v).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/\r/g, "");
-    lines.push(`${k}=${safe}`);
+    if (v === "" || v === undefined || v === null) delete env[k];
   }
-  fs.writeFileSync(file, lines.join("\n") + "\n", "utf8");
-  return file;
+  return env;
 }
+
+function prepareWorkspace(s) {
+  s.workspaceDir = path.join(SANDBOX_DIR, s.id, "workspace");
+  fs.mkdirSync(path.join(s.workspaceDir, "out"), { recursive: true });
+  fs.mkdirSync(path.join(s.workspaceDir, ".home"), { recursive: true });
+  fs.mkdirSync(path.join(s.workspaceDir, ".cache"), { recursive: true });
+  fs.mkdirSync(path.join(s.workspaceDir, ".config"), { recursive: true });
+  fs.mkdirSync(path.join(s.workspaceDir, ".local", "share"), { recursive: true });
+}
+
+// ---------------------------------------------------------------------------
+// Runner / browser processes
+// ---------------------------------------------------------------------------
+
+function startRunner(s) {
+  if (!s.runnerSpec) return;
+  if (s.child) return;
+  const spec = s.runnerSpec;
+  const logPath = path.join(SANDBOX_DIR, s.id, "runner.log");
+  const log = fs.openSync(logPath, "a");
+  const argv = confine(
+    [process.execPath, RUNNER, s.id, spec.provider, spec.model, spec.engine || "tool-loop"],
+    s.workspaceDir,
+  );
+  const child = spawn(argv[0], argv.slice(1), {
+    cwd: s.workspaceDir,
+    env: sandboxEnv(s),
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+  });
+  s.child = child;
+  s.containerId = `local-${process.pid}-${child.pid}`;
+  setState(s.id, "starting");
+
+  const write = (d) => {
+    try {
+      fs.writeSync(log, d);
+    } catch {}
+  };
+  child.stdout.on("data", (d) => write(d));
+  child.stderr.on("data", (d) => {
+    write(d);
+    process.stderr.write(`[sandbox ${s.id}] ${d.toString()}`);
+  });
+  child.on("error", (e) => {
+    write(`spawn error: ${e?.stack || e?.message || String(e)}\n`);
+    try {
+      fs.closeSync(log);
+    } catch {}
+    if (get(s.id) === s) {
+      setState(s.id, "error", e?.message || String(e));
+      broadcast(s.id, { type: "status", value: "error", message: e?.message || String(e) });
+      closeEventStreams(s.id);
+    }
+    s.child = null;
+  });
+  child.on("exit", (code, signal) => {
+    try {
+      fs.closeSync(log);
+    } catch {}
+    if (s.child === child) s.child = null;
+    const s2 = get(s.id);
+    if (!s2) return;
+    if (["starting", "ready", "busy"].includes(s2.state)) {
+      const detail = signal ? `signal ${signal}` : `code ${code}`;
+      setState(s.id, "error", `runner exited unexpectedly (${detail})`);
+      broadcast(s.id, { type: "status", value: "error", message: `runner exited (${detail})` });
+      broadcast(s.id, { type: "error", message: `Runner process exited unexpectedly (${detail}).` });
+      closeEventStreams(s.id);
+    }
+  });
+}
+
+function startBrowser(s) {
+  killChild(s.browser);
+  s.browser = null;
+  const log = fs.openSync(path.join(SANDBOX_DIR, s.id, "browser.log"), "a");
+  const argv = confine([process.execPath, BROWSER_DAEMON], s.workspaceDir);
+  const child = spawn(argv[0], argv.slice(1), {
+    cwd: s.workspaceDir,
+    env: sandboxEnv(s, { DAEMON_PORT: String(process.env.DAEMON_PORT || 18787) }),
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+  });
+  s.browser = child;
+  const write = (d) => {
+    try {
+      fs.writeSync(log, d);
+    } catch {}
+  };
+  child.stdout.on("data", (d) => write(d));
+  child.stderr.on("data", (d) => {
+    write(d);
+    process.stderr.write(`[sandbox ${s.id}] browser: ${d.toString()}`);
+  });
+  const cleanup = () => {
+    try {
+      fs.closeSync(log);
+    } catch {}
+    if (s.browser === child) s.browser = null;
+  };
+  child.on("error", (e) => {
+    write(`browser spawn error: ${e?.stack || e?.message || String(e)}\n`);
+    cleanup();
+  });
+  child.on("exit", cleanup);
+  return { ok: true, pid: child.pid };
+}
+
+// ---------------------------------------------------------------------------
+// HTTP API
+// ---------------------------------------------------------------------------
 
 async function createContainer(id, body) {
   const s = get(id);
   if (!s) throw new Error("unknown sandbox");
-  s.image = body.image || IMAGE_DEFAULT;
+  const support = sandboxSupport();
+  if (!support.ok) throw new Error(`SANDBOX_UNAVAILABLE: ${support.error}`);
+
+  s.image = body.image || DEFAULT_IMAGE;
   s.label = body.label || "sandbox";
-  s.workspaceDir = path.join(SANDBOX_DIR, id, "workspace");
-  fs.mkdirSync(s.workspaceDir, { recursive: true });
-  fs.mkdirSync(path.join(s.workspaceDir, "out"), { recursive: true });
+  s.runnerSpec = body.runner || null;
+  s.rawEnv = typeof body.env === "object" && body.env ? body.env : {};
+  prepareWorkspace(s);
+  s.env = sandboxEnv(s);
 
-  if (!imageExists(s.image)) {
-    throw new Error(
-      `sandbox image "${s.image}" not found locally. Build it first: npm run sandbox:build (docker build -t ${s.image} sandbox/container)`,
-    );
-  }
-
-  const env = envForContainer(body.env, {
-    AGENT_TASK: body.runner?.task || "",
-    SANDBOX_HOST: `http://127.0.0.1:${PORT}`,
-    SANDBOX_ID: id,
-    SANDBOX_LABEL: s.label,
-  });
-
-  const name = `omnia-${id}`;
-  docker(["rm", "-f", name], { timeout: 20_000 });
-
-  const envFile = writeEnvFile(id, env);
-  const runArgs = [
-    "run", "-d",
-    "--name", name,
-    "--network", "host",
-    "-m", "4g",
-    "--cpus", "2",
-    "--env-file", envFile,
-    "-v", `${s.workspaceDir}:/workspace`,
-    "-w", "/workspace",
-  ];
-  runArgs.push(s.image);
-  if (body.runner) {
-    runArgs.push("node", "/app/runner.mjs", id, body.runner.provider, body.runner.model, body.runner.engine || "tool-loop");
-  }
-
-  const r = spawnSync("docker", runArgs, { encoding: "utf8", timeout: 120_000 });
-  if (r.status !== 0) {
-    const detail = cleanDockerError(r.stderr, r.stdout);
-    console.error(`[sandbox] docker run failed for ${name}: ${detail}`);
-    throw new Error(`docker run failed: ${detail}`);
-  }
-  const containerId = (r.stdout || "").split("\n").map((l) => l.trim()).filter(Boolean).pop() || "";
-  if (!containerId) throw new Error("docker run produced no container id");
-  s.containerId = containerId;
-  setState(id, "starting");
-  watchContainerExit(id);
+  if (s.runnerSpec) startRunner(s);
+  else setState(id, "ready");
   return snapshot(s);
 }
 
 async function killContainer(id) {
   const s = get(id);
-  if (!s || !s.containerId) return;
-  docker(["rm", "-f", s.containerId], { timeout: 20_000 });
+  if (!s) return;
+  killChild(s.child);
+  killChild(s.browser);
+  s.child = null;
+  s.browser = null;
   setState(id, "stopped");
   closeEventStreams(id);
 }
 
 async function startContainer(id) {
   const s = get(id);
-  if (!s || !s.containerId) return;
-  docker(["start", s.containerId]);
-  setState(id, "starting");
+  if (!s) return;
+  if (s.runnerSpec) startRunner(s);
+  else setState(id, "ready");
 }
-
 
 function safeJoin(workspaceDir, rel) {
   const target = path.resolve(workspaceDir, rel || ".");
@@ -210,7 +419,9 @@ function listDir(dir, base, out, depth = 0) {
   } catch {
     return;
   }
-  entries.sort((a, b) => (a.isDirectory() === b.isDirectory() ? a.name.localeCompare(b.name) : a.isDirectory() ? -1 : 1));
+  entries.sort((a, b) =>
+    a.isDirectory() === b.isDirectory() ? a.name.localeCompare(b.name) : a.isDirectory() ? -1 : 1,
+  );
   for (const e of entries) {
     const full = path.join(dir, e.name);
     const rel = path.relative(base, full).split(path.sep).join("/");
@@ -237,18 +448,23 @@ function statMtime(p) {
   }
 }
 
-
 function execCommand(id, command, opts = {}) {
   const s = get(id);
-  if (!s || !s.containerId) throw new Error("sandbox not running");
+  if (!s) throw new Error("sandbox not found");
+  const support = sandboxSupport();
+  if (!support.ok) throw new Error(`SANDBOX_UNAVAILABLE: ${support.error}`);
+  const argv = confine(["bash", "-lc", command], s.workspaceDir);
   return new Promise((resolve, reject) => {
-    const child = spawn("docker", ["exec", "-w", "/workspace", s.containerId, "sh", "-lc", command], {
-      env: process.env,
+    const child = spawn(argv[0], argv.slice(1), {
+      cwd: s.workspaceDir,
+      env: s.env || sandboxEnv(s),
     });
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
+      try {
+        child.kill("SIGKILL");
+      } catch {}
       reject(new Error("command timed out"));
     }, opts.timeout || 120_000);
     child.stdout.on("data", (d) => (stdout += d.toString()));
@@ -263,7 +479,6 @@ function execCommand(id, command, opts = {}) {
     });
   });
 }
-
 
 function sse(res, id) {
   res.writeHead(200, {
@@ -299,8 +514,7 @@ function broadcast(id, obj) {
   for (const res of s.events) {
     try {
       res.write(`data: ${JSON.stringify(obj)}\n\n`);
-    } catch {
-    }
+    } catch {}
   }
 }
 
@@ -311,32 +525,10 @@ function closeEventStreams(id) {
     try {
       res.write("data: {\"type\":\"close\"}\n\n");
       res.end();
-    } catch {
-    }
+    } catch {}
   }
   s.events.clear();
 }
-
-function watchContainerExit(id) {
-  const s = get(id);
-  if (!s || !s.containerId) return;
-  const child = spawn("docker", ["wait", s.containerId]);
-  let code = "";
-  child.stdout.on("data", (d) => (code += d.toString()));
-  child.on("error", () => {});
-  child.on("close", () => {
-    const s2 = get(id);
-    if (!s2) return;
-    if (["starting", "ready", "busy"].includes(s2.state)) {
-      const exitCode = code.trim();
-      setState(id, "error", `container exited unexpectedly (code ${exitCode})`);
-      broadcast(id, { type: "status", value: "error", message: `runner exited (code ${exitCode})` });
-      broadcast(id, { type: "error", message: `Runner process exited unexpectedly (code ${exitCode}).` });
-      closeEventStreams(id);
-    }
-  });
-}
-
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
@@ -364,8 +556,7 @@ function json(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-const SECRET = process.env.SANDBOX_SECRET || "";
-const HOST = process.env.SANDBOX_HOST || "127.0.0.1";
+const HOST = process.env.SANDBOX_BIND_HOST || "127.0.0.1";
 
 const server = http.createServer(async (req, res) => {
   // Only the Next app (which has authenticated the user) may drive sandboxes.
@@ -380,14 +571,15 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (method === "GET" && parts[0] === "health") {
-      const d = dockerOk();
+      const b = sandboxSupport();
       json(res, 200, {
-        ok: d.ok,
-        docker: d.ok,
-        version: d.version,
-        error: d.error,
-        images: d.ok ? runningImages() : [],
-        activeContainers: d.ok ? activeContainers() : 0,
+        ok: b.ok,
+        docker: false,
+        backend: b.backend || "local",
+        version: b.version || null,
+        error: b.error,
+        images: [],
+        activeContainers: [...sandboxes.values()].filter((s) => s.child || s.browser).length,
       });
       return;
     }
@@ -429,12 +621,18 @@ const server = http.createServer(async (req, res) => {
         json(res, 200, { ok: true });
         return;
       }
+      if (method === "POST" && op === "browser-daemon") {
+        json(res, 200, startBrowser(s));
+        return;
+      }
 
       if (method === "DELETE") {
-        const s = get(id);
-        if (s && s.containerId) docker(["rm", "-f", s.containerId], { timeout: 20_000 });
+        await killContainer(id);
         closeEventStreams(id);
         sandboxes.delete(id);
+        try {
+          fs.rmSync(path.join(SANDBOX_DIR, id), { recursive: true, force: true });
+        } catch {}
         json(res, 200, { ok: true });
         return;
       }
@@ -500,7 +698,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (method === "GET" && op === "screenshot") {
-        json(res, 200, { image: s.lastScreenshot || null });
+        json(res, 200, { image: s?.lastScreenshot || null });
         return;
       }
     }
@@ -535,16 +733,22 @@ const server = http.createServer(async (req, res) => {
             }
           }
         }
-        if (evt.type === "log" || evt.type === "thinking" || evt.type === "tool" ||
-            evt.type === "file" || evt.type === "text" || evt.type === "error" ||
-            evt.type === "done" || evt.type === "progress" || evt.type === "status") {
+        if (
+          evt.type === "log" ||
+          evt.type === "thinking" ||
+          evt.type === "tool" ||
+          evt.type === "file" ||
+          evt.type === "text" ||
+          evt.type === "error" ||
+          evt.type === "done" ||
+          evt.type === "progress" ||
+          evt.type === "status"
+        ) {
           if (evt.type === "done" || evt.type === "error") terminal = true;
           broadcast(id, evt);
         }
       }
-      if (terminal) {
-        closeEventStreams(id);
-      }
+      if (terminal) closeEventStreams(id);
       json(res, 200, { ok: true });
       return;
     }
@@ -557,13 +761,17 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`[sandbox] listening on http://${HOST}:${PORT}`);
-  const d = dockerOk();
-  console.log(d.ok ? `[sandbox] docker ready (${d.version})` : `[sandbox] docker NOT available: ${d.error}`);
+  const b = sandboxSupport();
+  console.log(b.ok ? `[sandbox] ${b.backend} ${b.version} (workspace-write)` : `[sandbox] NOT available: ${b.error}`);
 });
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => {
     console.log("\n[sandbox] shutting down");
+    for (const s of sandboxes.values()) {
+      killChild(s.child);
+      killChild(s.browser);
+    }
     process.exit(0);
   });
 }

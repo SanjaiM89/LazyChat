@@ -137,7 +137,7 @@ export async function spawnAgent(input: SpawnAgentInput): Promise<AgentMeta> {
     log: [{ t: Date.now(), level: "info", message: "Agent queued" }],
     resultFiles: [],
     conversationId: input.conversationId,
-    image: input.image || process.env.SANDBOX_IMAGE || "omnia-sandbox:latest",
+    image: input.image || "local",
     research,
     listeners: new Set(),
   };
@@ -155,13 +155,13 @@ export async function spawnAgent(input: SpawnAgentInput): Promise<AgentMeta> {
 async function runSandboxedAgent(id: string) {
   const r = agents.get(id)!;
   patch(id, { status: "starting" });
-  pushLog(id, { t: Date.now(), level: "info", message: "Creating Docker sandbox…" });
+  pushLog(id, { t: Date.now(), level: "info", message: "Creating sandbox…" });
 
   let sandboxId = "";
   try {
     const env: Record<string, string> = { ...(process.env as any) };
     // Never hand the platform's own secrets to code running inside a tenant's sandbox.
-    for (const k of ["SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL", "OMNIA_INTERNAL_TOKEN", "SANDBOX_SECRET", "FALKORDB_PASSWORD"]) {
+    for (const k of ["SUPER_ADMIN_EMAIL", "SUPER_ADMIN_PASSWORD", "NEXT_PUBLIC_SUPER_ADMIN_EMAIL", "OMNIA_INTERNAL_TOKEN", "SANDBOX_SECRET", "FALKORDB_PASSWORD", "CSB_API_KEY", "CODESANDBOX_API_KEY", "SARVAM_API_KEY"]) {
       delete env[k];
     }
 

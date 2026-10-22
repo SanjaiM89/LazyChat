@@ -14,6 +14,7 @@ import {
   deleteSandbox,
   assertSandboxOwner,
   sandboxHeaders,
+  ensureSandboxServer,
 } from "@/lib/sandbox";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,7 @@ async function handle(req: NextRequest) {
       case "events": {
         const signal = req.signal;
         assertSandboxOwner(id);
+        await ensureSandboxServer();
         const up = await fetch(`${SANDBOX_URL}/containers/${id}/events`, {
           headers: sandboxHeaders(),
           cache: "no-store",

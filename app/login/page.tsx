@@ -108,7 +108,7 @@ function LoginForm() {
           <ul className="mt-8 space-y-2.5 text-[13px] text-fg-secondary">
             {[
               { icon: <Network size={14} />, text: "Multi-provider chat with live model lists" },
-              { icon: <Bot size={14} />, text: "Autonomous agents in Docker sandboxes" },
+              { icon: <Bot size={14} />, text: "Autonomous agents in local sandboxes" },
               { icon: <ShieldCheck size={14} />, text: "Organization-scoped data and access" },
             ].map((f) => (
               <li key={f.text} className="flex items-center gap-2.5">

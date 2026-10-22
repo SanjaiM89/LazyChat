@@ -34,7 +34,7 @@ const SUGGESTIONS = [
     tag: "Documents",
     title: "Generate a spreadsheet",
     prompt:
-      "Create an XLSX spreadsheet in a Docker sandbox with a sample sales dataset (20 rows, 5 columns: region, product, units, price, revenue) plus a summary sheet with totals.",
+      "Create an XLSX spreadsheet in a sandbox with a sample sales dataset (20 rows, 5 columns: region, product, units, price, revenue) plus a summary sheet with totals.",
   },
   {
     icon: <BrandIcon name="html" size={18} />,
@@ -44,11 +44,11 @@ const SUGGESTIONS = [
       "Create a code artifact: a small interactive HTML page that visualizes the Fibonacci sequence with an animated bar chart.",
   },
   {
-    icon: <BrandIcon name="docker" size={18} />,
+    icon: <BrandIcon name="bash" size={18} />,
     tag: "Agents",
     title: "Plan with an agent",
     prompt:
-      "Deploy an agent in a Docker sandbox to write a markdown project plan for launching a SaaS product, and save the plan to /workspace/out as a .md file.",
+      "Deploy an agent in a local sandbox to write a markdown project plan for launching a SaaS product, and save the plan to the workspace out/ folder as a .md file.",
   },
 ];
 
@@ -156,7 +156,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
           </h1>
           <p className="mt-3 max-w-lg text-center text-[14px] leading-relaxed text-fg-muted">
             Chat with any model, search the web, create artifacts and deploy
-            autonomous agents in Docker sandboxes — or ask the Company Brain
+            autonomous agents in local sandboxes — or ask the Company Brain
             about your engineering org.
           </p>
           <div className="mt-6 flex items-center gap-4 text-fg-muted">

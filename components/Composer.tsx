@@ -52,8 +52,8 @@ const TOOL_BUTTONS: {
   {
     id: "runAgentTask",
     label: "Agents",
-    icon: <BrandIcon name="docker" size={14} fallback={<Bot size={14} />} />,
-    tooltip: "Run autonomous agents in Docker sandboxes",
+    icon: <BrandIcon name="bash" size={14} fallback={<Bot size={14} />} />,
+    tooltip: "Run autonomous agents in local sandboxes",
   },
   {
     id: "computerUse",

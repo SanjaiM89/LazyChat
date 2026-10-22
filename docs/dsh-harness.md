@@ -146,7 +146,7 @@ curl -X POST localhost:3000/api/dsh/workspaces \
   refuses unknown ids — fresh runs must omit the flag and adopt the id from
   the opening `session` JSONL event (the bridge does this automatically).
 - No PTY terminal: the execution panel shows streamed stdout + command history,
-  not an interactive shell (use `dsh web` on :3080 or the Docker sandbox for that).
+  not an interactive shell (use `dsh web` on :3080 or the agent sandbox for that).
 - Recall is lexical, not vector — same tradeoff as the Company Brain memory.
 - Runs inherit the server's env; `SARVAM_API_KEY` must be in `.env.local`.
 - Single local instance: no multi-user isolation beyond per-user memory keys.

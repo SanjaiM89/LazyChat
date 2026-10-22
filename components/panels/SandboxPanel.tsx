@@ -80,7 +80,7 @@ export function SandboxPanel() {
               tab === t ? "text-fg" : "text-fg-muted hover:text-fg-secondary",
             )}
           >
-            <BrandIcon name={t === "computer" ? "chrome" : "docker"} size={12} className={tab === t ? "" : "opacity-60 grayscale"} />
+            <BrandIcon name={t === "computer" ? "chrome" : "bash"} size={12} className={tab === t ? "" : "opacity-60 grayscale"} />
             {t === "computer" ? "Computer" : `Agent sandboxes${sandboxes.length ? ` (${sandboxes.length})` : ""}`}
             <span
               aria-hidden
@@ -100,11 +100,11 @@ export function SandboxPanel() {
       ) : !active ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
           <span className="brand-tile flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-bg-surface-200 animate-float">
-            <BrandIcon name="docker" size={24} fallback={<Terminal size={20} />} />
+            <BrandIcon name="bash" size={24} fallback={<Terminal size={20} />} />
           </span>
           <p className="max-w-[260px] text-[13px] text-fg-muted">
             No agent sandbox running. Ask the model to run an agent task — a
-            Docker VM will appear here.
+            local confined workspace will appear here.
           </p>
         </div>
       ) : (
@@ -860,9 +860,9 @@ function SandboxDown({ onRetry }: { onRetry: () => void }) {
       </span>
       <p className="text-[14px] font-medium text-fg">Sandbox service offline</p>
       <p className="text-[12.5px] text-fg-muted max-w-[300px] leading-relaxed">
-        The Docker sandbox service isn&apos;t running. Start it with{" "}
+        The sandbox service isn&apos;t running. Start it with{" "}
         <code className="rounded border border-border bg-bg-surface-200 px-1.5 py-0.5 font-mono text-[11px]">node sandbox/server.mjs</code>{" "}
-        and make sure Docker is available.
+        and make sure bubblewrap (<code className="font-mono text-[11px]">bwrap</code>) is installed on Linux, or <code className="font-mono text-[11px]">sandbox-exec</code> is available on macOS.
       </p>
       <Button onClick={onRetry}>Retry connection</Button>
     </div>

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import path from "node:path";
 import { report, flush } from "./report.mjs";
 import { launchBrowser, screenshotDataUrl } from "./browser.mjs";
 import { makePdf, makeXlsx, makeDocx, makeCsv } from "./filegen.mjs";
@@ -8,6 +9,10 @@ import { z } from "zod";
 const [sandboxId = "local", provider = "anthropic", model = "claude-sonnet-5", engine = "tool-loop"] = process.argv.slice(2);
 const TASK = process.env.AGENT_TASK || "";
 const RESEARCH = process.env.AGENT_MODE === "research";
+// Docker images mount the workspace at /workspace. The local process sandbox
+// runs on the host, where /workspace cannot be created inside bubblewrap's
+// read-only root, so the service passes the real workspace path instead.
+const WORKSPACE = path.resolve(process.env.OMNIA_WORKSPACE || "/workspace");
 
 report({ type: "log", message: `Runner booting (${provider}/${model}/${engine})` });
 await flush();
@@ -304,6 +309,27 @@ async function browserBraveSearch(query, max) {
   return results;
 }
 
+/**
+ * Resolve a tool-supplied path inside the workspace. Absolute host paths under
+ * the workspace are accepted, and the historical `/workspace/...` spelling is
+ * mapped to the current workspace root so prompts/tools stay portable.
+ */
+function workspacePath(rel) {
+  let raw = String(rel || "").trim();
+  if (path.isAbsolute(raw)) {
+    const resolved = path.resolve(raw);
+    if (resolved === WORKSPACE || resolved.startsWith(WORKSPACE + path.sep)) return resolved;
+  }
+  raw = raw.replace(/^\/+/, "");
+  if (raw === "workspace") raw = "";
+  else if (raw.startsWith("workspace/")) raw = raw.slice("workspace/".length);
+  const target = path.resolve(WORKSPACE, raw);
+  if (target !== WORKSPACE && !target.startsWith(WORKSPACE + path.sep)) {
+    throw new Error("path escapes the workspace");
+  }
+  return target;
+}
+
 const tools = {
   web_search: tool({
     description: "Search the web (Google via the live browser in research mode, DuckDuckGo HTML fallback). Use for current events, recent information, research, anything not in your training data. Returns ranked results with titles, snippets and URLs — open several from DIFFERENT domains, never just the first.",
@@ -430,7 +456,7 @@ const tools = {
   }),
 
   exec_command: tool({
-    description: "Run a shell command in the sandbox (working dir /workspace). Use for installing packages, running scripts, checking files, git, etc.",
+    description: `Run a shell command in the sandbox (working dir ${WORKSPACE}). Use for installing packages, running scripts, checking files, git, etc.`,
     inputSchema: z.object({
       command: z.string().describe("shell command to run"),
     }),
@@ -438,7 +464,7 @@ const tools = {
       const { execSync } = await import("node:child_process");
       try {
         const out = execSync(command, {
-          cwd: "/workspace",
+          cwd: WORKSPACE,
           shell: "/bin/bash",
           timeout: 180_000,
           maxBuffer: 8 * 1024 * 1024,
@@ -455,16 +481,15 @@ const tools = {
   }),
 
   create_file: tool({
-    description: "Write a text file (markdown, code, html, csv, json, …) into the sandbox. Use a path under /workspace/out for deliverables.",
+    description: `Write a text file (markdown, code, html, csv, json, …) into the sandbox. Use a path under ${WORKSPACE}/out for deliverables.`,
     inputSchema: z.object({
-      path: z.string().describe("path relative to /workspace, e.g. out/report.md"),
+      path: z.string().describe("path relative to the workspace, e.g. out/report.md"),
       content: z.string().describe("full file contents"),
     }),
     execute: async ({ path: rel, content }) => {
       const { writeFileSync, mkdirSync } = await import("node:fs");
-      const rel0 = (rel || "").replace(/^\/+/, "");
-      const target = rel0 === "workspace" || rel0.startsWith("workspace/") ? `/${rel0}` : `/workspace/${rel0}`;
-      mkdirSync(target.slice(0, target.lastIndexOf("/")) || "/", { recursive: true });
+      const target = workspacePath(rel);
+      mkdirSync(target.slice(0, target.lastIndexOf(path.sep)) || WORKSPACE, { recursive: true });
       writeFileSync(target, content, "utf8");
       report({ type: "file", message: `Saved ${target}` });
       return { path: target, message: `Saved ${target}` };
@@ -487,7 +512,7 @@ const tools = {
       ),
     }),
     execute: async ({ filename, title, subtitle, sections }) => {
-      const outPath = `/workspace/out/${filename}`;
+      const outPath = path.join(WORKSPACE, "out", filename);
       await makePdf({ title, subtitle, sections }, outPath);
       report({ type: "file", message: `PDF created: ${outPath}` });
       return { path: outPath, message: `PDF created: ${outPath}` };
@@ -507,7 +532,7 @@ const tools = {
       ),
     }),
     execute: async ({ filename, sheets }) => {
-      const outPath = `/workspace/out/${filename}`;
+      const outPath = path.join(WORKSPACE, "out", filename);
       await makeXlsx(sheets, outPath);
       report({ type: "file", message: `XLSX created: ${outPath}` });
       return { path: outPath, message: `XLSX created: ${outPath}` };
@@ -522,7 +547,7 @@ const tools = {
       paragraphs: z.array(z.string()),
     }),
     execute: async ({ filename, title, paragraphs }) => {
-      const outPath = `/workspace/out/${filename}`;
+      const outPath = path.join(WORKSPACE, "out", filename);
       await makeDocx({ title, paragraphs }, outPath);
       report({ type: "file", message: `DOCX created: ${outPath}` });
       return { path: outPath, message: `DOCX created: ${outPath}` };
@@ -536,7 +561,7 @@ const tools = {
       rows: z.array(z.array(z.string())),
     }),
     execute: async ({ filename, rows }) => {
-      const outPath = `/workspace/out/${filename}`;
+      const outPath = path.join(WORKSPACE, "out", filename);
       await makeCsv(rows, outPath);
       report({ type: "file", message: `CSV created: ${outPath}` });
       return { path: outPath, message: `CSV created: ${outPath}` };
@@ -545,11 +570,11 @@ const tools = {
 };
 
 
-const BASE_SYSTEM = `You are Omnia Agent — an autonomous worker inside an isolated Docker sandbox on the user's machine.
+const BASE_SYSTEM = `You are Omnia Agent — an autonomous worker inside an isolated sandbox on the user's machine.
 
 Environment:
-- Working directory: /workspace
-- Save deliverables to /workspace/out (PDF, DOCX, XLSX, CSV, Markdown, HTML, images…).
+- Working directory: ${WORKSPACE}
+- Save deliverables to ${path.join(WORKSPACE, "out")} (PDF, DOCX, XLSX, CSV, Markdown, HTML, images…).
 - You have a live Chromium browser for web research (navigate, click, type, screenshot).
 - You have a full shell (exec_command) and file generation tools.
 
@@ -559,10 +584,10 @@ Working style:
 1. Break the task into concrete steps and execute them one by one.
 2. For research: use web_search first, then open promising pages with browser_navigate and read them.
 3. Produce polished, complete deliverables. A good report is detailed, well-structured, and accurate.
-4. After producing files, briefly summarize what you did and exactly which files you created under /workspace/out.
+4. After producing files, briefly summarize what you did and exactly which files you created under ${path.join(WORKSPACE, "out")}.
 5. Never claim you did something you didn't. If you can't finish, say so clearly.`;
 
-const RESEARCH_SYSTEM = `You are Omnia Research — a deep-web-research agent with a live Chromium browser inside an isolated Docker sandbox.
+const RESEARCH_SYSTEM = `You are Omnia Research — a deep-web-research agent with a live Chromium browser inside an isolated sandbox.
 
 This task is RESEARCH. Answering from search snippets or from memory is NOT acceptable — you must actually open and read multiple web pages in the browser, like a careful human would.
 
@@ -629,12 +654,12 @@ function noteSearch(query, results, opened) {
 }
 
 
-async function runToolLoop(model) {
+async function runToolLoop(modelObj) {
   report({ type: "status", value: "ready" });
   report({ type: "log", message: `Starting tool loop with ${provider}/${model}` });
 
   const result = await generateText({
-    model,
+    model: modelObj,
     system: SYSTEM,
     prompt: TASK,
     tools,
@@ -868,7 +893,7 @@ async function runAgentSdkEngine(model) {
     options: {
       model,
       maxTurns: 40,
-      cwd: "/workspace",
+      cwd: WORKSPACE,
       includePartialMessages: true,
       allowedTools: ["Bash", "Read", "Edit", "Write", "Glob", "Grep", "WebFetch", "WebSearch", "TodoWrite"],
     },
@@ -1020,8 +1045,8 @@ async function synthesizeBriefing(modelObj, gemRaw) {
 
 async function saveBriefing(markdown) {
   const { mkdirSync, writeFileSync } = await import("node:fs");
-  mkdirSync("/workspace/out", { recursive: true });
-  const outPath = "/workspace/out/briefing.md";
+  mkdirSync(path.join(WORKSPACE, "out"), { recursive: true });
+  const outPath = path.join(WORKSPACE, "out", "briefing.md");
   let md = String(markdown || "").trim();
   if (!md) {
     report({ type: "log", message: "Synthesis empty — writing raw evidence dump instead" });

@@ -187,7 +187,7 @@ function AgentTaskCard({
         className="flex w-full items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-bg-hover"
       >
         <span className="brand-tile relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-bg-surface-200">
-          <BrandIcon name="docker" size={17} fallback={<SquareTerminal size={15} />} />
+          <BrandIcon name="bash" size={17} fallback={<SquareTerminal size={15} />} />
           {streaming && <span className="live-dot absolute -right-0.5 -top-0.5 !h-2 !w-2" />}
         </span>
         <span className="min-w-0 flex-1 text-left">
@@ -195,7 +195,7 @@ function AgentTaskCard({
             {args?.task?.slice(0, 90) || "Agent task"}
           </span>
           <span className="flex items-center gap-1.5 text-[11.5px] text-fg-muted">
-            <span className="eyebrow !text-[10px]">Docker sandbox</span>
+            <span className="eyebrow !text-[10px]">Sandbox</span>
             <span className="text-fg-faint">·</span>
             <span className={streaming ? "text-shine" : ""}>{status}</span>
             {status === "done" && files.length > 0 ? <span>· {files.length} file(s)</span> : null}

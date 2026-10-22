@@ -146,13 +146,13 @@ function buildRunAgentTaskTool(opts: {
   const provider = opts.provider || "anthropic";
   const model = opts.model || "claude-sonnet-5";
   return tool({
-    description: `Run a task in an isolated Docker sandbox (an "agent"). Use for generating PDF/DOCX/XLSX/CSV/markdown deliverables, running and testing multi-file code, deep web research with a live Chromium browser, scraping, batch file work, or anything that needs a shell + filesystem. The agent runs autonomously on the current conversation model (${provider}/${model}) and its output files are saved to /workspace/out and become viewable/downloadable files in the chat. For deep research on current topics set research: true so the agent actually opens and reads web pages in a live browser — it must still produce files.`,
+    description: `Run a task in an isolated local sandbox (an "agent"). Use for generating PDF/DOCX/XLSX/CSV/markdown deliverables, running and testing multi-file code, deep web research with a live Chromium browser, scraping, batch file work, or anything that needs a shell + filesystem. The agent runs autonomously on the current conversation model (${provider}/${model}) inside a bubblewrap-confined workspace and its output files are saved to the workspace's out/ directory and become viewable/downloadable files in the chat. For deep research on current topics set research: true so the agent actually opens and reads web pages in a live browser — it must still produce files.`,
     inputSchema: z.object({
-      task: z.string().describe("Precise instructions for the agent. Be specific about the deliverable, format, and where files should be saved (/workspace/out)."),
+      task: z.string().describe("Precise instructions for the agent. Be specific about the deliverable, format, and where files should be saved (out/)."),
       research: z
         .boolean()
         .default(false)
-        .describe("If true the agent browses the web in a live Chromium browser (web_search then open & read the actual pages), cross-checks sources, and saves a cited briefing to /workspace/out. Set true for research on current/unfamiliar topics; leave false for pure file/code generation."),
+        .describe("If true the agent browses the web in a live Chromium browser (web_search then open & read the actual pages), cross-checks sources, and saves a cited briefing to out/. Set true for research on current/unfamiliar topics; leave false for pure file/code generation."),
       wait: z
         .boolean()
         .default(true)
@@ -172,7 +172,7 @@ function buildRunAgentTaskTool(opts: {
       if (!wait) {
         return {
           agentId: agent.id,
-          message: `Agent ${agent.id} launched in a Docker sandbox. Track it in the Agents panel.`,
+          message: `Agent ${agent.id} launched in a local sandbox. Track it in the Agents panel.`,
         };
       }
 

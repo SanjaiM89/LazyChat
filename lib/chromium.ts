@@ -1,7 +1,7 @@
 import "server-only";
 
 import { readScoped, writeScoped } from "@/lib/store";
-import { createSandbox, listSandboxes, sandboxExec } from "@/lib/sandbox";
+import { createSandbox, listSandboxes, sandboxStartBrowser } from "@/lib/sandbox";
 
 
 const DAEMON_URL = process.env.CHROMIUM_DAEMON_URL || "http://127.0.0.1:18787";
@@ -144,18 +144,14 @@ export async function ensureChromium(): Promise<{ sandboxId: string; fresh: bool
     await writeScoped(SESSION_FILE, { sandboxId });
   }
   const target: string = sandboxId;
-  await sandboxExec(
-    target,
-    "pkill -f browser-daemon.mjs 2>/dev/null; nohup node /app/browser-daemon.mjs > /tmp/browser-daemon.log 2>&1 & sleep 1; echo started",
-    { timeout: 30_000 },
-  ).catch((e) => {
-    throw new Error(`Chromium container not reachable: ${e.message}`);
+  await sandboxStartBrowser(target).catch((e) => {
+    throw new Error(`Chromium sandbox not reachable: ${e.message}`);
   });
   const deadline = Date.now() + 45_000;
   for (;;) {
     if (await daemonReady()) return { sandboxId: target, fresh: true };
     if (Date.now() > deadline) {
-      throw new Error("Chromium daemon did not start (rebuild the image: npm run sandbox:build).");
+      throw new Error("Chromium daemon did not start (install Playwright Chromium, or check the sandbox log).");
     }
     await new Promise((r) => setTimeout(r, 1500));
   }

@@ -495,6 +495,38 @@ endpoint mapping and captures a real request to check the wire body.
 
 ---
 
+## Agent sandbox (dsh process confinement)
+
+DeepSeek Harness does not run shell or agent work in Docker or a VM. Its
+`@deepseek-ai/dsh-sandbox-local` service confines the exact child argv to a
+file-effect policy using the host kernel: **bubblewrap** on Linux
+(`--ro-bind / / --dev /dev --unshare-pid --proc /proc --die-with-parent
+--tmpfs /tmp --bind <workspace> <workspace>`), **Seatbelt** on macOS, with
+Landlock as the Linux fallback. There is no container image layer, no daemon,
+and no remote provider.
+
+Omnia's `sandbox/server.mjs` applies the same `workspace-write` profile to the
+agent runner and to every `sandboxExec` shell command. The workspace lives under
+`data/sandboxes/<id>/workspace`; the historical `/workspace` spelling in tool
+prompts is mapped to that directory, so the runner and its file tools stay
+portable. The service starts lazily on first use (or via `npm run sandbox`) and
+**fails closed** with `SANDBOX_UNAVAILABLE` when no confinement backend is
+usable. The runner is an ordinary child process, not a container, so it can use
+the host's existing Playwright/Chromium installation and cache.
+
+Network access is deliberately shared with the host, matching dsh's
+same-world model; the policy governs file effects, not connectivity. Docker
+remains optional and is only used by the FalkorDB dev container; it is
+unrelated to agent execution. In `workspace-write` mode the workspace and a
+private `/tmp` are writable while the rest of the host filesystem is
+read-only. `BWRAP_BIN`,
+`OMNIA_SANDBOX_AUTOSTART=0`, `SANDBOX_URL`, and `SANDBOX_SECRET` are documented
+in `.env.example`. On Linux install `bubblewrap` (`sudo apt install bubblewrap`).
+Browser research additionally needs Playwright Chromium (`npx playwright install
+chromium`); the sandbox reuses the host browser cache.
+
+---
+
 ## Sidebar: Chats and Workspaces
 
 The two are separate lists, not one mixed feed, because they are different

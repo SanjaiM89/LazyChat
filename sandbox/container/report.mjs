@@ -1,5 +1,10 @@
 const HOST = process.env.SANDBOX_HOST || "http://127.0.0.1:8787";
 const ID = process.env.SANDBOX_ID || "local";
+const SECRET = process.env.SANDBOX_SECRET || "";
+const headers = {
+  "content-type": "application/json",
+  ...(SECRET ? { "x-sandbox-secret": SECRET } : {}),
+};
 
 let queue = [];
 let timer = null;
@@ -29,7 +34,7 @@ export async function flush() {
   try {
     await fetch(`${HOST}/agent-events/${ID}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ events: batch }),
       keepalive: true,
     });
@@ -46,7 +51,7 @@ async function sendScreenshot(image) {
   try {
     await fetch(`${HOST}/agent-events/${ID}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ events: [{ type: "screenshot", image }] }),
       keepalive: true,
     });
@@ -58,7 +63,7 @@ process.on("exit", () => {
   if (queue.length) {
     fetch(`${HOST}/agent-events/${ID}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ events: queue }),
       keepalive: true,
     }).catch(() => {});

@@ -82,7 +82,7 @@ export function AgentsPanel() {
         <SpawnAgent />
         {agents.length === 0 && (
           <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-6 text-center text-[13px] text-fg-muted animate-fade-in-up">
-            <BrandIcon name="docker" size={22} />
+            <BrandIcon name="bash" size={22} />
             No agents yet. Ask the model to run a task, or spawn one above.
           </div>
         )}

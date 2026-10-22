@@ -9,7 +9,6 @@
     "lint": "eslint",
     "sandbox:up": "node scripts/sandbox-up.mjs",
     "sandbox": "node sandbox/server.mjs",
-    "sandbox:build": "docker build -t omnia-sandbox:latest sandbox/container",
     "test:brain": "tsx --env-file-if-exists=.env.local --test tests/brain/intent.test.ts && tsx --env-file-if-exists=.env.local --test tests/brain/actions.test.ts && tsx --env-file-if-exists=.env.local --test tests/brain/capture.test.ts && tsx --env-file-if-exists=.env.local --test tests/brain/timeout.test.ts && tsx --env-file-if-exists=.env.local --test tests/dsh/memory.test.ts && tsx --env-file-if-exists=.env.local --test tests/dsh/workspace-tools.test.ts && tsx --env-file-if-exists=.env.local --test tests/dsh/capture.test.ts",
     "test:ui": "tsx --test tests/ui/tool-view.test.ts && tsx --test tests/ui/ask-user.test.ts",
     "seed:admin": "node scripts/seed-super-admin.mjs",
@@ -19,7 +18,8 @@
     "prepare:prefab": "node scripts/copy-prefab.mjs",
     "genui:catalog": "node scripts/build-prefab-catalog.mjs",
     "postinstall": "node scripts/copy-prefab.mjs",
-    "test:e2e:genui": "tsx scripts/e2e-prefab.mjs"
+    "test:e2e:genui": "tsx scripts/e2e-prefab.mjs",
+    "test:sandbox": "tsx --test tests/unit/sandbox-local.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.48",
@@ -27,7 +27,6 @@
     "@ai-sdk/openai": "^4.0.56",
     "@ai-sdk/openai-compatible": "^3.0.43",
     "@ai-sdk/react": "^4.0.93",
-    "@codesandbox/sdk": "^2.4.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@prefecthq/prefab-ui": "0.20.2",
     "@types/ws": "^8.18.1",
@@ -37,6 +36,7 @@
     "docx": "^9.12.0",
     "docx-preview": "^0.4.0",
     "duck-duck-scrape": "^2.2.7",
+    "exceljs": "^4.4.0",
     "falkordb": "^6.8.0",
     "firebase": "^13.0.0",
     "jose": "^6.2.12",
@@ -47,6 +47,8 @@
     "next": "16.3.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.3.289",
+    "pdfkit": "^0.15.2",
+    "playwright": "^1.64.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-force-graph-2d": "^1.29.2",

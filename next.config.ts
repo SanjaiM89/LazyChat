@@ -20,6 +20,7 @@ const vendoredTrees: Array<string | RegExp> = [
   /[\\/]\.bun[\\/]/, // bun install cache
   /[\\/]\.npm[\\/]/, // npm cache (cacache)
   /[\\/]compositions[\\/]/, // HTML compositions, not part of the Next.js build
+  /[\\/]sandbox[\\/]container[\\/]node_modules[\\/]/, // self-contained agent runner deps
 ];
 
 /** Same as `vendoredTrees`, plus the nested `node_modules` inside them. */
