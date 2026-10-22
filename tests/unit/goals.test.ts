@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 
 import {
   DEFAULT_MAX_GOAL_ROUNDS,
+  admitGoalRound,
   canStartGoalRound,
   createGoalRecord,
   goalWire,
@@ -163,6 +164,35 @@ describe("round admission", () => {
       canStartGoalRound({ ...goal, roundsStarted: goal.maxGoalRounds }, "armed"),
       false,
     );
+  });
+
+  it("admits a round, consuming one and bumping the revision", () => {
+    const admission = admitGoalRound(base(), "armed", 2_000);
+    assert.equal(admission.kind, "start");
+    if (admission.kind !== "start") return;
+    assert.equal(admission.round, 1);
+    assert.equal(admission.goal.roundsStarted, 1);
+    assert.equal(admission.goal.revision, 2);
+    assert.equal(admission.goal.updatedAt, 2_000);
+  });
+
+  it("refuses a disarmed or paused goal", () => {
+    assert.equal(admitGoalRound(base(), "disarmed").kind, "none");
+    assert.equal(admitGoalRound({ ...base(), phase: "paused" }, "armed").kind, "none");
+    assert.equal(admitGoalRound({ ...base(), phase: "complete" }, "armed").kind, "none");
+  });
+
+  it("records GOAL_ROUNDS_EXHAUSTED at the cap", () => {
+    const goal = { ...base(), roundsStarted: 4, maxGoalRounds: 4 };
+    const admission = admitGoalRound(goal, "armed");
+    assert.equal(admission.kind, "exhausted");
+    if (admission.kind !== "exhausted") return;
+    assert.equal(admission.goal.phase, "blocked");
+    assert.deepEqual(admission.goal.blockedReason, {
+      code: "GOAL_ROUNDS_EXHAUSTED",
+      message: 'goal "goal-1" exhausted 4 goal rounds',
+    });
+    assert.equal(admission.goal.revision, 2);
   });
 
   it("renders the retained <goal_round> prompt", () => {

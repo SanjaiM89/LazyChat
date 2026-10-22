@@ -6,7 +6,7 @@ import { nanoid } from "nanoid";
 
 import { readJSON, writeJSON } from "@/lib/store";
 import {
-  canStartGoalRound,
+  admitGoalRound,
   createGoalRecord,
   DEFAULT_MAX_GOAL_ROUNDS,
   goalWire,
@@ -227,36 +227,21 @@ export async function startGoalRound(conversationId: string): Promise<{
   if (index === undefined) return null;
 
   const current = goals[index];
-  if (current.phase !== "active" || activationOf(conversationId) !== "armed") {
-    return null;
-  }
-  if (current.roundsStarted >= current.maxGoalRounds) {
-    goals[index] = {
-      ...current,
-      phase: "blocked",
-      revision: current.revision + 1,
-      blockedReason: {
-        code: "GOAL_ROUNDS_EXHAUSTED",
-        message: `goal "${current.id}" exhausted ${current.maxGoalRounds} goal rounds`,
-      },
-      updatedAt: Date.now(),
-    };
+  const admission = admitGoalRound(current, activationOf(conversationId));
+  if (admission.kind === "none") return null;
+  if (admission.kind === "exhausted") {
+    goals[index] = admission.goal;
     await saveGoals(goals);
     disarm(conversationId);
     return null;
   }
-  if (!canStartGoalRound(current, activationOf(conversationId))) return null;
-
-  const round = current.roundsStarted + 1;
-  const next: GoalRecord = {
-    ...current,
-    roundsStarted: round,
-    revision: current.revision + 1,
-    updatedAt: Date.now(),
-  };
-  goals[index] = next;
+  goals[index] = admission.goal;
   await saveGoals(goals);
-  return { goal: next, round, prompt: renderGoalRoundPrompt(next, round) };
+  return {
+    goal: admission.goal,
+    round: admission.round,
+    prompt: renderGoalRoundPrompt(admission.goal, admission.round),
+  };
 }
 
 /** Re-arm an active goal after a human asks to continue (dsh resume semantics). */

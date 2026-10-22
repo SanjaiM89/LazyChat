@@ -257,6 +257,52 @@ export function canStartGoalRound(
   );
 }
 
+/** Result of asking the domain whether this idle session earns another round. */
+export type GoalRoundAdmission =
+  | { kind: "none" }
+  | { kind: "start"; goal: GoalRecord; round: number }
+  | { kind: "exhausted"; goal: GoalRecord };
+
+/**
+ * Admit (or refuse) the next goal round.
+ *
+ * A start consumes one round and bumps the revision; exhaustion records the
+ * same blocker dsh's driver writes and leaves the goal blocked. `none` covers
+ * disarmed, paused, completed, and blocked goals.
+ */
+export function admitGoalRound(
+  goal: GoalRecord,
+  activation: GoalActivation,
+  now = Date.now(),
+): GoalRoundAdmission {
+  if (goal.phase !== "active" || activation !== "armed") return { kind: "none" };
+  if (goal.roundsStarted >= goal.maxGoalRounds) {
+    return {
+      kind: "exhausted",
+      goal: {
+        ...goal,
+        phase: "blocked",
+        revision: goal.revision + 1,
+        blockedReason: {
+          code: "GOAL_ROUNDS_EXHAUSTED",
+          message: `goal "${goal.id}" exhausted ${goal.maxGoalRounds} goal rounds`,
+        },
+        updatedAt: now,
+      },
+    };
+  }
+  return {
+    kind: "start",
+    round: goal.roundsStarted + 1,
+    goal: {
+      ...goal,
+      roundsStarted: goal.roundsStarted + 1,
+      revision: goal.revision + 1,
+      updatedAt: now,
+    },
+  };
+}
+
 /** Whether a user message is the driver's retained continuation prompt. */
 export function isGoalRoundPrompt(text: string): boolean {
   const trimmed = text.trim();

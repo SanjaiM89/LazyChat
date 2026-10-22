@@ -617,7 +617,7 @@ renders the plan inline with the two actions.
 ```bash
 npm run test:brain   # 55 passed (intent, actions, memory, dsh capture; live graph)
 npm run test:ui      # 23 passed (ANSI parsing, height cap, terminal derivation, run clock)
-npm run test:agents  # 36 passed (todo list, goal CAS/rounds, plan review)
+npm run test:agents  # 39 passed (todo list, goal CAS/rounds, plan review)
 ```
 
 | File | Covers |
