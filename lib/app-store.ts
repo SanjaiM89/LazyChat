@@ -109,7 +109,7 @@ interface AppStore {
       baseUrl: string;
       apiKey?: string;
       apiKeyEnv?: string;
-      protocol?: "openai" | "anthropic" | "gemini";
+      protocol?: "openai" | "anthropic" | "gemini" | "deepseek";
       models: { id: string; name?: string; supportsThinking?: boolean }[];
     },
   ) => Promise<PublicCustomProvider>;

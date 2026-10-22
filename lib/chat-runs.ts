@@ -21,6 +21,8 @@ import {
 } from "@/lib/types";
 import { buildLanguageModel, thinkingProviderOptions } from "@/lib/providers";
 import { getOpencodeTransport } from "@/lib/models";
+import { getCustomProvider, isDeepSeekProvider } from "@/lib/custom-providers";
+import { DEEPSEEK_DEFAULT_MAX_TOKENS } from "@/lib/deepseek";
 import { enabledTools } from "@/lib/tools";
 import { cancelRunQuestions, forgetRun } from "@/lib/ask-user";
 import { buildMCPToolSet } from "@/lib/mcp";
@@ -432,15 +434,21 @@ async function pump(run: ChatRunRecord) {
     const systemWithMemory = remembered ? system + remembered : system;
 
     const useThinking = settings.thinking;
+    // Custom providers can shadow builtins, so resolve the definition even for
+    // builtin-looking ids. DeepSeek providers speak the harness's Messages API.
+    const customProvider = await getCustomProvider(settings.provider);
+    const deepseek = !!customProvider && isDeepSeekProvider(customProvider);
     const providerOptions = thinkingProviderOptions(
       settings.provider,
       settings.model,
       useThinking,
+      deepseek,
     );
     const anthropicThinking =
       settings.provider === "anthropic" ||
       (settings.provider === "opencode" &&
-        getOpencodeTransport(settings.model) === "anthropic");
+        getOpencodeTransport(settings.model) === "anthropic") ||
+      deepseek;
     const temperature =
       useThinking && anthropicThinking
         ? undefined
@@ -456,6 +464,8 @@ async function pump(run: ChatRunRecord) {
       tools,
       stopWhen: isStepCount(settings.maxSteps ?? 14),
       temperature,
+      // dsh's DeepSeek default per-request output cap.
+      ...(deepseek ? { maxOutputTokens: DEEPSEEK_DEFAULT_MAX_TOKENS } : {}),
       providerOptions: providerOptions as any,
       abortSignal: run.abort.signal,
     });

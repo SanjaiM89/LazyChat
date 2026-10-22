@@ -6,7 +6,11 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 import type { LanguageModel } from "ai";
-import type { BuiltinProviderId, ProviderId } from "@/lib/types";
+import type {
+  BuiltinProviderId,
+  CustomProviderDef,
+  ProviderId,
+} from "@/lib/types";
 import {
   PROVIDERS,
   getDefaultModel,
@@ -14,7 +18,12 @@ import {
   isBuiltinProvider,
 } from "@/lib/models";
 import { resolveBuiltinKey } from "@/lib/provider-keys";
-import { getCustomProvider, resolveApiKey } from "@/lib/custom-providers";
+import {
+  getCustomProvider,
+  isDeepSeekProvider,
+  resolveApiKey,
+} from "@/lib/custom-providers";
+import { createDeepSeekMessages } from "@/lib/deepseek";
 
 
 export { PROVIDERS, getDefaultModel, isBuiltinProvider };
@@ -38,6 +47,69 @@ export async function hasProviderKey(provider: ProviderId): Promise<boolean> {
   return false;
 }
 
+/**
+ * Build a model for a custom provider. DeepSeek gets the harness-compatible
+ * Messages transport; Gemini/Anthropic keep their native protocols and
+ * everything else stays OpenAI-compatible.
+ */
+async function buildCustomModel(
+  custom: CustomProviderDef,
+  model: string,
+  opts: BuildModelOptions,
+): Promise<LanguageModel> {
+  const rawBase = (opts.baseUrl || custom.baseUrl || "").trim();
+  const cleanBase = rawBase.replace(/\/+$/, "");
+
+  if (isDeepSeekProvider(custom)) {
+    const apiKey = opts.apiKey || resolveApiKey(custom);
+    if (!apiKey) {
+      throw new Error(
+        `DeepSeek is not configured. Set an API key on the provider (or ${custom.apiKeyEnv || "DEEPSEEK_API_KEY"} env).`,
+      );
+    }
+    return createDeepSeekMessages({
+      name: custom.id,
+      apiKey,
+      baseUrl: rawBase,
+    })(model);
+  }
+
+  if (custom.protocol === "gemini") {
+    const apiKey = opts.apiKey || resolveApiKey(custom);
+    if (!apiKey) {
+      throw new Error(
+        `Gemini is not configured. Set an API key on the provider (or ${custom.apiKeyEnv || "GOOGLE_GENERATIVE_AI_API_KEY"} env).`,
+      );
+    }
+    const baseURL = cleanBase.replace(/\/interactions$/i, "");
+    const client = createGoogleGenerativeAI({
+      name: custom.id,
+      baseURL: baseURL || undefined,
+      apiKey,
+    });
+    return client.interactions(model);
+  }
+
+  const apiKey = opts.apiKey || resolveApiKey(custom) || "custom";
+
+  if (custom.protocol === "anthropic") {
+    const baseURL = /\/v1$/i.test(cleanBase) ? cleanBase : `${cleanBase}/v1`;
+    const client = createAnthropic({
+      name: custom.id,
+      baseURL,
+      apiKey,
+    });
+    return client(model);
+  }
+
+  const client = createOpenAICompatible({
+    name: custom.id,
+    baseURL: rawBase,
+    apiKey,
+  });
+  return client(model);
+}
+
 export async function buildLanguageModel(opts: BuildModelOptions): Promise<LanguageModel> {
   const { provider, model } = opts;
 
@@ -45,85 +117,13 @@ export async function buildLanguageModel(opts: BuildModelOptions): Promise<Langu
   // re-added "google" with their own key/base URL). Prefer the custom one.
   const customShadow = await getCustomProvider(provider);
   if (customShadow) {
-    if (customShadow.protocol === "gemini") {
-      const apiKey = opts.apiKey || resolveApiKey(customShadow);
-      if (!apiKey) {
-        throw new Error(
-          `Gemini is not configured. Set an API key on the provider (or ${customShadow.apiKeyEnv || "GOOGLE_GENERATIVE_AI_API_KEY"} env).`,
-        );
-      }
-      const raw = (opts.baseUrl || customShadow.baseUrl || "")
-        .trim()
-        .replace(/\/+$/, "");
-      const baseURL = raw.replace(/\/interactions$/i, "");
-      const client = createGoogleGenerativeAI({
-        name: customShadow.id,
-        baseURL: baseURL || undefined,
-        apiKey,
-      });
-      return client.interactions(model);
-    }
-    const apiKey = opts.apiKey || resolveApiKey(customShadow) || "custom";
-    if (customShadow.protocol === "anthropic") {
-      const raw = (opts.baseUrl || customShadow.baseUrl).replace(/\/+$/, "");
-      const baseURL = /\/v1$/i.test(raw) ? raw : `${raw}/v1`;
-      const client = createAnthropic({
-        name: customShadow.id,
-        baseURL,
-        apiKey,
-      });
-      return client(model);
-    }
-    const client = createOpenAICompatible({
-      name: customShadow.id,
-      baseURL: opts.baseUrl || customShadow.baseUrl,
-      apiKey,
-    });
-    return client(model);
+    return buildCustomModel(customShadow, model, opts);
   }
 
   if (!isBuiltinProvider(provider)) {
     const custom = await getCustomProvider(provider);
     if (!custom) throw new Error(`Unknown provider: ${provider}`);
-
-    if (custom.protocol === "gemini") {
-      const apiKey = opts.apiKey || resolveApiKey(custom);
-      if (!apiKey) {
-        throw new Error(
-          `Gemini is not configured. Set an API key on the provider (or ${custom.apiKeyEnv || "GOOGLE_GENERATIVE_AI_API_KEY"} env).`,
-        );
-      }
-      const raw = (opts.baseUrl || custom.baseUrl || "")
-        .trim()
-        .replace(/\/+$/, "");
-      const baseURL = raw.replace(/\/interactions$/i, "");
-      const client = createGoogleGenerativeAI({
-        name: custom.id,
-        baseURL: baseURL || undefined,
-        apiKey,
-      });
-      return client.interactions(model);
-    }
-
-    const apiKey = opts.apiKey || resolveApiKey(custom) || "custom";
-
-    if (custom.protocol === "anthropic") {
-      const raw = (opts.baseUrl || custom.baseUrl).replace(/\/+$/, "");
-      const baseURL = /\/v1$/i.test(raw) ? raw : `${raw}/v1`;
-      const client = createAnthropic({
-        name: custom.id,
-        baseURL,
-        apiKey,
-      });
-      return client(model);
-    }
-
-    const client = createOpenAICompatible({
-      name: custom.id,
-      baseURL: opts.baseUrl || custom.baseUrl,
-      apiKey,
-    });
-    return client(model);
+    return buildCustomModel(custom, model, opts);
   }
 
   const cfg = PROVIDERS[provider];
@@ -237,7 +237,20 @@ export function thinkingProviderOptions(
   provider: ProviderId,
   model: string,
   enabled: boolean,
+  deepseek = false,
 ): Record<string, unknown> | undefined {
+  if (deepseek) {
+    // dsh's default reasoningEffort is "high"; `thinking` is always declared on
+    // the wire (the transport adds {type:"disabled"} when this is off).
+    return enabled
+      ? {
+          anthropic: {
+            thinking: { type: "enabled", budgetTokens: 0 },
+            effort: "high",
+          },
+        }
+      : undefined;
+  }
   if (!enabled) return undefined;
   if (provider === "opencode") {
     const transport = getOpencodeTransport(model);

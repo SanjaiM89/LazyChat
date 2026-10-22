@@ -43,7 +43,7 @@ export interface CustomModelDef {
   supportsThinking?: boolean;
 }
 
-export type ProviderProtocol = "openai" | "anthropic" | "gemini";
+export type ProviderProtocol = "openai" | "anthropic" | "gemini" | "deepseek";
 
 export interface CustomProviderDef {
   id: string;

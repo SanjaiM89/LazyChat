@@ -474,6 +474,25 @@ that repaints once a second from the run's own `startedAt`. A visually-hidden
 `role="status"` region carries the state for screen readers, so the ticking
 label is never announced tick by tick.
 
+### DeepSeek model calls
+
+DeepSeek providers talk to the same Messages API the harness uses. A custom
+provider whose base URL is on `api.deepseek.com` — or whose API format is set to
+**DeepSeek Messages** — is served by `lib/deepseek.ts`, which points the AI SDK
+at `POST /anthropic/v1/messages` and normalizes the request to dsh's wire shape:
+`x-api-key`, `anthropic-version: 2023-06-01`, `accept: text/event-stream`, a
+top-level `system`, `thinking` declared on every request (with
+`output_config.effort: "high"` when on), `max_tokens` defaulting to 256k, and
+tools as `{ name, description, input_schema }`. Anthropic-only extras the SDK
+adds for Claude (eager tool streaming, `tool_choice`, betas, cache control) are
+dropped. Streaming, tool calls and usage still flow through the SDK, so one
+reshaped request keeps the model on the same path as everything else.
+
+What is deliberately **not** copied: dsh's harness attribution (`user-agent`,
+`x-deepseek-harness-user-id`, session/compaction headers). Omnia identifies as
+Omnia; the protocol, auth and body are what match. `npm run test:llm` pins the
+endpoint mapping and captures a real request to check the wire body.
+
 ---
 
 ## Sidebar: Chats and Workspaces

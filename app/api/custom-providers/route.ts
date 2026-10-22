@@ -86,7 +86,9 @@ async function POST_impl(req: NextRequest) {
       : undefined,
     baseUrl,
     protocol:
-      body.protocol === "anthropic" || body.protocol === "gemini"
+      body.protocol === "anthropic" ||
+      body.protocol === "gemini" ||
+      body.protocol === "deepseek"
         ? body.protocol
         : "openai",
     apiKey,

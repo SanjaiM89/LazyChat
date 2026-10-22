@@ -12,12 +12,32 @@ import type {
 } from "@/lib/types";
 import { readScoped, writeScoped } from "@/lib/store";
 import { PROVIDERS } from "@/lib/models";
+import { isDeepSeekBaseUrl } from "@/lib/deepseek";
 
 
 const FILE = "custom-providers.json";
 
 function normProtocol(p: unknown): ProviderProtocol {
-  return p === "anthropic" || p === "gemini" ? p : "openai";
+  return p === "anthropic" || p === "gemini" || p === "deepseek"
+    ? p
+    : "openai";
+}
+
+/**
+ * A custom provider that should speak DeepSeek's Messages API.
+ *
+ * Explicit `protocol: "deepseek"` always wins. We also lift providers pointed
+ * at the official api.deepseek.com host onto the Messages transport, so a
+ * provider created as if it were OpenAI-compatible (/chat/completions) starts
+ * making the same calls the harness makes.
+ */
+export function isDeepSeekProvider(def: {
+  protocol?: ProviderProtocol;
+  baseUrl?: string;
+}): boolean {
+  if (def.protocol === "deepseek") return true;
+  if (def.protocol === "gemini") return false;
+  return isDeepSeekBaseUrl(def.baseUrl);
 }
 
 function isDef(x: unknown): x is CustomProviderDef {
@@ -85,7 +105,14 @@ export function uniqueProviderId(desired?: string): string {
 
 export function resolveApiKey(def: CustomProviderDef): string | undefined {
   if (def.apiKey) return def.apiKey;
-  if (def.apiKeyEnv) return process.env[def.apiKeyEnv] || undefined;
+  if (def.apiKeyEnv) {
+    const fromEnv = process.env[def.apiKeyEnv];
+    if (fromEnv) return fromEnv;
+  }
+  // Convenience fallback for providers pointed at the official DeepSeek API.
+  if (isDeepSeekProvider(def) && process.env.DEEPSEEK_API_KEY) {
+    return process.env.DEEPSEEK_API_KEY;
+  }
   return undefined;
 }
 

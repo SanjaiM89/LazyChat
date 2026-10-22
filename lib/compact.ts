@@ -11,10 +11,12 @@ import "server-only";
  * - Manual `/compact`-style path: force flag condenses regardless of pressure.
  * - Overflow recovery: callers that catch a context-window error can force.
  */
-import { generateText, type UIMessage } from "ai";
+import { streamText, type UIMessage } from "ai";
 
 import { findModel } from "@/lib/models";
 import { buildLanguageModel } from "@/lib/providers";
+import { getCustomProvider, isDeepSeekProvider } from "@/lib/custom-providers";
+import { DEEPSEEK_DEFAULT_MAX_TOKENS } from "@/lib/deepseek";
 import { getConversation, saveConversation } from "@/lib/store";
 
 export const COMPACT_THRESHOLD = 0.8;
@@ -86,14 +88,20 @@ export async function compactConversation(
   if (head.length === 0) return { compacted: false, reason: "no condensable prefix" };
 
   const model = await buildLanguageModel({ provider: conv.provider as never, model: conv.model });
-  const { text: summary } = await generateText({
+  // DeepSeek compaction goes through the same streaming Messages transport the
+  // harness uses; everything else keeps the existing summarization call.
+  const custom = await getCustomProvider(conv.provider);
+  const deepseek = !!custom && isDeepSeekProvider(custom);
+  const condensed = streamText({
     model,
     system:
       "Summarize this conversation prefix for continuation. Keep: user goals and decisions, " +
       "facts established, code/file state, todos and next steps, error fixes. Drop: greetings, " +
       "aborted attempts, verbatim tool output. Be dense — this replaces the originals.",
     prompt: headText(head),
+    ...(deepseek ? { maxOutputTokens: DEEPSEEK_DEFAULT_MAX_TOKENS } : {}),
   });
+  const summary = await condensed.text;
   const clean = summary.trim().slice(0, 6000) || "(empty prefix)";
   const summaryMessage = {
     id: `compact-${Date.now()}`,

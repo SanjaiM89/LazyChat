@@ -57,10 +57,38 @@ const PROTOCOL_META: Record<
     error:
       "Base URL must be the Google API root, e.g. https://generativelanguage.googleapis.com/v1beta",
   },
+  deepseek: {
+    short: "DeepSeek Messages",
+    blurb:
+      "DeepSeek's Anthropic-compatible Messages API, called exactly like DeepSeek Harness (/anthropic/v1/messages, x-api-key, thinking + effort).",
+    baseUrlPlaceholder:
+      "https://api.deepseek.com   (we call /anthropic/v1/messages)",
+    error: "Base URL must be an http(s) origin, e.g. https://api.deepseek.com",
+  },
 };
 
 function normProtocol(p: ProviderProtocol | undefined): ProviderProtocol {
-  return p === "anthropic" || p === "gemini" ? p : "openai";
+  return p === "anthropic" || p === "gemini" || p === "deepseek"
+    ? p
+    : "openai";
+}
+
+/** Providers aimed at DeepSeek's API are served by the Messages transport. */
+function isDeepSeekHost(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false;
+  try {
+    const host = new URL(baseUrl).hostname;
+    return host === "deepseek.com" || host.endsWith(".deepseek.com");
+  } catch {
+    return false;
+  }
+}
+
+function protocolLabel(def: { protocol?: ProviderProtocol; baseUrl?: string }): string {
+  if (def.protocol !== "gemini" && isDeepSeekHost(def.baseUrl)) {
+    return PROTOCOL_META.deepseek.short;
+  }
+  return PROTOCOL_META[normProtocol(def.protocol)].short;
 }
 
 export function ModelPicker() {
@@ -258,7 +286,7 @@ export function ModelPicker() {
                       <span className="truncate text-[12px] font-medium text-fg">{c.name}</span>
                     </span>
                     <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
-                      {PROTOCOL_META[normProtocol(c.protocol)].short}
+                      {protocolLabel(c)}
                     </span>
                   </div>
                   <div className="mb-1">
@@ -469,7 +497,7 @@ function CustomProviderDialog({ open, onClose }: { open: boolean; onClose: () =>
                       )}
                     </p>
                     <p className="truncate text-[11px] text-fg-muted">
-                      {PROTOCOL_META[normProtocol(p.protocol)].short}
+                      {protocolLabel(p)}
                       {" · "}
                       {p.models.length} model{p.models.length === 1 ? "" : "s"}
                       {p.hasApiKey ? " · key set" : " · no key"}
@@ -537,6 +565,9 @@ function CustomProviderDialog({ open, onClose }: { open: boolean; onClose: () =>
               <option value="openai">OpenAI-compatible</option>
               <option value="anthropic">
                 Anthropic-compatible (Claude Code style)
+              </option>
+              <option value="deepseek">
+                DeepSeek Messages (harness-compatible)
               </option>
               <option value="gemini">Google Gemini (native Interactions API)</option>
             </select>
