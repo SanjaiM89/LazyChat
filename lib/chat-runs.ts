@@ -23,6 +23,7 @@ import { buildLanguageModel, thinkingProviderOptions } from "@/lib/providers";
 import { getOpencodeTransport } from "@/lib/models";
 import { getCustomProvider, isDeepSeekProvider } from "@/lib/custom-providers";
 import { DEEPSEEK_DEFAULT_MAX_TOKENS } from "@/lib/deepseek";
+import { isGoalRoundPrompt } from "@/lib/goal-model";
 import { enabledTools } from "@/lib/tools";
 import { cancelRunQuestions, forgetRun } from "@/lib/ask-user";
 import { buildMCPToolSet } from "@/lib/mcp";
@@ -384,6 +385,13 @@ export async function stopChatRun(id: string): Promise<boolean> {
   run.aborted = true;
   run.activity = "Stopping…";
   emit(run);
+  // A human stop also stops goal execution: dsh disarms the goal when the
+  // host pauses, so the next turn does not silently resume unattended rounds.
+  if (run.conversationId) {
+    void import("@/lib/goals")
+      .then(({ disarmGoal }) => disarmGoal(run.conversationId!))
+      .catch(() => {});
+  }
   // A run waiting on an ask-user question would otherwise hold the model (and
   // this process) open long after the user pressed stop.
   void cancelRunQuestions(id);
@@ -408,6 +416,14 @@ async function pump(run: ChatRunRecord) {
         provider: settings.provider,
         model: settings.model,
       }));
+    run.model = model;
+
+    const goalRound = (() => {
+      const lastUser = [...run.requestMessages]
+        .reverse()
+        .find((message) => message.role === "user");
+      return lastUser ? isGoalRoundPrompt(messageText(lastUser)) : false;
+    })();
 
     const tools = {
       ...enabledTools(settings.tools, {
@@ -415,6 +431,7 @@ async function pump(run: ChatRunRecord) {
         model: settings.model,
         conversationId: run.conversationId,
         runId: run.id,
+        goalRound,
       }),
       ...(await buildMCPToolSet()),
       ...(await buildRunWorkspaceTools(run)),
@@ -529,6 +546,9 @@ async function pump(run: ChatRunRecord) {
         : "done";
     await captureUsage(run, result);
     await finishRun(run, status, run.error);
+    // Same-session continuation (dsh-goal-round-driver): only a clean finish
+    // earns another round, and the goal itself decides whether one is due.
+    if (status === "done" && !run.aborted) void driveGoalRound(run);
   } catch (e: any) {
     const aborted = run.aborted || e?.name === "AbortError";
     console.error("[chat-run] failed:", {
@@ -747,7 +767,10 @@ async function recordWorkspaceSession(run: ChatRunRecord): Promise<void> {
 
   const userTexts = (run.requestMessages ?? [])
     .filter((msg) => msg.role === "user")
-    .map((msg) => messageText(msg as { parts?: Array<{ type: string; text?: string }> }));
+    .map((msg) => messageText(msg as { parts?: Array<{ type: string; text?: string }> }))
+    // Automatic rounds are not human statements; capturing them as workspace
+    // facts would poison memory with the continuation prompt.
+    .filter((text) => !isGoalRoundPrompt(text));
   const lastUser = userTexts[userTexts.length - 1] ?? "";
   if (lastUser) {
     const { captureWorkspaceFacts } = await import("@/lib/dsh/memory");
@@ -762,6 +785,8 @@ async function recordOmniaMemory(conversationId: string, messages: UIMessage[]):
   const lastAssistant = assistants[assistants.length - 1];
   if (lastUser && lastAssistant && messages.indexOf(lastAssistant) > messages.indexOf(lastUser)) {
     const userText = messageText(lastUser);
+    // A goal round is machine-authored; remember the work, not the prompt.
+    if (isGoalRoundPrompt(userText)) return;
     await recordOmniaTurn(conversationId, "user", userText);
     await recordOmniaTurn(conversationId, "assistant", messageText(lastAssistant));
     // Automatic capture: durable facts land in SemanticMemory whether or not
@@ -772,7 +797,10 @@ async function recordOmniaMemory(conversationId: string, messages: UIMessage[]):
 
 function deriveTitle(messages: UIMessage[]): string {
   const firstUser = messages.find(
-    (m) => m.role === "user" && !(m as any)?.metadata?.["subchat-context"],
+    (m) =>
+      m.role === "user" &&
+      !(m as any)?.metadata?.["subchat-context"] &&
+      !isGoalRoundPrompt(messageText(m)),
   );
   if (!firstUser) return "New chat";
   const text = (firstUser.parts || [])
@@ -797,6 +825,49 @@ async function materializeAt(run: ChatRunRecord): Promise<{ message: UIMessage |
 
 async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {
   return (await materializeAt(run)).message;
+}
+
+/**
+ * Start the next automatic goal round in the same conversation (dsh's
+ * goal-round-driver). The new run is an ordinary chat run, so the client's
+ * run poll attaches to it, the transcript persists it, and Stop still works.
+ *
+ * Fire-and-forget: a conflict (the human sent their own message first) or a
+ * transient storage error must never fail the turn that just completed.
+ */
+async function driveGoalRound(run: ChatRunRecord): Promise<void> {
+  if (!run.conversationId) return;
+  try {
+    const { startGoalRound } = await import("@/lib/goals");
+    const next = await startGoalRound(run.conversationId);
+    if (!next) return;
+    const assistant = await materialize(run);
+    const messages: UIMessage[] = [
+      ...run.history,
+      ...(assistant ? [assistant] : []),
+      {
+        id: `goal-round-${nanoid(10)}`,
+        role: "user",
+        parts: [{ type: "text", text: next.prompt }],
+      },
+    ];
+    await createChatRun({
+      messages,
+      settings: run.settings,
+      model: run.model,
+      conversationId: run.conversationId,
+      workspaceId: run.workspaceId,
+      owner: run.ownerId
+        ? { uid: run.ownerId, orgId: run.orgId ?? null }
+        : undefined,
+    });
+  } catch (e: any) {
+    console.warn(
+      "[goal-round] could not start:",
+      run.conversationId,
+      e?.message || e,
+    );
+  }
 }
 
 async function materializeChunks(recorded: UIMessageChunk[]): Promise<UIMessage | null> {

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Target } from "lucide-react";
 import type { UIMessage, UIMessagePart } from "ai";
 import { cn } from "@/components/ui";
 import { Markdown, type Citation } from "@/components/Markdown";
@@ -314,6 +314,23 @@ function MessageItemComponent({
       .filter((p) => p.type === "text")
       .map((p: any) => p.text ?? "")
       .join("");
+
+    // An automatic goal round is a retained user message in dsh. Render it as
+    // a turn marker instead of dumping the continuation prompt into the chat.
+    if (/^<goal_round>[\s\S]*<\/goal_round>$/.test(text.trim())) {
+      const round = /^Round:\s*(\d+)\/(\d+)/m.exec(text);
+      return (
+        <div className="chat-message px-1 py-2 animate-fade-in-up">
+          <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-border bg-bg-surface-100 px-3 py-1 text-[12px] text-fg-muted">
+            <Target size={12} className="shrink-0 text-accent" />
+            <span>
+              Goal round{round ? ` ${round[1]} / ${round[2]}` : ""}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     const imageParts = fileParts.filter((p) => (p.mediaType ?? "").startsWith("image/"));
     const otherParts = fileParts.filter((p) => !(p.mediaType ?? "").startsWith("image/"));
     const viaSubchat = isSubchatMessage(message);

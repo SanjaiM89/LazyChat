@@ -23,6 +23,8 @@ import type { ChatController } from "@/lib/use-chat";
 import { activeRunFor } from "@/lib/app-store";
 import { ModelPicker } from "@/components/ModelPicker";
 import { ComposerStats } from "@/components/ComposerStats";
+import { TodoPanel } from "@/components/dsh/TodoPanel";
+import { latestTodos } from "@/components/dsh/todo-model";
 import { SandboxMini } from "@/components/SandboxMini";
 import { BackgroundRunBar } from "@/components/BackgroundRunBar";
 import { BrandIcon } from "@/components/brand/BrandIcon";
@@ -202,6 +204,8 @@ export function Composer({
         <SandboxMini />
 
         {backgroundRun && <BackgroundRunBar run={backgroundRun} chat={chat} />}
+
+        <TodoPanel todos={latestTodos(chat.messages)} />
 
         <div
           className={cn(

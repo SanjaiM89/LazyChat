@@ -18,6 +18,8 @@ import {
 import { Badge } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import { AskUserCard } from "@/components/AskUserCard";
+import { PlanReviewCard } from "@/components/PlanReviewCard";
+import { TodoCallCard } from "@/components/dsh/TodoPanel";
 import { TerminalBlock } from "@/components/dsh/TerminalBlock";
 import { terminalCardModel, terminalFailed } from "@/components/dsh/terminal-card-model";
 import { TextShimmer } from "@/components/dsh/TextShimmer";
@@ -59,6 +61,22 @@ export function ToolCard({
       <AskUserCard
         toolCallId={toolCallId ?? ""}
         questions={Array.isArray(args?.questions) ? args.questions : []}
+        result={result}
+        streaming={streaming}
+        errorText={errorText}
+      />
+    );
+  }
+  if (toolName === "todo_write") {
+    return (
+      <TodoCallCard args={args} result={result} streaming={streaming} errorText={errorText} />
+    );
+  }
+  if (toolName === "exit_plan_mode") {
+    return (
+      <PlanReviewCard
+        toolCallId={toolCallId ?? ""}
+        plan={typeof args?.plan === "string" ? args.plan : ""}
         result={result}
         streaming={streaming}
         errorText={errorText}

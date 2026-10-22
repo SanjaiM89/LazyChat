@@ -27,15 +27,24 @@ export const POST = authed(async (req: Request, user) => {
     if (lastUser) {
       const textParts = (lastUser.parts || []).filter((p: any) => p.type === "text").map((p: any) => p.text ?? "");
       const firstLine = textParts.join("\n").split("\n")[0]?.trim() ?? "";
-      if (firstLine === "/plan") {
-        const { enterPlanMode } = await import("@/lib/plan-mode");
-        enterPlanMode(body.conversationId);
-        // Strip the /plan line from the message.
+      if (firstLine === "/plan" || firstLine === "/plan off") {
+        const { enterPlanMode, exitPlanMode } = await import("@/lib/plan-mode");
+        if (firstLine === "/plan") await enterPlanMode(body.conversationId);
+        else await exitPlanMode(body.conversationId);
+        // Strip the command line from the message.
         const rest = textParts.join("\n").slice(firstLine.length).trim();
-        lastUser.parts = textParts.length > 1 ? [{ type: "text", text: rest }] : [];
+        lastUser.parts = rest ? [{ type: "text", text: rest }] : [];
         if (!lastUser.parts.length) {
-          // No text left after stripping /plan — add a placeholder.
-          lastUser.parts = [{ type: "text", text: "Please draft a plan for the work ahead." }];
+          // Nothing left after the command: keep the turn meaningful.
+          lastUser.parts = [
+            {
+              type: "text",
+              text:
+                firstLine === "/plan"
+                  ? "Please draft a plan for the work ahead."
+                  : "Plan mode is off. Acknowledge briefly and wait for my instructions.",
+            },
+          ];
         }
       }
     }

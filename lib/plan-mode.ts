@@ -1,63 +1,83 @@
 import "server-only";
 
-import { tool } from "ai";
-import { z } from "zod";
+import { askUser } from "@/lib/ask-user";
+import { buildExitPlanModeTool } from "@/lib/plan-core";
+import { readJSON, writeJSON } from "@/lib/store";
 
 /**
- * Plan mode: the model drafts a plan and waits for explicit approval
- * before executing. Ported from dsh-plan-mode.
+ * Plan mode, ported from dsh-plan-mode.
  *
- * State is kept in-memory per conversation; it is intentionally ephemeral —
- * plan mode is a chat-phase toggle, not durable state.
+ * While active, the system prompt carries the planning guidance and the model
+ * presents its plan through `exit_plan_mode`. That tool pauses the stream on
+ * the ask-user seam and asks the human to approve or keep planning — exactly
+ * the review dsh runs. Mode state is persisted per conversation so reopening a
+ * chat restores the phase (dsh logs `plan/mode` in the session).
  */
 interface PlanState {
   active: boolean;
   plan: string;
 }
 
-const plans = new Map<string, PlanState>();
+const PLANS_FILE = "plans.json";
 
-export function isPlanMode(conversationId: string): boolean {
-  return plans.get(conversationId)?.active ?? false;
+/** Serialize read-modify-write cycles so two conversations cannot clobber. */
+let chain: Promise<unknown> = Promise.resolve();
+
+function mutate<T>(fn: (all: Record<string, PlanState>) => T): Promise<T> {
+  const next = chain.then(async () => {
+    const all = await readJSON<Record<string, PlanState>>(PLANS_FILE, {});
+    const result = fn(all);
+    await writeJSON(PLANS_FILE, all);
+    return result;
+  });
+  chain = next.catch(() => undefined);
+  return next;
 }
 
-export function getPlan(conversationId: string): string | null {
-  return plans.get(conversationId)?.plan ?? null;
+export async function isPlanMode(conversationId: string): Promise<boolean> {
+  const all = await readJSON<Record<string, PlanState>>(PLANS_FILE, {});
+  return all[conversationId]?.active ?? false;
 }
 
-export function enterPlanMode(conversationId: string): void {
-  plans.set(conversationId, { active: true, plan: "" });
+export async function getPlan(conversationId: string): Promise<string | null> {
+  const all = await readJSON<Record<string, PlanState>>(PLANS_FILE, {});
+  return all[conversationId]?.plan ?? null;
 }
 
-export function exitPlanMode(conversationId: string): string | null {
-  const s = plans.get(conversationId);
-  if (!s) return null;
-  plans.delete(conversationId);
-  return s.plan;
+export async function enterPlanMode(conversationId: string): Promise<void> {
+  await mutate((all) => {
+    all[conversationId] = { active: true, plan: all[conversationId]?.plan ?? "" };
+  });
+}
+
+/** Record the submitted plan while the review is open. */
+export async function submitPlan(conversationId: string, plan: string): Promise<void> {
+  await mutate((all) => {
+    all[conversationId] = { active: true, plan };
+  });
+}
+
+/** Leave plan mode while retaining the last plan for the transcript. */
+export async function exitPlanMode(conversationId: string): Promise<string | null> {
+  return mutate((all) => {
+    const state = all[conversationId];
+    if (!state) return null;
+    all[conversationId] = { active: false, plan: state.plan };
+    return state.plan;
+  });
 }
 
 export function buildPlanModeTool(opts: {
   conversationId?: string;
   runId?: string;
 }) {
-  return {
-    exit_plan_mode: tool({
-      description: `Submit the plan and exit plan mode. The model has produced a plan as text; this tool call commits it so execution can begin. Only available in plan mode (when the system has toggled planning on).`,
-      inputSchema: z.object({
-        plan: z.string().describe("The plan content the model drafted for execution."),
-      }),
-      execute: async ({ plan }) => {
-        if (!opts.conversationId) {
-          return { error: "Plan mode requires a conversation context." };
-        }
-        const state = plans.get(opts.conversationId);
-        if (!state || !state.active) {
-          return { error: "Not in plan mode. Use /plan to enter plan mode." };
-        }
-        state.plan = plan;
-        state.active = false;
-        return { plan_submitted: true, plan, message: "Plan submitted. Awaiting approval to execute." };
-      },
-    }),
-  };
+  return buildExitPlanModeTool({
+    ...opts,
+    isActive: isPlanMode,
+    submit: submitPlan,
+    exit: exitPlanMode,
+    askUser,
+  });
 }
+
+export { planTitle } from "@/lib/plan-core";

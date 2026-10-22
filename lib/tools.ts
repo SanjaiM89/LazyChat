@@ -24,6 +24,7 @@ import type { ArtifactType } from "@/lib/types";
 import { buildAskUserQuestionTool } from "@/lib/ask-user-tool";
 import { buildGoalTools } from "@/lib/goals";
 import { buildPlanModeTool } from "@/lib/plan-mode";
+import { buildTodoTools } from "@/lib/todos";
 import { buildScheduleTools } from "@/lib/schedules";
 
 
@@ -424,6 +425,8 @@ export interface EnabledToolsOpts {
   conversationId?: string;
   /** Owning run, so stopping it releases any question the tool is holding. */
   runId?: string;
+  /** This turn was started by the goal-round driver, not a human message. */
+  goalRound?: boolean;
 }
 
 /**
@@ -532,9 +535,12 @@ export function enabledTools(names: string[], opts: EnabledToolsOpts) {
     ...buildSessionQueryTools(opts),
     // Goals + schedules + plan-mode (dsh-tool-goal, dsh-tool-schedule, dsh-plan-mode).
     // These drive auto-continuation and planning semantics, so they're always on.
-    ...buildGoalTools(opts.conversationId),
+    ...buildGoalTools(opts.conversationId, { goalRound: opts.goalRound }),
     ...buildScheduleTools(opts.conversationId),
     ...buildPlanModeTool(opts),
+    // Session task list (dsh-tool-todo): a standing plan the UI renders above
+    // the composer. Not toggleable — it is how multi-step work stays legible.
+    ...buildTodoTools({ conversationId: opts.conversationId }),
     // Generative UI (Prefab): always on, like the other interaction tools.
     ...buildGenUiTools(),
     // Real .docx/.pdf/.xlsx generation, no sandbox round-trip.

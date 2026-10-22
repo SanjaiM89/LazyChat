@@ -1,60 +1,123 @@
 /**
- * Tests for ported dsh-plan-mode.
+ * Plan-review semantics, ported from dsh-plan-mode.
+ *
+ * The storage half lives in `lib/plan-mode.ts` (server-only); this exercises
+ * the review tool against an in-memory repository and a controllable ask-user
+ * seam, so approve / keep-planning / dismissal are deterministic.
  *
  * Run: npx tsx --test tests/unit/plan-mode.test.ts
  */
-import { describe, it, afterEach } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
-import { isPlanMode, enterPlanMode, exitPlanMode, getPlan, buildPlanModeTool } from "@/lib/plan-mode";
+import type { AskAnswer } from "@/lib/ask-user";
+import {
+  APPROVE_LABEL,
+  KEEP_PLANNING_LABEL,
+  buildExitPlanModeTool,
+  planTitle,
+} from "@/lib/plan-core";
 
-const CONV_ID = "test-plan-" + Date.now();
+const CONV = "conv-plan";
 
-afterEach(() => {
-  exitPlanMode(CONV_ID);
+let active = false;
+let submitted = "";
+let replies: AskAnswer[] = [];
+
+function make() {
+  return buildExitPlanModeTool({
+    conversationId: CONV,
+    isActive: async () => active,
+    submit: async (_conversation, plan) => {
+      submitted = plan;
+      active = true;
+    },
+    exit: async () => {
+      active = false;
+      return submitted;
+    },
+    askUser: async () => replies,
+  }).exit_plan_mode;
+}
+
+function call(args: { plan: string }, callId = "call-1") {
+  return (make().execute as any)(args, { toolCallId: callId });
+}
+
+beforeEach(() => {
+  active = true;
+  submitted = "";
+  replies = [];
 });
 
-describe("plan mode", () => {
-  it("enters and exits plan mode", () => {
-    assert.equal(isPlanMode(CONV_ID), false);
-    enterPlanMode(CONV_ID);
-    assert.equal(isPlanMode(CONV_ID), true);
-    exitPlanMode(CONV_ID);
-    assert.equal(isPlanMode(CONV_ID), false);
+describe("plan title", () => {
+  it("uses the first markdown heading", () => {
+    assert.equal(planTitle("# Release plan\n\n- step"), "Release plan");
+    assert.equal(planTitle("no heading"), "Plan");
+  });
+});
+
+describe("exit_plan_mode review", () => {
+  it("approves, leaves plan mode, and keeps the plan", async () => {
+    replies = [{ id: "plan-review", selected: [APPROVE_LABEL] }];
+    const result = await call({ plan: "# Ship it\n\n1. Do A" });
+    assert.deepEqual(result, { approved: true });
+    assert.equal(active, false);
+    assert.equal(submitted, "# Ship it\n\n1. Do A");
   });
 
-  it("stores and retrieves the plan", async () => {
-    enterPlanMode(CONV_ID);
-    assert.equal(getPlan(CONV_ID), "");
-
-    // Simulate the model calling exit_plan_mode.
-    const tools = buildPlanModeTool({ conversationId: CONV_ID });
-    const exec = (t: any, args: Record<string, unknown>) => t.execute(args);
-
-    // In plan mode, exit should work.
-    const result = await exec(tools.exit_plan_mode, { plan: "1. Do A\n2. Do B\n3. Done" });
-    assert.equal(result.plan, "1. Do A\n2. Do B\n3. Done");
-
-    // After exit, plan mode is off but the plan is still retrievable.
-    assert.equal(isPlanMode(CONV_ID), false);
-    assert.ok(getPlan(CONV_ID) === "1. Do A\n2. Do B\n3. Done");
-    // exitPlanMode fully clears it.
-    const cleared = exitPlanMode(CONV_ID);
-    assert.equal(cleared, "1. Do A\n2. Do B\n3. Done");
-    assert.equal(getPlan(CONV_ID), null);
+  it("keeps planning and returns the user's feedback as a failed call", async () => {
+    replies = [
+      {
+        id: "plan-review",
+        selected: [KEEP_PLANNING_LABEL],
+        custom: "add a rollback step",
+      },
+    ];
+    await assert.rejects(
+      () => call({ plan: "# Ship it" }),
+      /their feedback: add a rollback step/,
+    );
+    assert.equal(active, true);
   });
 
-  it("exit_plan_mode errors when not in plan mode", async () => {
-    const tools = buildPlanModeTool({ conversationId: CONV_ID });
-    const exec = (t: any, args: Record<string, unknown>) => t.execute(args);
-    const result = await exec(tools.exit_plan_mode, { plan: "test" });
-    assert.ok(result.error?.includes("Not in plan mode"));
+  it("keeps planning without feedback", async () => {
+    replies = [{ id: "plan-review", selected: [KEEP_PLANNING_LABEL] }];
+    await assert.rejects(
+      () => call({ plan: "# Ship it" }),
+      /chose to keep planning; revise the plan/,
+    );
+    assert.equal(active, true);
   });
 
-  it("exit_plan_mode errors without conversation context", async () => {
-    const tools = buildPlanModeTool({});
-    const exec = (t: any, args: Record<string, unknown>) => t.execute(args);
-    const result = await exec(tools.exit_plan_mode, { plan: "test" });
-    assert.ok(result.error);
+  it("treats a dismissed review as approved=false and stays in plan mode", async () => {
+    replies = [];
+    const result = await call({ plan: "# Ship it" });
+    assert.deepEqual(result, { approved: false });
+    assert.equal(active, true);
+  });
+
+  it("rejects a plan without a # heading", async () => {
+    replies = [{ id: "plan-review", selected: [APPROVE_LABEL] }];
+    await assert.rejects(() => call({ plan: "1. Do A" }), /# heading/);
+    assert.equal(active, true);
+  });
+
+  it("rejects calls outside plan mode", async () => {
+    active = false;
+    await assert.rejects(() => call({ plan: "# Ship it" }), /only available in plan mode/);
+  });
+
+  it("rejects calls without a conversation", async () => {
+    const tool = buildExitPlanModeTool({
+      isActive: async () => true,
+      submit: async () => {},
+      exit: async () => null,
+      askUser: async () => [],
+    }).exit_plan_mode;
+    await assert.rejects(
+      () => (tool.execute as any)({ plan: "# Ship it" }, { toolCallId: "c" }),
+      /conversation context/,
+    );
   });
 });

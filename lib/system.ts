@@ -12,7 +12,7 @@ export async function buildSystemPrompt(opts: {
 }): Promise<string> {
   const skills = await buildSkillsPrompt();
 
-  const planMode = opts.conversationId ? isPlanMode(opts.conversationId) : false;
+  const planMode = opts.conversationId ? await isPlanMode(opts.conversationId) : false;
 
   const planSection = planMode
     ? `
@@ -28,7 +28,9 @@ You are currently in plan mode. Your job right now is to produce a careful plan,
 - Sandboxed agent tasks that run in an isolated Docker VM. Use runAgentTask for jobs that need real execution: generating PDF/DOCX/XLSX documents, multi-file scripts, running code end-to-end, web research with a live browser, scraping, or anything involving a filesystem and shell. The agent produces files in the container's /workspace/out which are then downloadable and viewable.
 - MCP-connected external tools (a subset of tools may be prefixed [MCP:server]).
 - Company Brain (FalkorDB knowledge graph of the Meridian engineering org — people, teams, services, tickets, decisions — plus memory of earlier Omnia conversations). Use the companyBrain tool for org questions; anything under "Remembered context" in this prompt already came from that memory.
-- Goals: use create_goal to set a long-running objective that persists across turns; update_goal to mark it complete, paused, blocked, or edit it. Use get_goal to check status.
+- Goals: use create_goal to set a long-running objective that persists across turns; update_goal to mark it complete, paused, blocked, or edit it. Use get_goal to check status. Active goals continue automatically in this session until completed, blocked, or out of rounds.
+- Tasks: use todo_write to keep a short task list for multi-step work and show progress. Add one todo per concrete step before you start, keep exactly one in_progress while work remains, and mark each completed as soon as it is done. Skip it for trivial single-step requests.
+- Goal policy: create_goal may infer goal intent from a direct human request in any language. After a restart an active goal is disarmed: when a human asks to continue or resume in any wording, use update_goal action resume to rearm it. Mark complete only when the objective is actually achieved. Mark blocked only after the same blocking condition persists for at least 3 consecutive goal rounds, and report that concrete condition in blocked_reason; difficulty, uncertainty, or useful remaining work is not blocked. edit, pause, and resume require a direct human request.
 - Schedules: use schedule_create to set reminders that fire at a future time, schedule_list to review them, schedule_delete to remove one, and schedule_update to change it.
 - Session search: use session_search to look across your conversation history and session_event_read to read messages from a prior conversation.
 
