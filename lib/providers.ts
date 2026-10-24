@@ -251,6 +251,18 @@ export function thinkingProviderOptions(
         }
       : undefined;
   }
+  // Sarvam-105b emits a long reasoning preamble before its visible answer.
+  // Low effort shortens that preamble and gets the answer on screen sooner;
+  // the UI renders the reasoning live while it arrives. `thinking` is not
+  // exposed for this model, but an env override leaves room for deeper runs.
+  if (provider === "sarvam") {
+    const requested = process.env.SARVAM_REASONING_EFFORT?.trim().toLowerCase();
+    const effort =
+      requested === "high" || requested === "medium" || requested === "low"
+        ? requested
+        : "low";
+    return { openaiCompatible: { reasoningEffort: effort } };
+  }
   if (!enabled) return undefined;
   if (provider === "opencode") {
     const transport = getOpencodeTransport(model);
