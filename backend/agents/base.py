@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import ClassVar
 
 from models.chat import AgentRun, ChatMessage, MessageRole, RunStatus
 from services.llm import LLMClient, default_llm
@@ -9,7 +10,7 @@ from tools.registry import registry
 
 class BaseAgent:
     name: str = "base"
-    system_prompt: str = "You are a helpful assistant."
+    system_prompt: ClassVar[str] = "You are a helpful assistant."
 
     def __init__(self, llm: LLMClient | None = None) -> None:
         self.llm = llm if llm is not None else default_llm()

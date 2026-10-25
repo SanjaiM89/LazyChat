@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -57,7 +57,7 @@ class SkillService:
             all_skills[idx] = skill
         else:
             all_skills.insert(0, skill)
-        skill.updated_at = int(datetime.utcnow().timestamp() * 1000)
+        skill.updated_at = int(datetime.now().timestamp() * 1000)
         self._write(all_skills)
         return all_skills
 

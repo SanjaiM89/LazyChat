@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, ClassVar
 
 from .base import Tool, ToolResult
 
 
 class ShellTool(Tool):
-    name = "shell"
-    description = "Run a shell command and return stdout/stderr."
-    parameters = {
+    name: ClassVar[str] = "shell"
+    description: ClassVar[str] = "Run a shell command and return stdout/stderr."
+    parameters: ClassVar[dict] = {
         "type": "object",
         "properties": {
             "command": {"type": "string", "description": "Command to execute"},
@@ -36,7 +36,7 @@ class ShellTool(Tool):
                     "returncode": proc.returncode,
                 },
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             return ToolResult(ok=False, error=f"command timed out after {timeout}s")
         except Exception as e:  # noqa: BLE001

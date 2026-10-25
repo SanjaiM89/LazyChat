@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 
@@ -8,9 +8,9 @@ from .base import Tool, ToolResult
 
 
 class WebFetchTool(Tool):
-    name = "web_fetch"
-    description = "Fetch a URL and return its text content."
-    parameters = {
+    name: ClassVar[str] = "web_fetch"
+    description: ClassVar[str] = "Fetch a URL and return its text content."
+    parameters: ClassVar[dict] = {
         "type": "object",
         "properties": {"url": {"type": "string"}, "max_chars": {"type": "integer", "default": 20000}},
         "required": ["url"],

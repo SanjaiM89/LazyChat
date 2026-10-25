@@ -7,4 +7,4 @@ from .web import WebFetchTool
 registry.register(ShellTool())
 registry.register(WebFetchTool())
 
-__all__ = ["Tool", "ToolResult", "ToolRegistry", "registry"]
+__all__ = ["Tool", "ToolRegistry", "ToolResult", "registry"]
