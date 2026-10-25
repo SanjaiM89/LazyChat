@@ -4,6 +4,8 @@ import time
 from typing import Any
 
 from core.logging import get_logger
+from services.graph import FalkorClient
+
 from .algorithms import (
     bridge_services,
     dependency_impact,
@@ -19,7 +21,6 @@ from .cypher import (
     service_match,
     subgraph_around,
 )
-from services.graph import FalkorClient
 
 logger = get_logger("brain.tools")
 

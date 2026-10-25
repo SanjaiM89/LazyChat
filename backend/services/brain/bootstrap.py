@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 
 from core.logging import get_logger
-from . import schema
 from services.graph import FalkorClient
+
+from . import schema
 from .timeout import ms_from_env, with_timeout
 
 logger = get_logger("brain.bootstrap")

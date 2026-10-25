@@ -9,6 +9,7 @@ from core.logging import configure_logging, get_logger
 from core.middleware import add_cors, request_id_middleware
 from db.database import init_db
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
