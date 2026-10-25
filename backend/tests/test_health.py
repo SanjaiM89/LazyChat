@@ -90,3 +90,33 @@ async def test_goals_rest_create_and_get():
         r2 = await client.get("/api/v1/goals/c2")
         assert r2.status_code == 200
         assert r2.json()["goal"]["id"] == gid
+
+
+def test_token_meter():
+    from services.token_meter import estimate_tokens, measure_value
+    assert estimate_tokens("abcd") == 1
+    assert estimate_tokens("") == 0
+    m = measure_value({"a": "bc"})
+    assert m["tokens"] >= 1
+
+
+def test_session_title():
+    from services.session_title import fold_session_title, fallback_title
+    events = [{"type": "user/message", "data": {"text": "hello world this is a test"}}]
+    title = fold_session_title(events)
+    assert title is not None
+    assert "hello" in title
+
+
+def test_observation_policy():
+    import os, tempfile
+    d = tempfile.mkdtemp()
+    p = os.path.join(d, "f.txt")
+    open(p, "w").write("x")
+    from services import observation_policy as op
+    op.clear_observations("s1")
+    # read first
+    op.record_observation("s1", p)
+    assert op.guard_edit("s1", p)["ok"] is True
+    # write guard allows observed file
+    assert op.guard_write("s1", p)["ok"] is True
