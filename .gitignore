@@ -89,3 +89,11 @@ compositions/.hyperframes/
 /Desktop/data/
 /Desktop/*.AppImage
 /Desktop/OmniaDesktop
+
+# Python backend
+backend/.venv/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/__pycache__/
+backend/**/__pycache__/
