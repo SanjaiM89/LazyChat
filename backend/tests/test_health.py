@@ -34,3 +34,42 @@ async def test_shell_tool_run():
         data = r.json()
         assert data["ok"] is True
         assert "hi" in data["data"]["stdout"]
+
+
+def test_compaction_prune():
+    from services.compaction import prune_text, PRUNE_THRESHOLD_CHARS
+    short = "a" * 100
+    assert prune_text(short) == short
+    long = "a" * (PRUNE_THRESHOLD_CHARS + 100)
+    out = prune_text(long)
+    assert "chars cut" in out
+
+
+def test_json_schema_validate():
+    from services.json_schema import validate_schema
+    schema = {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}
+    assert validate_schema({"name": "x"}, schema) is None
+    assert validate_schema({}, schema) is not None
+    assert validate_schema({"name": 5}, schema) is not None
+
+
+def test_spill_read_roundtrip(tmp_path, monkeypatch):
+    import os
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    from services import spill
+    # reload module-level DATA_DIR
+    spill.DATA_DIR = str(tmp_path)
+    text = "x" * 10000
+    res = spill.spill_text("conv1", text, threshold_chars=100)
+    assert res is not None
+    assert res["spilled"] is True
+    read = spill.read_spill(res["path"])
+    assert read is not None
+    assert read["chars"] == 10000
+
+
+def test_workspace_paths():
+    from services.workspace_paths import fully_qualified_workspace_path, default_workspace_title
+    assert fully_qualified_workspace_path("/tmp/foo") is True
+    assert fully_qualified_workspace_path("foo") is False
+    assert default_workspace_title("/tmp/foo") == "foo"
