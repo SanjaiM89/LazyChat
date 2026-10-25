@@ -75,3 +75,19 @@ def test_workspace_paths():
     assert fully_qualified_workspace_path("/tmp/foo") is True
     assert fully_qualified_workspace_path("foo") is False
     assert default_workspace_title("/tmp/foo") == "foo"
+
+
+@pytest.mark.asyncio
+async def test_goals_rest_create_and_get():
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        r = await client.post("/api/v1/goals/create", json={"conversation_id": "c2", "objective": "test goal"})
+        assert r.status_code == 200
+        data = r.json()
+        assert data["goal"] is not None
+        gid = data["goal"]["id"]
+        rev = data["goal"]["revision"]
+        r2 = await client.get("/api/v1/goals/c2")
+        assert r2.status_code == 200
+        assert r2.json()["goal"]["id"] == gid
