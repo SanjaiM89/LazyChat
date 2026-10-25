@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .brain.schema import NODE_LABELS, RELATIONSHIPS
+from .schema import NODE_LABELS, RELATIONSHIPS
 
 COMPANY_CONTEXT = """You are the Company Brain for Meridian, a payments engineering organisation.
 

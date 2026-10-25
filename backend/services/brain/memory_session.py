@@ -4,8 +4,8 @@ import random
 from datetime import UTC, datetime
 from typing import Any
 
-from ..core.logging import get_logger
-from .graph import FalkorClient
+from core.logging import get_logger
+from services.graph import FalkorClient
 
 logger = get_logger("brain.memory.session")
 

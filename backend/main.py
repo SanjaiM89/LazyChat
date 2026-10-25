@@ -7,15 +7,18 @@ from fastapi import FastAPI
 from config.settings import get_settings
 from core.logging import configure_logging, get_logger
 from core.middleware import add_cors, request_id_middleware
-
+from db.database import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
     logger = get_logger("lazychat")
     logger.info("starting backend", env=get_settings().app_env)
-    yield
-    logger.info("shutting down backend")
+    try:
+        await init_db()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("db init failed", error=str(e))
+    yield    logger.info("shutting down backend")
 
 
 def create_app() -> FastAPI:

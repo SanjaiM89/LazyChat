@@ -4,13 +4,13 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-from ..core.logging import get_logger
+from core.logging import get_logger
 from .consolidation import (
     consolidate_session,
     fact_id,
     normalize_fact,
 )
-from .graph import FalkorClient
+from services.graph import FalkorClient
 from .memory_session import ensure_session, recall_memories, record_turn
 from .timeout import ms_from_env, with_budget
 

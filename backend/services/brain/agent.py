@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..core.logging import get_logger
+from core.logging import get_logger
 from .crew import ask_crew
-from .graph import FalkorClient
+from services.graph import FalkorClient
 from .memory_session import ensure_session, recall_memories, record_turn
 
 logger = get_logger("brain.agent")

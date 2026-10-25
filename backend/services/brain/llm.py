@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..core.logging import get_logger
-from ..services.llm import LLMClient, default_llm
+from core.logging import get_logger
+from services.llm import LLMClient, default_llm
 
 logger = get_logger("brain.llm")
 

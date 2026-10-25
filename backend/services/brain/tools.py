@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from ..core.logging import get_logger
+from core.logging import get_logger
 from .algorithms import (
     bridge_services,
     dependency_impact,
@@ -19,7 +19,7 @@ from .cypher import (
     service_match,
     subgraph_around,
 )
-from .graph import FalkorClient
+from services.graph import FalkorClient
 
 logger = get_logger("brain.tools")
 

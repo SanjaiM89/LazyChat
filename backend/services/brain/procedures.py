@@ -4,8 +4,8 @@ import hashlib
 import re
 from typing import Any
 
-from ..core.logging import get_logger
-from .graph import FalkorClient
+from core.logging import get_logger
+from services.graph import FalkorClient
 from .memory_session import now_iso
 
 logger = get_logger("brain.procedures")
