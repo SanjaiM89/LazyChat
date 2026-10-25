@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ...tools.base import ToolResult
-from ...tools.registry import registry
+from tools.base import ToolResult
+from tools.registry import registry
 
 router = APIRouter()
 

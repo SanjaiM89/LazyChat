@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ..config.settings import get_settings
-from ..core.logging import get_logger
+from config.settings import get_settings
+from core.logging import get_logger
 
 logger = get_logger("mcp")
 

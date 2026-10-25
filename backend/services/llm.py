@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from ..config.settings import get_settings
+from config.settings import get_settings
 
 
 class LLMClient:

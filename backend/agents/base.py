@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 
-from ..models.chat import AgentRun, ChatMessage, MessageRole, RunStatus
-from ..services.llm import LLMClient, default_llm
-from ..tools.registry import registry
+from models.chat import AgentRun, ChatMessage, MessageRole, RunStatus
+from services.llm import LLMClient, default_llm
+from tools.registry import registry
 
 
 class BaseAgent:

@@ -1,6 +1,6 @@
 import pytest
 import httpx
-from lazychat.main import create_app
+from main import create_app
 
 
 @pytest.mark.asyncio

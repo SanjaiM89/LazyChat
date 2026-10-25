@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from ..config.settings import get_settings
+from config.settings import get_settings
 
 
 def add_cors(app) -> None:

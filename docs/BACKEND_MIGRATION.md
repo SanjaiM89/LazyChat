@@ -4,18 +4,18 @@ All agentic logic now lives in `backend/` (Python/FastAPI). The Next.js app (`/`
 
 | TypeScript (legacy) | Python (new) |
 |---|---|
-| `lib/agent/*` | `backend/src/lazychat/agents/*` |
-| `lib/agent/tools/*` | `backend/src/lazychat/tools/*` |
-| `lib/mcp.ts` | `backend/src/lazychat/mcp/*` |
-| `lib/skills.ts` | `backend/src/lazychat/skills/*` |
-| `lib/tools.ts` | `backend/src/lazychat/tools/*` |
-| `lib/workspace/*` | `backend/src/lazychat/services/*` + repositories |
-| `lib/brain/*` | `backend/src/lazychat/services/brain/*` (TODO) |
-| `app/api/agent/*` | `backend/src/lazychat/api/v1/agents.py` |
-| `app/api/mcp/*` | `backend/src/lazychat/api/v1/mcp.py` |
-| `app/api/skills/*` | `backend/src/lazychat/api/v1/skills.py` |
-| `app/api/tools/*` | `backend/src/lazychat/api/v1/tools.py` |
-| `app/api/workspace/*` | `backend/src/lazychat/api/v1/workspaces.py` |
+| `lib/agent/*` | `backend/agents/*` |
+| `lib/agent/tools/*` | `backend/tools/*` |
+| `lib/mcp.ts` | `backend/mcp/*` |
+| `lib/skills.ts` | `backend/skills/*` |
+| `lib/tools.ts` | `backend/tools/*` |
+| `lib/workspace/*` | `backend/services/*` + repositories |
+| `lib/brain/*` | `backend/services/brain/*` (TODO) |
+| `app/api/agent/*` | `backend/api/v1/agents.py` |
+| `app/api/mcp/*` | `backend/api/v1/mcp.py` |
+| `app/api/skills/*` | `backend/api/v1/skills.py` |
+| `app/api/tools/*` | `backend/api/v1/tools.py` |
+| `app/api/workspace/*` | `backend/api/v1/workspaces.py` |
 
 ## Next.js UI integration
 

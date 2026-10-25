@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ...skills.service import Skill, SkillService
+from skills.service import Skill, SkillService
 
 router = APIRouter()
 _service = SkillService()

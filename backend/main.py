@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from .config.settings import get_settings
-from .core.logging import configure_logging, get_logger
-from .core.middleware import add_cors, request_id_middleware
+from config.settings import get_settings
+from core.logging import configure_logging, get_logger
+from core.middleware import add_cors, request_id_middleware
 
 
 @asynccontextmanager
@@ -31,7 +31,7 @@ def create_app() -> FastAPI:
     app.middleware("http")(request_id_middleware)
 
     # Routers
-    from .api.v1 import router as v1_router
+    from api.v1 import router as v1_router
 
     app.include_router(v1_router, prefix="/api/v1")
 

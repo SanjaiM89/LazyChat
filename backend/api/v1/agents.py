@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ...agents.default import DefaultAgent
-from ...models.chat import AgentRun
+from agents.default import DefaultAgent
+from models.chat import AgentRun
 
 router = APIRouter()
 _agent = DefaultAgent()

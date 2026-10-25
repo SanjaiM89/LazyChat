@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ...mcp.manager import MCPManager
+from mcp.manager import MCPManager
 
 router = APIRouter()
 _manager = MCPManager()
