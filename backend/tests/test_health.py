@@ -37,7 +37,7 @@ async def test_shell_tool_run():
 
 
 def test_compaction_prune():
-    from services.compaction import prune_text, PRUNE_THRESHOLD_CHARS
+    from services.compaction import PRUNE_THRESHOLD_CHARS, prune_text
     short = "a" * 100
     assert prune_text(short) == short
     long = "a" * (PRUNE_THRESHOLD_CHARS + 100)
@@ -54,7 +54,6 @@ def test_json_schema_validate():
 
 
 def test_spill_read_roundtrip(tmp_path, monkeypatch):
-    import os
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     from services import spill
     # reload module-level DATA_DIR
@@ -69,7 +68,10 @@ def test_spill_read_roundtrip(tmp_path, monkeypatch):
 
 
 def test_workspace_paths():
-    from services.workspace_paths import fully_qualified_workspace_path, default_workspace_title
+    from services.workspace_paths import (
+        default_workspace_title,
+        fully_qualified_workspace_path,
+    )
     assert fully_qualified_workspace_path("/tmp/foo") is True
     assert fully_qualified_workspace_path("foo") is False
     assert default_workspace_title("/tmp/foo") == "foo"
