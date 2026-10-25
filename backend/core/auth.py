@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+
 from fastapi import Header, HTTPException
 
 API_KEY = os.getenv("LAZYCHAT_API_KEY", "")

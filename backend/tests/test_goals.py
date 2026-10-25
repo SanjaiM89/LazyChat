@@ -5,7 +5,7 @@ import pytest
 
 os.environ["DATA_DIR"] = tempfile.mkdtemp()
 
-from services.goals import create_goal, get_goal, update_goal, goal_wire
+from services.goals import create_goal, get_goal, update_goal
 
 
 @pytest.mark.asyncio
