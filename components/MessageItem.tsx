@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { Image as ImageIcon, Target } from "lucide-react";
+
+import { MessageFeedback } from "@/components/agent/MessageFeedback";
 import type { UIMessage, UIMessagePart } from "ai";
 import { cn } from "@/components/ui";
 import { Markdown, type Citation } from "@/components/Markdown";
@@ -162,7 +164,7 @@ function AssistantParts({
   };
   for (const part of parts) {
     const t = normalizeTool(part);
-    if (t?.name === "webSearch" && Array.isArray(t.result?.results)) {
+    if (t?.name === "web_search" && Array.isArray(t.result?.results)) {
       for (const r of t.result.results) pushCitation(r);
     }
   }
@@ -237,7 +239,7 @@ function AssistantParts({
         if (normalized) {
           let result = normalized.result;
           let base = 0;
-          if (normalized.name === "webSearch" && Array.isArray(result?.results)) {
+          if (normalized.name === "web_search" && Array.isArray(result?.results)) {
             base = citations.length
               ? (urlToN.get(String(result.results[0]?.url)) ?? 1) - 1
               : 0;
@@ -380,13 +382,18 @@ function MessageItemComponent({
   if (role === "assistant") {
     const live = isLast && streaming;
     return (
-      <div className="chat-message flex gap-3 px-1 py-3 animate-fade-in-up">
+      <div className="chat-message group flex gap-3 px-1 py-3 animate-fade-in-up">
         <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center">
           <OmniaMark size={22} animated={live} />
         </span>
         <div className="min-w-0 flex-1">
           {isSubchatMessage(message) && <ContextBadge />}
           <AssistantParts parts={message.parts} streaming={live} />
+          {!live && message.id && (
+            <div className="mt-1.5 flex items-center gap-2">
+              <MessageFeedback messageId={message.id} />
+            </div>
+          )}
         </div>
       </div>
     );

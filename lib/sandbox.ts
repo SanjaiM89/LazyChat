@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { currentUser } from "@/lib/auth/context";
+import { DATA_DIR } from "@/lib/data-dir";
 
 /**
  * Sandbox client for the local process-sandbox service.
@@ -14,7 +15,6 @@ import { currentUser } from "@/lib/auth/context";
  */
 
 const SANDBOX_URL = process.env.SANDBOX_URL || "http://127.0.0.1:8787";
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const OWNERS_FILE = path.join(DATA_DIR, "sandbox-owners.json");
 const SECRET = process.env.SANDBOX_SECRET || "";
 
@@ -81,7 +81,9 @@ export async function ensureSandboxServer(): Promise<void> {
       const log = fs.openSync(logPath, "a");
       const child = spawn(process.execPath, [script], {
         cwd: process.cwd(),
-        env: process.env,
+        // The packaged app runs from a read-only AppImage mount; DATA_DIR is
+        // the writable per-user directory resolved by lib/data-dir.ts.
+        env: { ...process.env, DATA_DIR },
         stdio: ["ignore", log, log],
         detached: true,
       });

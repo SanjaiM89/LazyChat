@@ -10,10 +10,12 @@
  *   - nodes/edges/paths arrive already parsed into plain objects.
  * Both are handled once, here.
  */
-import { FalkorDB } from "falkordb";
-import type { FalkorDBOptions, Graph } from "falkordb";
+import { FalkorDB } from "falkordblite";
+import type { Graph } from "falkordblite";
 
 import { brainConfig } from "./config";
+import path from "node:path";
+import { DATA_DIR } from "@/lib/data-dir";
 import { msFromEnv, withTimeout } from "./timeout";
 import type { BrainEdge, BrainNode } from "./types";
 
@@ -255,25 +257,20 @@ export class FalkorClient {
 
   private static async create(): Promise<FalkorClient> {
     const { falkordb } = brainConfig();
-    const options: FalkorDBOptions & DriverKnobs = {
-      host: falkordb.host,
-      port: falkordb.port,
-      username: falkordb.username || undefined,
-      password: falkordb.password || undefined,
-      socket: { connectTimeout: 5_000, keepAlive: 30_000, noDelay: true },
-      // Give up after a few attempts instead of retrying for the life of the
-      // process; the cached entry is evicted on failure, so the next caller
-      // reconnects from scratch.
-      reconnectStrategy: (retries) => (retries >= 3 ? false : Math.min(500 * 2 ** retries, 2_000)),
-      disableOfflineQueue: true,
-    };
+    const dbPath = process.env.FALKORDB_PATH || path.join(DATA_DIR, "falkordb");
+    const redisServerPath = process.env.REDIS_SERVER_PATH || path.join(process.cwd(), "bin", "redis-server");
+    // Ensure the bundled redis-server can find its shared libraries.
+    process.env.LD_LIBRARY_PATH = path.join(process.cwd(), "lib") + (process.env.LD_LIBRARY_PATH ? `:${process.env.LD_LIBRARY_PATH}` : "");
+    const modulePath = process.env.FALKORDB_MODULE_PATH || path.join(process.cwd(), "node_modules", "falkordblite", "bin", "linux-x64", "falkordb.so");
     try {
-      const db = await withTimeout(FalkorDB.connect(options), connectTimeoutMs(), "FalkorDB connect");
+      const db = await withTimeout(
+        FalkorDB.open({ path: dbPath, redisServerPath, modulePath }),
+        connectTimeoutMs(),
+        "FalkorDB connect",
+      );
       return new FalkorClient(db, falkordb.graphName);
     } catch (err) {
-      throw new GraphError(
-        `Cannot connect to FalkorDB at ${falkordb.host}:${falkordb.port}: ${describeError(err)}`,
-      );
+      throw new GraphError(`Cannot start embedded FalkorDB at ${dbPath}: ${describeError(err)}`);
     }
   }
 

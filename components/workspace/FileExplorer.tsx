@@ -9,7 +9,7 @@
  */
 import * as React from "react";
 import { useAppStore } from "@/lib/app-store";
-import { dshApi, type FileEntry } from "@/lib/dsh/client";
+import { workspaceApi, type FileEntry } from "@/lib/workspace/client";
 import { Folder, FolderOpen, CornerLeftUp, X } from "lucide-react";
 import { FileIcon } from "@/components/brand/FileIcon";
 
@@ -28,7 +28,7 @@ export function FileExplorer() {
       if (!attached) return;
       try {
         setError(null);
-        const r = await dshApi.files(attached.id, d);
+        const r = await workspaceApi.files(attached.id, d);
         setFiles(r.entries ?? []);
         setDir(d);
         setPreview(null);
@@ -72,7 +72,7 @@ export function FileExplorer() {
                 await load(f.path);
               } else {
                 try {
-                  const r = await dshApi.files(attached.id, f.path);
+                  const r = await workspaceApi.files(attached.id, f.path);
                   setPreview({ name: f.name, content: r.content ?? "" });
                 } catch (e) {
                   setError(e instanceof Error ? e.message : String(e));

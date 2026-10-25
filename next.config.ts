@@ -33,13 +33,19 @@ const toArray = (value: unknown): Array<string | RegExp> => {
 };
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  distDir: ".next-local",
   outputFileTracingRoot: __dirname,
 
   // The FalkorDB driver (and its @redis/* tree) is CJS with dynamic requires
   // that break under webpack's RSC bundling (`e.BigInt is not a function`).
   // Keep it out of the bundle: route handlers resolve it with native require.
+  // falkordblite is the native module the driver loads at runtime; it has to
+  // stay external too, or the standalone output ships without the .so and the
+  // Company Brain cannot start.
   serverExternalPackages: [
     "falkordb",
+    "falkordblite",
     "@redis/client",
     "@redis/bloom",
     "@redis/json",

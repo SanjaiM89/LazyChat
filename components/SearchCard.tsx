@@ -111,7 +111,7 @@ export function SearchCard({
                 <span
                   className={cn(
                     "flex h-4 min-w-[18px] items-center justify-center rounded px-1 text-[10px] font-bold shrink-0",
-                    active ? "bg-brand text-[#0b2e1e]" : "border border-border bg-bg-surface-300 text-fg-muted",
+                    active ? "bg-brand text-brand-button-text" : "border border-border bg-bg-surface-300 text-fg-muted",
                   )}
                 >
                   {n}

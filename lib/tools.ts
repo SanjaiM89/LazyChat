@@ -520,7 +520,7 @@ function buildSessionQueryTools(opts: EnabledToolsOpts) {
 
 export function enabledTools(names: string[], opts: EnabledToolsOpts) {
   const map: Record<string, any> = {
-    webSearch: webSearchTool,
+    web_search: webSearchTool,
     createArtifact: buildCreateArtifactTool(opts.conversationId),
     runAgentTask: buildRunAgentTaskTool(opts),
     companyBrain: buildCompanyBrainTool(opts),

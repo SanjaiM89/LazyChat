@@ -77,3 +77,15 @@ compositions/.hyperframes/
 
 # Prefab renderer copied from node_modules by scripts/copy-prefab.mjs
 /public/prefab/
+
+# Local build + packaging output (the repo tracks the source, not the binaries)
+/.next-local/
+/Desktop/nextjs/
+/Desktop/nextjs.old/
+/Desktop/AppDir/
+/Desktop/build/
+/Desktop/bin/
+/Desktop/lib/
+/Desktop/data/
+/Desktop/*.AppImage
+/Desktop/OmniaDesktop

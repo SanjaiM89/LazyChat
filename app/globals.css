@@ -4,8 +4,8 @@
 @import "highlight.js/styles/github-dark.css";
 
 /* ==========================================================================
-   Omnia design tokens — modelled on the Supabase Studio palette.
-   Neutral greys carry the surfaces, one brand green carries intent.
+   Omnia design tokens — the CORE_CODE palette.
+   Neutral greys carry the surfaces, the lavender ramp carries intent.
    Light is the base; dark is applied by system preference or data-theme.
    ========================================================================== */
 
@@ -36,32 +36,33 @@
   --text-faint: #b2b2b2;         /* foreground-muted */
   --text-inverse: #fcfcfc;
 
-  /* brand */
-  --brand: #3ecf8e;
-  --brand-link: #00a35c;
-  --brand-200: #f2fdf8;
-  --brand-300: #d6f8e8;
-  --brand-400: #72e3ad;
-  --brand-500: #3ecf8e;
-  --brand-600: #097c4f;
-  --brand-button: #72e3ad;
-  --brand-button-border: #3ecf8e;
-  --brand-button-text: #0b2e1e;
+  /* brand — the CORE_CODE lavender ramp */
+  --brand: #9b6fd4;
+  --brand-link: #7c4dbc;
+  --brand-200: #f6f1fe;
+  --brand-300: #ebdffc;
+  --brand-400: #d8b4fe;
+  --brand-500: #b48be6;
+  --brand-600: #7c4dbc;
+  --brand-button: #9b6fd4;
+  --brand-button-border: #9b6fd4;
+  --brand-button-text: #ffffff;
+  --brand-sweep: #d8b4fe;        /* the far end of the brand gradient */
 
-  --accent: #097c4f;             /* brand text that must read on light surfaces */
-  --accent-strong: #06603d;
+  --accent: #6d3fb0;             /* brand text that must read on light surfaces */
+  --accent-strong: #57328f;
   --accent-contrast: #ffffff;
-  --accent-soft: rgba(62, 207, 142, 0.14);
-  --accent-glow: rgba(62, 207, 142, 0.35);
+  --accent-soft: rgba(155, 111, 212, 0.14);
+  --accent-glow: rgba(155, 111, 212, 0.35);
 
-  --info: #0b6bcb;
-  --info-soft: rgba(11, 107, 203, 0.09);
-  --success: #0f8a54;
-  --success-soft: rgba(62, 207, 142, 0.14);
-  --danger: #d73d1d;
-  --danger-soft: rgba(229, 77, 46, 0.09);
-  --warning: #b56a00;
-  --warning-soft: rgba(219, 142, 0, 0.12);
+  --info: #b0447c;               /* the CORE_CODE chart colours, deepened */
+  --info-soft: rgba(255, 117, 184, 0.12);
+  --success: #3e8064;
+  --success-soft: rgba(167, 243, 208, 0.18);
+  --danger: #9c4a3c;
+  --danger-soft: rgba(255, 191, 179, 0.16);
+  --warning: #8a6a15;
+  --warning-soft: rgba(255, 216, 115, 0.2);
 
   --sandbox-window: #171717;
   --code-bg: #171717;
@@ -80,7 +81,7 @@
 
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -4px rgba(0, 0, 0, 0.06);
   --shadow-pop: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.08), 0 24px 56px -12px rgba(0, 0, 0, 0.18);
-  --shadow-glow: 0 0 0 1px rgba(62, 207, 142, 0.35), 0 0 24px -4px rgba(62, 207, 142, 0.35);
+  --shadow-glow: 0 0 0 1px rgba(216, 180, 254, 0.35), 0 0 24px -4px rgba(216, 180, 254, 0.35);
 
   --grid-line: rgba(0, 0, 0, 0.055);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -114,30 +115,33 @@
     --text-faint: #4d4d4d;
     --text-inverse: #121212;
 
-    --brand-link: #00c573;
-    --brand-200: #021a10;
-    --brand-300: #00291a;
-    --brand-400: #003118;
-    --brand-500: #006239;
-    --brand-600: #8fe5bc;
-    --brand-button: #006239;
-    --brand-button-border: rgba(62, 207, 142, 0.3);
-    --brand-button-text: #fafafa;
+    /* brand — the CORE_CODE lavender ramp, inverted for a dark surface */
+    --brand: #d8b4fe;
+    --brand-link: #e9d5ff;
+    --brand-200: #1b1430;
+    --brand-300: #241a3e;
+    --brand-400: #2e2149;
+    --brand-500: #b48be6;
+    --brand-600: #d8b4fe;
+    --brand-button: #9b6fd4;
+    --brand-button-border: rgba(216, 180, 254, 0.3);
+    --brand-button-text: #ffffff;
+    --brand-sweep: #f3e8ff;
 
-    --accent: #3ecf8e;
-    --accent-strong: #5fe0a5;
-    --accent-contrast: #0b2e1e;
-    --accent-soft: rgba(62, 207, 142, 0.12);
-    --accent-glow: rgba(62, 207, 142, 0.28);
+    --accent: #d8b4fe;
+    --accent-strong: #e9d5ff;
+    --accent-contrast: #17102b;
+    --accent-soft: rgba(216, 180, 254, 0.12);
+    --accent-glow: rgba(216, 180, 254, 0.28);
 
-    --info: #52a9ff;
-    --info-soft: rgba(82, 169, 255, 0.1);
-    --success: #3ecf8e;
-    --success-soft: rgba(62, 207, 142, 0.12);
-    --danger: #f56e4e;
-    --danger-soft: rgba(229, 77, 46, 0.12);
-    --warning: #f1a10d;
-    --warning-soft: rgba(241, 161, 13, 0.12);
+    --info: #ff75b8;
+    --info-soft: rgba(255, 117, 184, 0.12);
+    --success: #a7f3d0;
+    --success-soft: rgba(167, 243, 208, 0.12);
+    --danger: #ffbfb3;
+    --danger-soft: rgba(255, 191, 179, 0.12);
+    --warning: #ffd873;
+    --warning-soft: rgba(255, 216, 115, 0.12);
 
     --code-bg: #0f0f0f;
 
@@ -173,30 +177,33 @@
   --text-faint: #4d4d4d;
   --text-inverse: #121212;
 
-  --brand-link: #00c573;
-  --brand-200: #021a10;
-  --brand-300: #00291a;
-  --brand-400: #003118;
-  --brand-500: #006239;
-  --brand-600: #8fe5bc;
-  --brand-button: #006239;
-  --brand-button-border: rgba(62, 207, 142, 0.3);
-  --brand-button-text: #fafafa;
+  /* brand — the CORE_CODE lavender ramp, inverted for a dark surface */
+  --brand: #d8b4fe;
+  --brand-link: #e9d5ff;
+  --brand-200: #1b1430;
+  --brand-300: #241a3e;
+  --brand-400: #2e2149;
+  --brand-500: #b48be6;
+  --brand-600: #d8b4fe;
+  --brand-button: #9b6fd4;
+  --brand-button-border: rgba(216, 180, 254, 0.3);
+  --brand-button-text: #ffffff;
+  --brand-sweep: #f3e8ff;
 
-  --accent: #3ecf8e;
-  --accent-strong: #5fe0a5;
-  --accent-contrast: #0b2e1e;
-  --accent-soft: rgba(62, 207, 142, 0.12);
-  --accent-glow: rgba(62, 207, 142, 0.28);
+  --accent: #d8b4fe;
+  --accent-strong: #e9d5ff;
+  --accent-contrast: #17102b;
+  --accent-soft: rgba(216, 180, 254, 0.12);
+  --accent-glow: rgba(216, 180, 254, 0.28);
 
-  --info: #52a9ff;
-  --info-soft: rgba(82, 169, 255, 0.1);
-  --success: #3ecf8e;
-  --success-soft: rgba(62, 207, 142, 0.12);
-  --danger: #f56e4e;
-  --danger-soft: rgba(229, 77, 46, 0.12);
-  --warning: #f1a10d;
-  --warning-soft: rgba(241, 161, 13, 0.12);
+  --info: #ff75b8;
+  --info-soft: rgba(255, 117, 184, 0.12);
+  --success: #a7f3d0;
+  --success-soft: rgba(167, 243, 208, 0.12);
+  --danger: #ffbfb3;
+  --danger-soft: rgba(255, 191, 179, 0.12);
+  --warning: #ffd873;
+  --warning-soft: rgba(255, 216, 115, 0.12);
 
   --code-bg: #0f0f0f;
 
@@ -235,6 +242,9 @@
   --color-brand-400: var(--brand-400);
   --color-brand-500: var(--brand-500);
   --color-brand-600: var(--brand-600);
+  --color-brand-button: var(--brand-button);
+  --color-brand-button-text: var(--brand-button-text);
+  --color-brand-sweep: var(--brand-sweep);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
@@ -296,7 +306,7 @@ html.theme-transition *::after {
 }
 
 ::selection {
-  background: rgba(62, 207, 142, 0.28);
+  background: rgba(216, 180, 254, 0.28);
 }
 
 :focus-visible {
@@ -558,14 +568,14 @@ html.theme-transition *::after {
   animation: text-shine 6s linear infinite;
 }
 .text-brand-gradient {
-  background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand) 55%, #8fe5bc 100%);
+  background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand) 55%, var(--brand-sweep) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 :root[data-theme="dark"] .text-brand-gradient,
 .dark .text-brand-gradient {
-  background: linear-gradient(135deg, #3ecf8e 0%, #8fe5bc 60%, #ededed 100%);
+  background: linear-gradient(135deg, #9b6fd4 0%, #d8b4fe 55%, #f3e8ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -601,9 +611,9 @@ html.theme-transition *::after {
   height: 420px;
   margin-left: calc(min(760px, 110vw) / -2);
   background:
-    radial-gradient(closest-side, rgba(62, 207, 142, 0.32), transparent 70%),
-    radial-gradient(closest-side at 70% 60%, rgba(0, 197, 115, 0.22), transparent 70%),
-    radial-gradient(closest-side at 30% 70%, rgba(143, 229, 188, 0.18), transparent 70%);
+    radial-gradient(closest-side, rgba(216, 180, 254, 0.32), transparent 70%),
+    radial-gradient(closest-side at 70% 60%, rgba(155, 111, 212, 0.22), transparent 70%),
+    radial-gradient(closest-side at 30% 70%, rgba(243, 232, 255, 0.18), transparent 70%);
   filter: blur(48px);
   opacity: 0.75;
   animation: aurora-drift 22s ease-in-out infinite;
@@ -647,7 +657,7 @@ html.theme-transition *::after {
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(62, 207, 142, 0.55), transparent 45%);
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(216, 180, 254, 0.55), transparent 45%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -661,7 +671,7 @@ html.theme-transition *::after {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(62, 207, 142, 0.07), transparent 40%);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(216, 180, 254, 0.07), transparent 40%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -681,7 +691,7 @@ html.theme-transition *::after {
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: conic-gradient(from var(--beam-angle), transparent 0deg, transparent 250deg, var(--brand) 310deg, #8fe5bc 340deg, transparent 360deg);
+  background: conic-gradient(from var(--beam-angle), transparent 0deg, transparent 250deg, var(--brand) 310deg, var(--brand-sweep) 340deg, transparent 360deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -917,5 +927,27 @@ html.theme-transition *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+/* ========================================================================== */
+/* The chat column                                                            */
+/* ========================================================================== */
+
+/*
+ * The chat column fills the space it is given, so the layout follows the
+ * window instead of leaving a narrow strip floating in a wide screen. The
+ * width the user chose is the floor, and it only applies on a wide window:
+ * on a narrow one the column may shrink below it, so the window itself can
+ * shrink too and the sidebar can turn into a drawer.
+ */
+.chat-column {
+  --content-floor: 0px;
+  max-width: min(100%, min(1600px, max(var(--content-floor), calc(100% - 96px))));
+}
+
+@media (min-width: 1024px) {
+  .chat-column {
+    --content-floor: var(--content-preferred, 780px);
   }
 }

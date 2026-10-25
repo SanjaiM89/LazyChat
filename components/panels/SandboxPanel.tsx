@@ -402,7 +402,7 @@ function ChromiumComputer() {
                     e.stopPropagation();
                     setViewStep(null);
                   }}
-                  className="ml-1 rounded-full bg-[#3ecf8e] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0b2e1e] transition-[filter] hover:brightness-110"
+                  className="ml-1 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-button-text transition-[filter] hover:brightness-110"
                 >
                   Live
                 </button>
@@ -466,7 +466,7 @@ function ChromiumComputer() {
             {viewStep !== null && (
               <button
                 onClick={() => setViewStep(null)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent transition-colors hover:bg-brand hover:text-[#0b2e1e]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent transition-colors hover:bg-brand hover:text-brand-button-text"
               >
                 <span className="live-dot !h-1.5 !w-1.5" /> Live
               </button>
@@ -513,7 +513,7 @@ function ChromiumComputer() {
                   <span
                     className={cn(
                       "absolute left-1 top-1 rounded px-1 text-[9.5px] font-bold",
-                      s.actor === "model" ? "bg-[#3ecf8e] text-[#0b2e1e]" : "bg-warning text-black",
+                      s.actor === "model" ? "bg-brand text-brand-button-text" : "bg-warning text-black",
                     )}
                   >
                     {s.i}
@@ -826,13 +826,13 @@ function ConsoleLine({ line }: { line: ActivityLine }) {
   const time = new Date(line.t).toLocaleTimeString([], { hour12: false });
   const tone =
     line.kind === "cmd"
-      ? "text-[#3ecf8e]"
+      ? "text-brand"
       : line.kind === "tool"
         ? "text-[#52a9ff]"
         : line.kind === "file"
-          ? "text-[#3ecf8e]"
+          ? "text-brand"
           : line.kind === "thinking"
-            ? "text-[#8fe5bc]"
+            ? "text-brand-600"
             : line.kind === "error"
               ? "text-[#f56e4e]"
               : line.kind === "status"
@@ -844,7 +844,7 @@ function ConsoleLine({ line }: { line: ActivityLine }) {
     <pre className={cn("whitespace-pre-wrap break-words", tone)}>
       <span className="mr-1.5 text-white/30 select-none">{time}</span>
       {line.kind === "cmd" && (
-        <span className="mr-0.5 font-semibold text-[#3ecf8e]/80 select-none">$</span>
+        <span className="mr-0.5 font-semibold text-brand/80 select-none">$</span>
       )}
       {line.text}
     </pre>
@@ -961,7 +961,7 @@ function SandboxTerminal({ id, feed }: { id: string; feed: ActivityLine[] }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-[#0f0f0f]">
       <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
-        <BrandIcon name="bash" size={13} fallback={<Terminal size={13} className="text-[#3ecf8e]" />} />
+        <BrandIcon name="bash" size={13} fallback={<Terminal size={13} className="text-brand" />} />
         <span className="font-mono text-[11px] uppercase tracking-wider text-white/55">Terminal</span>
       </div>
       <div ref={outRef} className="h-40 overflow-auto p-2.5 font-mono text-[11.5px] leading-relaxed text-white/80">
@@ -981,10 +981,10 @@ function SandboxTerminal({ id, feed }: { id: string; feed: ActivityLine[] }) {
         {output.map((line, i) => (
           <pre key={i} className="whitespace-pre-wrap">{line}</pre>
         ))}
-        {busy && <pre className="text-[#8fe5bc]">…</pre>}
+        {busy && <pre className="text-brand-600">…</pre>}
       </div>
       <div className="flex items-center gap-1.5 border-t border-white/10 px-2.5 py-2">
-        <span className="text-[#3ecf8e] font-mono text-[12px]">$</span>
+        <span className="text-brand font-mono text-[12px]">$</span>
         <input
           value={cmd}
           onChange={(e) => setCmd(e.target.value)}

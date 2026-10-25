@@ -474,25 +474,6 @@ that repaints once a second from the run's own `startedAt`. A visually-hidden
 `role="status"` region carries the state for screen readers, so the ticking
 label is never announced tick by tick.
 
-### DeepSeek model calls
-
-DeepSeek providers talk to the same Messages API the harness uses. A custom
-provider whose base URL is on `api.deepseek.com` — or whose API format is set to
-**DeepSeek Messages** — is served by `lib/deepseek.ts`, which points the AI SDK
-at `POST /anthropic/v1/messages` and normalizes the request to dsh's wire shape:
-`x-api-key`, `anthropic-version: 2023-06-01`, `accept: text/event-stream`, a
-top-level `system`, `thinking` declared on every request (with
-`output_config.effort: "high"` when on), `max_tokens` defaulting to 256k, and
-tools as `{ name, description, input_schema }`. Anthropic-only extras the SDK
-adds for Claude (eager tool streaming, `tool_choice`, betas, cache control) are
-dropped. Streaming, tool calls and usage still flow through the SDK, so one
-reshaped request keeps the model on the same path as everything else.
-
-What is deliberately **not** copied: dsh's harness attribution (`user-agent`,
-`x-deepseek-harness-user-id`, session/compaction headers). Omnia identifies as
-Omnia; the protocol, auth and body are what match. `npm run test:llm` pins the
-endpoint mapping and captures a real request to check the wire body.
-
 ---
 
 ## Agent sandbox (dsh process confinement)
@@ -524,6 +505,8 @@ read-only. `BWRAP_BIN`,
 in `.env.example`. On Linux install `bubblewrap` (`sudo apt install bubblewrap`).
 Browser research additionally needs Playwright Chromium (`npx playwright install
 chromium`); the sandbox reuses the host browser cache.
+
+---
 
 ---
 
@@ -591,65 +574,11 @@ into every preset.
 
 ---
 
-## Goals, tasks, and plan review (dsh port)
-
-Three collaboration surfaces from DeepSeek Harness share one idea: state the
-model can act on later without re-deriving it from narration.
-
-**Goals.** `create_goal` / `get_goal` / `update_goal` mirror
-`dsh-tool-goal` + `dsh-goal`. Every mutation is compare-and-set on a positive
-`revision` (a stale call gets `revision mismatch` and must read again), phases
-are `active | paused | blocked | complete`, and the wire output carries
-`roundsStarted`, `maxGoalRounds`, `blockedReason`, and `activation`. A goal is
-**armed** when created or resumed; a server restart leaves it **disarmed**, so
-unattended rounds never resume themselves (ask the assistant to continue and it
-calls `update_goal action: resume`). Completion and blocking may happen during
-an automatic round; edit/pause/resume require a direct human turn.
-
-After a clean run, `lib/chat-runs.ts` asks `startGoalRound()` for the next
-round. If the goal is active, armed, and under its cap, it appends the exact
-`<goal_round>` prompt from `dsh-goal-round-driver` as a user message and starts
-another chat run in the same conversation; the client's run poll attaches to
-it, so Stop still works. Exhaustion records a `GOAL_ROUNDS_EXHAUSTED` blocker
-and disarms. Knobs:
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `OMNIA_GOAL_DRIVER` | on | set `0` to finish one turn per user message (the driver is off) |
-| `OMNIA_GOAL_MAX_ROUNDS` | `256` | default cap when `create_goal` omits `max_goal_rounds` (dsh's default) |
-
-Goal rounds are marked in the transcript as a compact “Goal round N / M” line
-rather than showing the raw continuation prompt.
-
-**Tasks.** `todo_write` is dsh's `tool-todo`: the model sends the whole list on
-every call, the server trims content and rejects empty/duplicate items and more
-than one `in_progress` (unless parallel work is enabled later), and returns
-`{ todos, counts }`. No side store: the committed list lives in the tool call,
-so a reload or resumed run renders identically. The standing list appears above
-the composer (`components/dsh/TodoPanel.tsx`, collapsed by default) and clears
-when the next turn starts, keeping the finished checklist visible after the
-turn ends — dsh's turn-start/turn-end projection rule. The per-call row shows
-the change summary and expands to the list.
-
-**Plan review.** `/plan` turns plan mode on for the conversation; `/plan off`
-leaves it. State is persisted in `data/plans.json` (dsh logs `plan/mode` in the
-session). In plan mode the system prompt asks for a plan only; `exit_plan_mode`
-validates a `# heading`, then opens the same plan-review question dsh uses
-(“Approve this plan and leave plan mode?” with **Approve** / **Keep planning**)
-on the `ask_user_question` seam. Approve leaves plan mode and returns
-`{ approved: true }`; keep-planning comes back as a failed tool call carrying
-your feedback, so the model revises and presents again. A dismissed review
-returns `{ approved: false }` and leaves plan mode on. `components/PlanReviewCard.tsx`
-renders the plan inline with the two actions.
-
----
-
 ## Testing
 
 ```bash
 npm run test:brain   # 55 passed (intent, actions, memory, dsh capture; live graph)
 npm run test:ui      # 23 passed (ANSI parsing, height cap, terminal derivation, run clock)
-npm run test:agents  # 39 passed (todo list, goal CAS/rounds, plan review)
 ```
 
 | File | Covers |
@@ -677,12 +606,14 @@ components/brain/  BrainApp · GraphCanvas · Panels
 lib/brainApi.ts  typed client (same-origin fetch + SSE)
 scripts/brain-seed.ts  dataset loader (idempotent MERGE + verify)
 tests/brain/   intent.test.ts (node:test, live graph)
-tests/dsh/     memory.test.ts (workspace registry + durable memory)
-harness/       vendored DeepSeek Harness checkout (git-ignored; see docs/dsh-harness.md)
-lib/dsh/       harness bridge: workspaces, memory, runner, overlay, typed client
-app/api/dsh/   workspaces, runs, memory (+MCP), files, commands, status routes
+tests/workspace/  memory.test.ts (workspace registry + durable memory)
+tests/agent/   permissions.test.ts, session.test.ts (node:test)
+lib/agent/     the agent runtime: tool catalog, session log, permissions, guard
+lib/workspace/ folder-bound work: workspaces, memory, the ws_* tools, typed client
+app/api/workspace/  workspaces, memory (+MCP), files, commands, browse
+app/api/agent/      schedules (+ jobs, plugins, permissions, sessions)
 components/workspace/  WorkspaceView (list, execution, files, memory, todos, history)
-docs/dsh-harness.md  setup, architecture, memory schema/API, plugins, limitations
+docs/agent-runtime.md  the runtime: session log, permissions, internal endpoints
 phases.md      living phase tracker
 ```
 

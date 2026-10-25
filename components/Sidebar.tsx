@@ -19,6 +19,13 @@ import {
   Moon,
   Monitor,
   ChevronDown,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+  Archive,
+  ArchiveRestore,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { cn, Tooltip, Segmented } from "@/components/ui";
 import { OmniaLogo } from "@/components/brand/OmniaLogo";
@@ -26,8 +33,10 @@ import { BrandIcon, modelIconKey } from "@/components/brand/BrandIcon";
 import { UserMenu } from "@/components/UserMenu";
 import { AttachWorkspaceDialog } from "@/components/workspace/AttachWorkspaceDialog";
 import { RenameWorkspaceDialog } from "@/components/workspace/RenameWorkspaceDialog";
-import { dshApi } from "@/lib/dsh/client";
-import type { Workspace } from "@/lib/dsh/types";
+import { workspaceApi } from "@/lib/workspace/client";
+import { useSidebarLayout } from "@/lib/use-sidebar-layout";
+import type { ConversationMeta } from "@/lib/chat-store";
+import type { Workspace } from "@/lib/workspace/types";
 import {
   useAppStore,
   modelLabel,
@@ -97,12 +106,26 @@ export function Sidebar({
   const [workspaceFilterId, setWorkspaceFilterId] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [renaming, setRenaming] = useState<Workspace | null>(null);
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const { open: sidebarOpen, close: closeSidebar, isWide } = useSidebarLayout();
   const conversations = useAppStore((s) => s.conversations);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
   const loadConversations = useAppStore((s) => s.loadConversations);
   const deleteConversation = useAppStore((s) => s.deleteConversation);
+  const pinnedConversations = useAppStore((s) => s.pinnedConversations);
+  const archivedConversations = useAppStore((s) => s.archivedConversations);
+  const pinConversation = useAppStore((s) => s.pinConversation);
+  const unpinConversation = useAppStore((s) => s.unpinConversation);
+  const archiveConversation = useAppStore((s) => s.archiveConversation);
+  const unarchiveConversation = useAppStore((s) => s.unarchiveConversation);
+  const [chatMenuFor, setChatMenuFor] = useState<string | null>(null);
+
+  // Any click outside the open chat menu dismisses it.
+  useEffect(() => {
+    if (!chatMenuFor) return;
+    const dismiss = () => setChatMenuFor(null);
+    document.addEventListener("click", dismiss);
+    return () => document.removeEventListener("click", dismiss);
+  }, [chatMenuFor]);
   const conversationWorkspaces = useAppStore((s) => s.conversationWorkspaces);
   const runs = useAppStore((s) => s.runs);
   const mainView = useAppStore((s) => s.mainView);
@@ -110,8 +133,8 @@ export function Sidebar({
 
   const refreshWorkspaces = useCallback(async () => {
     try {
-      const r = await dshApi.workspaces();
-      setWorkspaces(r.workspaces);
+      const r = await workspaceApi.workspaces();
+      setWorkspaces(Array.isArray(r.workspaces) ? r.workspaces : []);
     } catch {
       setWorkspaces([]);
     }
@@ -128,6 +151,28 @@ export function Sidebar({
     () => workspaces.find((w) => w.id === workspaceFilterId) ?? null,
     [workspaces, workspaceFilterId],
   );
+  // Move a workspace one place up or down in the display order.
+  const reorderWorkspace = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const index = workspaces.findIndex((w) => w.id === id);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= workspaces.length) return;
+      // insertBefore semantics: land before the workspace that follows the
+      // target, or at the end when moving the last one up.
+      const before = workspaces[direction === -1 ? target : target + 1]?.id;
+      try {
+        const res = await fetch(`/api/workspace/workspaces/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ before: before ?? null }),
+        });
+        if (res.ok) await refreshWorkspaces();
+      } catch {
+      }
+    },
+    [workspaces, refreshWorkspaces],
+  );
+
   const visibleConversations = useMemo(
     () =>
       workspaceFilterId
@@ -137,13 +182,146 @@ export function Sidebar({
         : conversations,
     [conversations, conversationWorkspaces, workspaceFilterId],
   );
+  // Pinned chats head the list in pin order; archived ones leave it but stay
+  // reachable, so nothing is ever lost by archiving.
+  const pinnedChats = useMemo(
+    () => pinnedConversations
+      .map((id) => visibleConversations.find((c) => c.id === id))
+      .filter((c): c is ConversationMeta => Boolean(c)),
+    [pinnedConversations, visibleConversations],
+  );
+  const listedChats = useMemo(
+    () => visibleConversations.filter(
+      (c) => !pinnedConversations.includes(c.id) && !archivedConversations.includes(c.id),
+    ),
+    [visibleConversations, pinnedConversations, archivedConversations],
+  );
+  const archivedChats = useMemo(
+    () => archivedConversations
+      .map((id) => conversations.find((c) => c.id === id))
+      .filter((c): c is ConversationMeta => Boolean(c)),
+    [archivedConversations, conversations],
+  );
+
+  const renderChat = (c: ConversationMeta) => {
+
+                const active = c.id === activeConversationId;
+                const live = activeRunFor(runs, c.id);
+                const bound = conversationWorkspaces[c.id];
+                const logo = modelIconKey(c.model, c.provider as string);
+                return (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "group relative mb-px flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors duration-150",
+                      active
+                        ? "bg-bg-surface-300 text-fg"
+                        : "text-fg-secondary hover:bg-bg-hover hover:text-fg",
+                    )}
+                    onClick={() => {
+                      void chat.openConversation(c.id);
+                      // On a narrow window the sidebar is a drawer over the
+                      // chat, so picking a conversation dismisses it.
+                      if (!isWide) closeSidebar();
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand transition-all duration-300 [transition-timing-function:var(--ease-out)]",
+                        active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
+                      )}
+                    />
+                    {live ? (
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                        <span className="live-dot" />
+                      </span>
+                    ) : (
+                      <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center transition-opacity", active ? "opacity-100" : "opacity-70 group-hover:opacity-100")}>
+                        <BrandIcon
+                          name={logo}
+                          size={14}
+                          fallback={<MessageSquare size={14} className={active ? "text-accent" : "text-fg-muted"} />}
+                        />
+                      </span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-normal leading-5">
+                        {c.title}
+                      </p>
+                      <p className="flex items-center gap-1 truncate text-[11px] leading-4 text-fg-muted">
+                        {bound && (
+                          <Folder size={10} className="shrink-0 text-fg-muted/80" />
+                        )}
+                        {live ? (
+                          <span className="text-shine truncate font-medium">
+                            {live.activity}
+                          </span>
+                        ) : bound ? (
+                          <span className="truncate">{bound.name}</span>
+                        ) : (
+                          <span className="truncate">
+                            {timeAgo(c.updatedAt)} · {modelLabel(c.provider as any, c.model)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setChatMenuFor(chatMenuFor === c.id ? null : c.id);
+                        }}
+                        className="flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-fg-muted opacity-0 transition-all duration-200 group-hover:opacity-100 focus-visible:opacity-100 hover:border-border hover:bg-bg-hover hover:text-fg"
+                        title="Chat actions"
+                      >
+                        <MoreHorizontal size={13} />
+                      </button>
+                      {chatMenuFor === c.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute right-7 top-0 z-50 w-40 rounded-lg border border-border bg-bg-overlay p-1 shadow-pop animate-scale-in"
+                        >
+                          <MenuRow
+                            icon={pinnedConversations.includes(c.id) ? <PinOff size={12} /> : <Pin size={12} />}
+                            label={pinnedConversations.includes(c.id) ? "Unpin" : "Pin to top"}
+                            onClick={() => {
+                              void (pinnedConversations.includes(c.id)
+                                ? unpinConversation(c.id)
+                                : pinConversation(c.id));
+                              setChatMenuFor(null);
+                            }}
+                          />
+                          <MenuRow
+                            icon={<Archive size={12} />}
+                            label="Archive"
+                            onClick={() => {
+                              void archiveConversation(c.id);
+                              setChatMenuFor(null);
+                            }}
+                          />
+                          <MenuRow
+                            icon={<Trash2 size={12} />}
+                            label="Delete"
+                            danger
+                            onClick={() => {
+                              void deleteConversation(c.id);
+                              setChatMenuFor(null);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+  };
 
   return (
     <>
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] animate-fade-in lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => closeSidebar()}
         />
       )}
       <aside
@@ -160,7 +338,7 @@ export function Sidebar({
               <OmniaLogo height={22} />
               <Tooltip text="Collapse sidebar">
                 <button
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => closeSidebar()}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg lg:hidden"
                 >
                   <PanelLeftClose size={15} />
@@ -266,7 +444,7 @@ export function Sidebar({
                     className="ml-1 rounded-full border border-brand/30 bg-accent-soft px-1.5 text-[10px] font-medium leading-4 text-accent transition-opacity hover:opacity-80 animate-scale-in"
                     title="Show all chats"
                   >
-                    {workspaceFilter.name} ✕
+                    {workspaceFilter.title} ✕
                   </button>
                 )}
               </SectionHeader>
@@ -274,84 +452,45 @@ export function Sidebar({
               {visibleConversations.length === 0 && (
                 <div className="mx-1 rounded-md border border-dashed border-border px-3 py-3 text-[12px] leading-relaxed text-fg-muted animate-fade-in">
                   {workspaceFilter
-                    ? `No chats in ${workspaceFilter.name} yet.`
+                    ? `No chats in ${workspaceFilter.title} yet.`
                     : "No conversations yet. Start a new chat to get going."}
                 </div>
               )}
               <div className="stagger [--stagger:25ms]">
-              {visibleConversations.map((c) => {
-                const active = c.id === activeConversationId;
-                const live = activeRunFor(runs, c.id);
-                const bound = conversationWorkspaces[c.id];
-                const logo = modelIconKey(c.model, c.provider as string);
-                return (
-                  <div
-                    key={c.id}
-                    className={cn(
-                      "group relative mb-px flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors duration-150",
-                      active
-                        ? "bg-bg-surface-300 text-fg"
-                        : "text-fg-secondary hover:bg-bg-hover hover:text-fg",
-                    )}
-                    onClick={() => {
-                      void chat.openConversation(c.id);
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand transition-all duration-300 [transition-timing-function:var(--ease-out)]",
-                        active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
-                      )}
-                    />
-                    {live ? (
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                        <span className="live-dot" />
-                      </span>
-                    ) : (
-                      <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center transition-opacity", active ? "opacity-100" : "opacity-70 group-hover:opacity-100")}>
-                        <BrandIcon
-                          name={logo}
-                          size={14}
-                          fallback={<MessageSquare size={14} className={active ? "text-accent" : "text-fg-muted"} />}
-                        />
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-normal leading-5">
+                {pinnedChats.length > 0 && (
+                  <div className="mb-1.5">
+                    {pinnedChats.map((c) => renderChat(c))}
+                  </div>
+                )}
+                {listedChats.map((c) => renderChat(c))}
+              </div>
+              {archivedChats.length > 0 && (
+                <div className="mt-3 border-t border-border pt-2">
+                  <SectionHeader label="Archived" count={archivedChats.length} />
+                  {archivedChats.map((c) => (
+                    <div
+                      key={c.id}
+                      className="group relative mb-px flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 opacity-60 transition-colors duration-150 hover:bg-bg-hover hover:opacity-100"
+                      onClick={() => void chat.openConversation(c.id)}
+                    >
+                      <Archive size={12} className="shrink-0 text-fg-muted" />
+                      <p className="min-w-0 flex-1 truncate text-[12.5px] leading-5 text-fg-secondary">
                         {c.title}
                       </p>
-                      <p className="flex items-center gap-1 truncate text-[11px] leading-4 text-fg-muted">
-                        {bound && (
-                          <Folder size={10} className="shrink-0 text-fg-muted/80" />
-                        )}
-                        {live ? (
-                          <span className="text-shine truncate font-medium">
-                            {live.activity}
-                          </span>
-                        ) : bound ? (
-                          <span className="truncate">{bound.name}</span>
-                        ) : (
-                          <span className="truncate">
-                            {timeAgo(c.updatedAt)} · {modelLabel(c.provider as any, c.model)}
-                          </span>
-                        )}
-                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void unarchiveConversation(c.id);
+                        }}
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-fg-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-fg focus-visible:opacity-100"
+                        title="Restore to the chat list"
+                      >
+                        <ArchiveRestore size={12} />
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void deleteConversation(c.id);
-                      }}
-                      className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 translate-x-1 items-center justify-center rounded-md border border-transparent text-fg-muted opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 hover:border-danger/30 hover:bg-danger-soft hover:text-danger"
-                      title="Delete conversation"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                );
-              })}
-              </div>
+                  ))}
+                </div>
+              )}
 
               <SectionHeader
                 label="Workspaces"
@@ -374,7 +513,7 @@ export function Sidebar({
                   files, shell, and memory.
                 </div>
               )}
-              {workspaces.map((w) => {
+              {workspaces.map((w, index) => {
                 const selected = workspaceFilterId === w.id;
                 return (
                   <div
@@ -406,22 +545,54 @@ export function Sidebar({
                           selected ? "text-fg" : "text-fg-secondary",
                         )}
                       >
-                        {w.name}
+                        {w.title}
+                        {w.dir_status === "missing-dir" && (
+                          <span
+                            title="The folder is gone. The workspace is kept so its history stays reachable."
+                            className="ml-1.5 align-middle text-[10px] text-warn"
+                          >
+                            missing
+                          </span>
+                        )}
                       </p>
                       <p className="truncate font-mono text-[10.5px] leading-4 text-fg-muted">
                         {w.path}
                       </p>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRenaming(w);
-                      }}
-                      className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-bg-hover hover:text-fg focus-visible:opacity-100"
-                      title="Rename workspace"
-                    >
-                      <Pencil size={12} />
-                    </button>
+                    <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void reorderWorkspace(w.id, -1);
+                        }}
+                        disabled={index === 0}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+                        title="Move up"
+                      >
+                        <ArrowUp size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void reorderWorkspace(w.id, 1);
+                        }}
+                        disabled={index === workspaces.length - 1}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+                        title="Move down"
+                      >
+                        <ArrowDown size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRenaming(w);
+                        }}
+                        className="flex h-6 w-6 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-bg-hover hover:text-fg"
+                        title="Rename workspace"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -452,6 +623,33 @@ export function Sidebar({
         )}
       </aside>
     </>
+  );
+}
+
+function MenuRow({
+  icon,
+  label,
+  onClick,
+  danger,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors",
+        danger
+          ? "text-danger hover:bg-danger-soft"
+          : "text-fg-secondary hover:bg-bg-hover hover:text-fg",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 

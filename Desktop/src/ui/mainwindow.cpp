@@ -246,8 +246,9 @@ void MainWindow::refreshSidebar() {
 }
 
 void MainWindow::openConversation(const QString& id) {
-  if (engine_->isActive() && engine_->activeConversationId() != id && !activeId_.isEmpty()) {
-    saveActiveConversation();
+  if (engine_->isActive() && engine_->activeConversationId() != id) {
+    if (!activeId_.isEmpty()) saveActiveConversation();
+    engine_->stop();
   }
   Conversation c = DataStore::getConversation(id);
   if (c.id.isEmpty()) return;
@@ -262,16 +263,7 @@ void MainWindow::openConversation(const QString& id) {
 }
 
 void MainWindow::updateRunBar() {
-  const QString runCid = engine_->activeConversationId();
-  if (engine_->isActive() && !runCid.isEmpty() && runCid != activeId_) {
-    const Conversation c = DataStore::getConversation(runCid);
-    const QString title = c.title.isEmpty() ? QStringLiteral("Chat") : c.title;
-    const QString model = modelLabel(c.provider.isEmpty() ? settings_.provider : c.provider,
-                                     c.model.isEmpty() ? settings_.model : c.model);
-    runBar_->showRun(title, model, engine_->summary().startedAt);
-  } else {
-    runBar_->hideRun();
-  }
+  runBar_->hideRun();
 }
 
 void MainWindow::updateSubchatIdle() {

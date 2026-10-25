@@ -5,9 +5,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { nanoid } from "nanoid";
 import type { ArtifactMeta, ArtifactType } from "@/lib/types";
+import { DATA_DIR } from "@/lib/data-dir";
 
 
-export const ARTIFACTS_DIR = path.join(process.cwd(), "data", "artifacts");
+export const ARTIFACTS_DIR = path.join(DATA_DIR, "artifacts");
 
 function ensure() {
   if (!fs.existsSync(ARTIFACTS_DIR)) fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });

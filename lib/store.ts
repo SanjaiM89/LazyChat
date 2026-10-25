@@ -4,9 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { currentUser } from "@/lib/auth/context";
 import { scopeKey } from "@/lib/auth/server";
+import { DATA_DIR } from "@/lib/data-dir";
 
 
-export const DATA_DIR = path.join(process.cwd(), "data");
+export { DATA_DIR };
 
 function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

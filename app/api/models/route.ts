@@ -3,12 +3,7 @@ import { NextRequest } from "next/server";
 import { PROVIDERS } from "@/lib/models";
 import { getEffectiveBuiltinModels } from "@/lib/provider-models";
 import { resolveBuiltinKey } from "@/lib/provider-keys";
-import {
-  getCustomProvider,
-  isDeepSeekProvider,
-  resolveApiKey,
-} from "@/lib/custom-providers";
-import { deepseekModelsUrl } from "@/lib/deepseek";
+import { getCustomProvider, resolveApiKey } from "@/lib/custom-providers";
 import type { BuiltinProviderId } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -55,14 +50,9 @@ async function fetchLive(provider: string): Promise<LiveModel[]> {
         .map((m) => ({ id: stripGooglePrefix(String(m.name || "")) }))
         .filter((m) => m.id);
     }
-    const res = await fetch(
-      isDeepSeekProvider(custom)
-        ? deepseekModelsUrl(custom.baseUrl)
-        : `${base}/models`,
-      {
-        headers: { authorization: `Bearer ${key}` },
-      },
-    );
+    const res = await fetch(`${base}/models`, {
+      headers: { authorization: `Bearer ${key}` },
+    });
     if (!res.ok) throw new Error(`${custom.protocol} ${res.status}`);
     const data = (await res.json()) as any;
     return ((data.data || []) as any[])

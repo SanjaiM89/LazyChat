@@ -24,7 +24,7 @@ const context = await browser.newContext({
   locale: "en-US",
 });
 context.setDefaultTimeout(30_000);
-const page = await context.newPage();
+let page = await context.newPage();
 const START_PAGES = [
   "https://www.google.com/?hl=en",
   "https://html.duckduckgo.com/html/?q=welcome",
@@ -359,6 +359,131 @@ const server = http.createServer(async (req, res) => {
       const found = await humanSearch(query, max);
       const image = found.image || (await shot().catch(() => undefined));
       send(res, 200, { ...(await describe()), ...found, image });
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/observe") {
+      // A structural snapshot: what can be interacted with, and how to reach it.
+      const elements = await page.evaluate(() => {
+        const out = [];
+        const nodes = document.querySelectorAll(
+          "a, button, input, select, textarea, [role=button], [role=link], [role=checkbox], [onclick]",
+        );
+        for (const el of nodes) {
+          if (out.length >= 80) break;
+          const rect = el.getBoundingClientRect();
+          if (rect.width < 2 || rect.height < 2) continue;
+          const style = getComputedStyle(el);
+          if (style.visibility === "hidden" || style.display === "none") continue;
+          const tag = el.tagName.toLowerCase();
+          let selector = tag;
+          if (el.id) selector += `#${CSS.escape(el.id)}`;
+          else if (el.getAttribute("name")) selector += `[name="${el.getAttribute("name")}"]`;
+          else if (el.getAttribute("placeholder")) selector += `[placeholder="${el.getAttribute("placeholder")}"]`;
+          else if (tag === "a" && el.getAttribute("href")) selector += `[href="${el.getAttribute("href")}"]`;
+          else if (el.classList.length) selector += `.${CSS.escape(el.classList[0])}`;
+          const label = String(
+            el.getAttribute("aria-label") ||
+              el.getAttribute("placeholder") ||
+              el.textContent ||
+              el.value ||
+              el.getAttribute("name") ||
+              "",
+          )
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 120);
+          out.push({
+            role: el.getAttribute("role") || tag,
+            label,
+            selector,
+            type: el.getAttribute("type") || undefined,
+            value: el.value ? String(el.value).slice(0, 200) : undefined,
+          });
+        }
+        return out;
+      });
+      send(res, 200, { ...(await describe()), count: elements.length, elements });
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/extract") {
+      const body = await readJson(req);
+      const fields = body.fields && typeof body.fields === "object" ? body.fields : {};
+      const values = {};
+      for (const [name, wanted] of Object.entries(fields)) {
+        const selector = String(wanted ?? "").trim();
+        let value = null;
+        if (selector) {
+          try {
+            const handle = await page.$(selector);
+            if (handle) {
+              value = await handle.evaluate((el) => {
+                if ("value" in el && el.value !== "") return String(el.value);
+                return String(el.textContent ?? "").replace(/\s+/g, " ").trim();
+              });
+            }
+          } catch {  }
+          if (value === null) {
+            // Fall back to the text near the field name.
+            const text = await page.evaluate(() => document.body?.innerText || "");
+            const line = String(text)
+              .split("\n")
+              .map((l) => l.trim())
+              .find((l) => l && l.toLowerCase().includes(String(name).toLowerCase()));
+            if (line) value = line;
+          }
+        }
+        values[name] = value;
+      }
+      send(res, 200, { ...(await describe()), values });
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/tabs") {
+      const pages = context.pages();
+      const tabs = [];
+      for (let i = 0; i < pages.length; i++) {
+        let title = "";
+        try {
+          title = await pages[i].title();
+        } catch {  }
+        tabs.push({ index: i, url: pages[i].url(), title, active: pages[i] === page });
+      }
+      send(res, 200, { count: tabs.length, tabs });
+      return;
+    }
+    if (req.method === "POST" && url.pathname === "/tabs") {
+      const body = await readJson(req);
+      const action = String(body.action || "list");
+      if (action === "open") {
+        const next = await context.newPage();
+        page = next;
+        const target = body.url ? String(body.url) : "";
+        if (target) {
+          try {
+            await page.goto(target, { waitUntil: "domcontentloaded", timeout: 45_000 });
+          } catch {  }
+        }
+        send(res, 200, { ...(await describe()), opened: true });
+        return;
+      }
+      if (action === "close") {
+        const index = Number(body.index);
+        const pages = context.pages();
+        const target = pages[index];
+        if (!target) {
+          send(res, 400, { error: "no such tab" });
+          return;
+        }
+        if (target === page) {
+          const other = pages.find((p) => p !== target);
+          page = other ?? (await context.newPage());
+        }
+        try {
+          await target.close();
+        } catch {  }
+        send(res, 200, { ...(await describe()), closed: true });
+        return;
+      }
+      send(res, 400, { error: "tabs needs an action: list, open or close" });
       return;
     }
     send(res, 404, { error: "unknown endpoint" });

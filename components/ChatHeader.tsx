@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { PanelLeft, FileText, Monitor, Bot, FolderOpen, KeyRound, Settings2, X } from "lucide-react";
+import { PanelLeft, FileText, Monitor, Bot, FolderOpen, KeyRound, Settings2, X, Package, History } from "lucide-react";
 import { IconButton, Tooltip } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
 import type { ChatController } from "@/lib/use-chat";
 import { ModelPicker } from "@/components/ModelPicker";
 import { ApiKeysDialog } from "@/components/ApiKeysDialog";
 import { DisplaySettingsDialog } from "@/components/DisplaySettingsDialog";
+import { PermissionChip } from "@/components/agent/PermissionChip";
+import { useSidebarLayout } from "@/lib/use-sidebar-layout";
 
 
 function useTitle(chat: ChatController): string {
@@ -29,8 +31,7 @@ function useTitle(chat: ChatController): string {
 }
 
 export function ChatHeader({ chat }: { chat: ChatController }) {
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const { open: sidebarOpen, toggle: toggleSidebar } = useSidebarLayout();
   const setApiKeysOpen = useAppStore((s) => s.setApiKeysOpen);
   const setDisplayOpen = useAppStore((s) => s.setDisplayOpen);
   const providerKeyStatus = useAppStore((s) => s.providerKeyStatus);
@@ -51,13 +52,15 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
     { id: "sandbox" as const, label: "Chromium", icon: <Monitor size={16} /> },
     { id: "agents" as const, label: "Agents", icon: <Bot size={16} /> },
     ...(attached ? [{ id: "files" as const, label: "Workspace files", icon: <FolderOpen size={16} /> }] : []),
+    { id: "plugins" as const, label: "Plugins", icon: <Package size={16} /> },
+    { id: "sessions" as const, label: "Sessions", icon: <History size={16} /> },
   ];
 
   return (
     <>
       <header className="glass relative z-20 flex h-14 shrink-0 items-center gap-2 border-b border-border px-3 sm:px-4">
       <IconButton
-        onClick={() => setSidebarOpen(!sidebarOpen)}
+        onClick={toggleSidebar}
         title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
       >
         <PanelLeft size={16} />
@@ -108,6 +111,8 @@ export function ChatHeader({ chat }: { chat: ChatController }) {
             </IconButton>
           </Tooltip>
         ))}
+        <div className="mx-1.5 h-5 w-px bg-border" />
+        <PermissionChip />
         <div className="mx-1.5 h-5 w-px bg-border" />
         <Tooltip text="Display settings (font, size, width)">
           <IconButton onClick={() => setDisplayOpen(true)}>

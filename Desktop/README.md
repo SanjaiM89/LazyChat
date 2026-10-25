@@ -7,7 +7,7 @@ Standalone C++/Qt port of the Omnia (LazyChat) web app.
 - Multi-provider chat (OpenAI / Anthropic / Gemini protocols + custom providers) with streaming, thinking, and a tool loop
 - Tools: web search, artifacts, sandbox agent (`runAgentTask`), computer use (Chromium)
 - Chromium computer panel: live screenshots, URL bar (URL or search), take/release control, fullscreen, timeline filmstrip
-- Agent sandboxes: Docker (`omnia-sandbox:latest`) spawn/start/kill/exec, event receiver
+- Agent sandboxes: local bubblewrap/Seatbelt `workspace-write` (no Docker), with spawn/start/kill/exec and the event receiver
 - Artifacts panel: markdown, code, HTML, PDF, images, SVG, CSV viewers
 - Subchat, skills, MCP connections (stdio + HTTP), search providers, API keys, display settings, manage models
 - Shares the web app `data/` directory (conversations, keys, artifacts, timeline)

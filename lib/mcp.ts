@@ -116,12 +116,90 @@ export async function allMCPTools(): Promise<MCPToolInfo[]> {
   return out;
 }
 
+export interface MCPResourceInfo {
+  server: string;
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+export interface MCPResourceTemplateInfo {
+  server: string;
+  uriTemplate: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/** Every resource the connected MCP servers offer. */
+export async function listMCPResources(): Promise<MCPResourceInfo[]> {
+  const out: MCPResourceInfo[] = [];
+  for (const s of mine()) {
+    try {
+      const res = await s.client.listResources();
+      for (const r of res.resources ?? []) {
+        out.push({
+          server: s.def.name,
+          uri: r.uri,
+          name: r.name,
+          description: r.description,
+          mimeType: r.mimeType,
+        });
+      }
+    } catch {
+      // A server that does not implement resources simply has none.
+    }
+  }
+  return out;
+}
+
+/** Every resource template the connected MCP servers offer. */
+export async function listMCPResourceTemplates(): Promise<MCPResourceTemplateInfo[]> {
+  const out: MCPResourceTemplateInfo[] = [];
+  for (const s of mine()) {
+    try {
+      const res = await s.client.listResourceTemplates();
+      for (const t of res.resourceTemplates ?? []) {
+        out.push({
+          server: s.def.name,
+          uriTemplate: t.uriTemplate,
+          name: t.name,
+          description: t.description,
+          mimeType: t.mimeType,
+        });
+      }
+    } catch {
+      // As above: a server without templates has none.
+    }
+  }
+  return out;
+}
+
+/** Read one resource from a connected server. */
+export async function readMCPResource(
+  server: string,
+  uri: string,
+): Promise<{ contents: unknown } | { error: string }> {
+  const session = mine().find((s) => s.def.name === server || s.def.id === server);
+  if (!session) return { error: `No connected MCP server called "${server}".` };
+  try {
+    const res = await session.client.readResource({ uri });
+    return { contents: res.contents };
+  } catch (e) {
+    return { error: (e as Error).message || "The resource could not be read." };
+  }
+}
+
 export async function buildMCPToolSet(): Promise<ToolSet> {
   const set: ToolSet = {};
   for (const s of mine()) {
     for (const t of s.tools) {
       const inputSchema = (t.inputSchema || {}) as Record<string, unknown>;
-      set[t.name] = tool({
+      // The server name is part of the tool name: two servers that expose the
+      // same tool must not collide, so the model can tell them apart.
+      const exposed = `${s.def.name}__${t.name}`;
+      set[exposed] = tool({
         description: `[MCP:${s.def.name}] ${t.description || t.name}`,
         inputSchema: jsonSchema(inputSchema as any) as Schema<Record<string, unknown>>,
         execute: async (args: Record<string, unknown>) => {

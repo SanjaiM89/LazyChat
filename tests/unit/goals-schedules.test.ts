@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { DATA_DIR } from "@/lib/store";
-import { buildGoalTools, getGoal } from "@/lib/goals";
+import { buildGoalTools } from "@/lib/goals";
 import { buildScheduleTools } from "@/lib/schedules";
 
 const CONV_ID = "test-conv-" + Date.now();
@@ -30,45 +30,77 @@ after(async () => {
 });
 
 describe("goals", () => {
-  const tools = buildGoalTools(CONV_ID);
-  const exec = (t: any, args: Record<string, unknown>) => t.execute(args);
+  const exec = (tools: ReturnType<typeof buildGoalTools>, t: any, args: Record<string, unknown>) =>
+    t.execute(args, { toolCallId: "test-call" });
 
-  it("creates and retrieves a goal", async () => {
-    // No active goal initially.
-    const getResult = (await exec(tools.get_goal, {})) as { goal: { id: string; objective: string } | null };
+  it("creates and retrieves a goal in the dsh wire shape", async () => {
+    const tools = buildGoalTools(CONV_ID);
+    // No goal initially.
+    const getResult = (await exec(tools, tools.get_goal, {})) as {
+      goal: { id: string; objective: string } | null;
+    };
     assert.equal(getResult.goal, null);
 
-    // Create a goal.
-    const createResult = (await exec(tools.create_goal, {
+    const createResult = (await exec(tools, tools.create_goal, {
       objective: "Test the goal feature",
-    })) as { id: string; objective: string; status: string };
-    assert.equal(createResult.status, "active");
-    assert.ok(createResult.id);
+    })) as {
+      goal: { id: string; objective: string; phase: string; revision: number; roundsStarted: number };
+      activation: string;
+    };
+    assert.equal(createResult.goal.phase, "active");
+    assert.equal(createResult.activation, "armed");
+    assert.equal(createResult.goal.revision, 1);
+    assert.ok(createResult.goal.id);
 
-    // Retrieve it.
-    const getResult2 = (await exec(tools.get_goal, {})) as { goal: { id: string; objective: string } };
-    assert.equal(getResult2.goal?.id, createResult.id);
+    const getResult2 = (await exec(tools, tools.get_goal, {})) as {
+      goal: { id: string; objective: string };
+    };
+    assert.equal(getResult2.goal?.id, createResult.goal.id);
     assert.equal(getResult2.goal?.objective, "Test the goal feature");
   });
 
-  it("prevents creating a second active goal", async () => {
+  it("prevents creating a second live goal", async () => {
     const tools = buildGoalTools(CONV_ID + "-dup");
-    const exec = (t: any, args: Record<string, unknown>) => t.execute(args);
-    await exec(tools.create_goal, { objective: "First goal" });
-    const result = (await exec(tools.create_goal, {
+    await exec(tools, tools.create_goal, { objective: "First goal" });
+    const result = (await exec(tools, tools.create_goal, {
       objective: "Second goal",
     })) as { error: string };
-    assert.ok(result.error?.includes("already active"));
+    assert.ok(result.error?.includes("already exists"));
   });
 
-  it("completes and allows new goal", async () => {
+  it("completes a goal and allows a new one", async () => {
     const tools = buildGoalTools(CONV_ID + "-complete");
-    const exec = (t: any, args: Record<string, unknown>) => t.execute(args);
-    const created = (await exec(tools.create_goal, { objective: "Will complete" })) as { id: string };
-    const getRes = (await exec(tools.get_goal, {})) as { goal: { id: string } };
-    await exec(tools.update_goal, { goal_id: created.id, action: "complete" });
-    const getRes2 = (await exec(tools.get_goal, {})) as { goal: { id: string } | null };
-    assert.equal(getRes2.goal, null);
+    const created = (await exec(tools, tools.create_goal, {
+      objective: "Will complete",
+    })) as { goal: { id: string; revision: number } };
+    const completed = (await exec(tools, tools.update_goal, {
+      goal_id: created.goal.id,
+      revision: created.goal.revision,
+      action: "complete",
+    })) as { goal: { phase: string }; activation: string };
+    assert.equal(completed.goal.phase, "complete");
+    assert.equal(completed.activation, "disarmed");
+
+    const next = (await exec(tools, tools.create_goal, {
+      objective: "The next goal",
+    })) as { goal: { phase: string } };
+    assert.equal(next.goal.phase, "active");
+  });
+
+  it("requires the current revision for updates", async () => {
+    const tools = buildGoalTools(CONV_ID + "-cas");
+    const created = (await exec(tools, tools.create_goal, {
+      objective: "Revision test",
+    })) as { goal: { id: string } };
+    await assert.rejects(
+      () =>
+        exec(tools, tools.update_goal, {
+          goal_id: created.goal.id,
+          revision: 99,
+          action: "pause",
+        }),
+      /revision mismatch/,
+    );
   });
 });
 

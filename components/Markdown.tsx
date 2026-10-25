@@ -36,7 +36,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           onClick={copy}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[11px] text-white/50 transition-all hover:bg-white/10 hover:text-white"
         >
-          {copied ? <Check size={12} className="text-[#3ecf8e] animate-scale-in" /> : <Copy size={12} />}
+          {copied ? <Check size={12} className="text-brand animate-scale-in" /> : <Copy size={12} />}
           {copied ? "copied" : "copy"}
         </button>
       </div>
@@ -87,8 +87,8 @@ function CitationPill({
       title={`${citation.title}\n${citation.url}${citation.description ? `\n\n${citation.description.slice(0, 220)}` : ""}\n\nClick to see where this was referenced.`}
       className={`mx-0.5 inline-flex h-[18px] min-w-[20px] items-center justify-center rounded-md border px-1 align-super text-[10.5px] font-semibold leading-none transition-colors ${
         active
-          ? "border-brand bg-brand text-[#0b2e1e]"
-          : "border-brand/40 bg-accent-soft text-accent hover:bg-brand hover:text-[#0b2e1e]"
+          ? "border-brand bg-brand text-brand-button-text"
+          : "border-brand/40 bg-accent-soft text-accent hover:bg-brand hover:text-brand-button-text"
       }`}
     >
       {n}

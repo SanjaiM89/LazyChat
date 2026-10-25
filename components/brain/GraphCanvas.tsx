@@ -22,24 +22,24 @@ type Props = {
   showLabels?: boolean;
 };
 
-// Omnia palette: brand greens for the core entities, neutral greys for supporting records, and a few muted
-// semantic accents (amber tickets, red findings). All mid-luminance so they read on #121212 and #fcfcfc alike.
+// The CORE_CODE chart palette: lavender for people, mint for services, amber for tickets, pink for
+// decisions, and neutral greys for supporting records.
 const NODE_COLORS: Record<string, string> = {
-  Person: "#3ecf8e",
-  Team: "#0f9d63",
-  Service: "#8fe5bc",
-  Repo: "#5ec4a0",
-  Ticket: "#f1a10d",
-  Decision: "#52a9ff",
-  Document: "#9ca3af",
+  Person: "#d8b4fe",
+  Team: "#9b6fd4",
+  Service: "#a7f3d0",
+  Repo: "#8fdcc0",
+  Ticket: "#ffd873",
+  Decision: "#ff75b8",
+  Document: "#a5a5a1",
   Message: "#7c7c7c",
   Session: "#a3a3a3",
   Turn: "#8a8a8a",
-  EpisodicMemory: "#34d399",
-  SemanticMemory: "#10b981",
-  ProceduralMemory: "#059669",
-  Finding: "#f56e4e",
-  AgentHandoff: "#b4b4b4",
+  EpisodicMemory: "#f3e8ff",
+  SemanticMemory: "#d8b4fe",
+  ProceduralMemory: "#9b6fd4",
+  Finding: "#9c6a60",
+  AgentHandoff: "#414140",
 };
 
 /** Brand-palette color for a node label, falling back to the server-provided color. */
@@ -48,11 +48,11 @@ export function nodeColor(label: string | undefined, fallback?: string): string 
 }
 
 const REL_COLORS: Record<string, string> = {
-  DEPENDS_ON: "#3ecf8e",
-  BLOCKED_BY: "#f1a10d",
-  KNOWS_ABOUT: "#00c573",
+  DEPENDS_ON: "#d8b4fe",
+  BLOCKED_BY: "#ffd873",
+  KNOWS_ABOUT: "#b48be6",
   RELATES_TO: "#898989",
-  AUTHORED: "#8fe5bc",
+  AUTHORED: "#a7f3d0",
   MENTIONS: "#707070",
   DISCUSSED_IN: "#707070",
 };
@@ -168,7 +168,7 @@ export function GraphCanvas({
       if (pulsing) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, r + 6, 0, 2 * Math.PI);
-        ctx.fillStyle = "rgba(62, 207, 142, 0.25)";
+        ctx.fillStyle = "rgba(216, 180, 254, 0.25)";
         ctx.fill();
       }
       ctx.beginPath();
@@ -176,7 +176,7 @@ export function GraphCanvas({
       ctx.fillStyle = dim ? "rgba(137,137,137,0.3)" : nodeColor(node.label, node.color);
       ctx.fill();
       if (highlight?.has(node.id) && !dim) {
-        ctx.strokeStyle = "#3ecf8e";
+        ctx.strokeStyle = "#d8b4fe";
         ctx.lineWidth = 2;
         ctx.stroke();
       }

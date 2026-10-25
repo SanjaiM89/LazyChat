@@ -70,21 +70,21 @@ export const RELATIONSHIP_PROPERTIES: Record<string, string[]> = {
 
 /** Colours shared with the frontend legend so both agree on one palette. */
 export const NODE_COLORS: Record<string, string> = {
-  Person: "#38bdf8",
-  Team: "#a78bfa",
-  Service: "#34d399",
-  Ticket: "#fbbf24",
-  Decision: "#f472b6",
-  Document: "#22d3ee",
-  Message: "#94a3b8",
-  Repo: "#fb923c",
-  Session: "#c084fc",
-  Turn: "#818cf8",
-  EpisodicMemory: "#4ade80",
-  SemanticMemory: "#16a34a",
-  ProceduralMemory: "#15803d",
-  Finding: "#e879f9",
-  AgentHandoff: "#f9a8d4",
+  Person: "#D8B4FE",
+  Team: "#9B6FD4",
+  Service: "#A7F3D0",
+  Ticket: "#FFD873",
+  Decision: "#FF75B8",
+  Document: "#A5A5A1",
+  Message: "#707070",
+  Repo: "#8FDCC0",
+  Session: "#A3A3A3",
+  Turn: "#8A8A8A",
+  EpisodicMemory: "#F3E8FF",
+  SemanticMemory: "#D8B4FE",
+  ProceduralMemory: "#9B6FD4",
+  Finding: "#9C6A60",
+  AgentHandoff: "#414140",
 };
 
 /** Normalise a subgraph into {nodes, edges} with a display name and colour. */

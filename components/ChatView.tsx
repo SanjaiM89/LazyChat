@@ -14,7 +14,7 @@ import { MessageItem } from "@/components/MessageItem";
 import { SubchatOpenerButton } from "@/components/SubchatPanel";
 import { useAppStore, activeRunFor } from "@/lib/app-store";
 import { RunningStatus } from "@/components/dsh/RunningStatus";
-import { DEFAULT_DISPLAY } from "@/lib/display";
+import { DEFAULT_DISPLAY, contentColumnStyle } from "@/lib/display";
 import { SpotlightCard } from "@/components/ui";
 import { OmniaMark } from "@/components/brand/OmniaLogo";
 import { BrandIcon } from "@/components/brand/BrandIcon";
@@ -170,7 +170,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
               </span>
             ))}
           </div>
-          <div className="mt-9 grid w-full max-w-3xl gap-3 sm:grid-cols-2 stagger [--stagger:70ms]">
+          <div className="chat-column mt-9 grid w-full gap-3 sm:grid-cols-2 stagger [--stagger:70ms]" style={contentColumnStyle(contentWidth)}>
             {SUGGESTIONS.map((s) => (
               <SpotlightCard
                 as="button"
@@ -262,7 +262,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
           </p>
         </div>
       )}
-      <div className="mx-auto w-full px-4 pb-4 pt-2" style={{ maxWidth: contentWidth }}>
+      <div className="chat-column mx-auto w-full px-4 pb-4 pt-2" style={contentColumnStyle(contentWidth)}>
         {messages.map((m, i) => (
           <MessageItem
             key={m.id}
@@ -272,7 +272,7 @@ export function ChatView({ chat }: { chat: ChatController }) {
           />
         ))}
         {chat.status === "error" && chat.error && (
-          <div className="mx-auto mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger animate-fade-in-up" style={{ maxWidth: contentWidth }}>
+          <div className="chat-column mx-auto mt-4 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-[13px] text-danger animate-fade-in-up" style={contentColumnStyle(contentWidth)}>
             <span className="font-medium">Something went wrong:</span>{" "}
             {chat.error.message || "Unknown error"}
             <div className="mt-2 flex items-center gap-2">

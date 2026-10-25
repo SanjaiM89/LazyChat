@@ -27,6 +27,7 @@ import { GenUiCard } from "@/components/genui/GenUiCard";
 import { DocumentCard } from "@/components/DocumentCard";
 import { BrandIcon, connectorIconKey, languageIconKey } from "@/components/brand/BrandIcon";
 import { FileIcon } from "@/components/brand/FileIcon";
+import { TOOL_CATALOG } from "@/lib/agent/catalog";
 
 
 export function ToolCard({
@@ -83,7 +84,7 @@ export function ToolCard({
       />
     );
   }
-  if (toolName === "webSearch") {
+  if (toolName === "web_search") {
     return (
       <SearchCardWrapper
         args={args}
@@ -387,66 +388,11 @@ const VARIANT_ICON: Record<ToolVariant, React.ReactNode> = {
   others: <Boxes size={14} />,
 };
 
-/** Tool-owned titles that refine the generic variant (cf. dsh TOOL_TITLE_KEYS). */
-const TOOL_TITLES: Record<string, string> = {
-  ws_list: "List files",
-  ws_read: "Read file",
-  ws_write: "Write file",
-  ws_shell: "Run command",
-  ws_todo: "Todo",
-  ws_remember: "Remember",
-  companyBrain: "Company Brain",
-  find_experts: "Find experts",
-  trace_dependencies: "Trace dependencies",
-  impact_of_failure: "Blast radius",
-  get_decision_context: "Decision context",
-  tickets_blocked_by: "Blocked tickets",
-  tickets_for_service: "Service tickets",
-  find_people: "Find people",
-  shortest_path: "Shortest path",
-  pagerank: "PageRank",
-  bridge_services: "Bridges",
-  find_bottlenecks: "Bottlenecks",
-  central_services: "Central services",
-  team_clusters: "Team clusters",
-  graph_context: "Graph context",
-  run_cypher: "Run Cypher",
-  create_ticket: "Create ticket",
-  update_ticket: "Update ticket",
-  record_decision: "Record decision",
-  note_knowledge: "Note expertise",
-  remember_fact: "Remember fact",
-};
-
-const VARIANT_BY_TOOL: Record<string, ToolVariant> = {
-  ws_list: "read",
-  ws_read: "read",
-  ws_write: "write",
-  ws_shell: "bash",
-  ws_todo: "others",
-  ws_remember: "others",
-  companyBrain: "others",
-  find_experts: "others",
-  trace_dependencies: "others",
-  impact_of_failure: "others",
-  get_decision_context: "read",
-  tickets_blocked_by: "others",
-  tickets_for_service: "search",
-  find_people: "search",
-  shortest_path: "others",
-  pagerank: "others",
-  bridge_services: "others",
-  find_bottlenecks: "others",
-  central_services: "others",
-  team_clusters: "others",
-  graph_context: "read",
-  run_cypher: "code",
-  create_ticket: "write",
-  update_ticket: "edit",
-  record_decision: "write",
-  note_knowledge: "write",
-  remember_fact: "write",
-};
+/**
+ * Tool names, titles and variants come from the shared catalog
+ * (`lib/agent/catalog.ts`), so the server's policy and this card always
+ * describe a tool the same way.
+ */
 
 /**
  * The real logo for a tool row when one fits — the MCP server's brand, bash for shell calls, the language of the
@@ -525,8 +471,8 @@ function classifyToolCall(
   rawName: string,
   args?: Record<string, any>,
 ): { variant: ToolVariant; title: string; summary: string; server?: string; tool: string } {
-  // MCP-namespaced tools (`server__tool`, the dsh convention): show the
-  // server, classify by the tool suffix.
+  // MCP-namespaced tools (`server__tool`): show the server, classify by the
+  // tool suffix.
   const segments = rawName.split("__");
   if (segments.length > 1) {
     const server = segments[0];
@@ -539,17 +485,19 @@ function classifyToolCall(
     else if (/write|create|save|store|put/.test(lower)) variant = "write";
     else if (/edit|update|patch|delete|remove/.test(lower)) variant = "edit";
     else if (/code|run|query|sql|cypher/.test(lower)) variant = "code";
+    const known = TOOL_CATALOG[tool];
     return {
       variant,
-      title: TOOL_TITLES[tool] ?? humanize(tool),
-      summary: TOOL_TITLES[tool] ? argSummary(tool, args) : argSummary("__other__", { ...args, tool }),
+      title: known?.title ?? humanize(tool),
+      summary: known ? argSummary(tool, args) : argSummary("__other__", { ...args, tool }),
       server,
       tool,
     };
   }
-  const title = TOOL_TITLES[rawName] ?? humanize(rawName);
+  const known = TOOL_CATALOG[rawName];
+  const title = known?.title ?? humanize(rawName);
   return {
-    variant: VARIANT_BY_TOOL[rawName] ?? "others",
+    variant: known?.variant ?? "others",
     title,
     summary: argSummary(rawName, args),
     tool: rawName,

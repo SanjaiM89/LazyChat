@@ -15,6 +15,7 @@ import { z } from "zod";
 
 import { ensureReady } from "@/lib/brain/bootstrap";
 import { FalkorClient, GraphError } from "@/lib/brain/graph";
+import { hasInternalToken, unauthorized } from "@/lib/internal-token";
 import { compact, execute, REGISTRY, type InputSchema } from "@/lib/brain/tools";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +101,7 @@ function buildServer(): McpServer {
 }
 
 export async function POST(request: Request) {
+  if (!hasInternalToken(request)) return unauthorized();
   await ensureReady();
   try {
     // Stateless: a fresh server per request (a shared instance cannot

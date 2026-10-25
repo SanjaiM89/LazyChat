@@ -66,6 +66,24 @@ export const MAX_FONT_SIZE = 20;
 export const MIN_WIDTH = 560;
 export const MAX_WIDTH = 1600;
 
+/** The gutter the chat column keeps from the edge of the window. */
+export const CONTENT_GUTTER = 48;
+
+/**
+ * The style the chat column uses.
+ *
+ * The column fills the space it is given — that is what makes the layout
+ * follow the window instead of leaving a narrow strip floating in a wide
+ * screen. The width the user chose is the floor, and it only applies once
+ * the window is wide enough to honour it: on a narrow window the column may
+ * shrink below it, so the window itself can shrink and the sidebar can turn
+ * into a drawer.
+ */
+export function contentColumnStyle(preferred: number): { [key: string]: string } {
+  const width = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(preferred)));
+  return { "--content-preferred": `${width}px` };
+}
+
 export function fontStack(id: string): string {
   return DISPLAY_FONTS.find((f) => f.id === id)?.stack ?? DISPLAY_FONTS[0].stack;
 }

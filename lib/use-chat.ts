@@ -312,7 +312,11 @@ export function useChatController() {
 
 
   const detach = useCallback(async () => {
+    const runId = attachRef.current?.runId;
     attachRef.current = null;
+    if (runId) {
+      void fetch(`/api/chat/runs/${runId}`, { method: "DELETE" }).catch(() => {});
+    }
     try {
       await chat.stop();
     } catch {
@@ -350,12 +354,83 @@ export function useChatController() {
     [chat, detach, syncConversation, setConversationLoadError, setLoadingConversationId],
   );
 
+  /**
+   * Run a slash command.
+   *
+   * The command answers itself: the reply is shown as a local message, and
+   * whatever the command changed (the permission preset) is applied.
+   */
+  const runCommand = useCallback(
+    async (line: string, cid: string) => {
+      const [name, ...rest] = line.slice(1).split(/\s+/);
+      const store = useAppStore.getState();
+      const attached = store.conversationWorkspaces[cid];
+      try {
+        const res = await fetch("/api/agent/commands", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command: name,
+            argument: rest.join(" "),
+            conversationId: cid,
+            permissions: store.permissions,
+            preset: store.permissionPreset,
+            hasWorkspace: Boolean(attached),
+            settings: settingsRef.current,
+            ...(attached ? { workspaceId: attached.id } : {}),
+          }),
+        });
+        const outcome = (await res.json()) as {
+          message?: string;
+          error?: string;
+          permissions?: { mode: "read-only" | "workspace-write" | "danger-full-access"; policy: "ask" | "never" };
+          preset?: string;
+          runId?: string;
+        };
+        if (outcome.permissions) {
+          useAppStore.getState().setPermissions(outcome.permissions);
+        }
+        if (outcome.preset) {
+          useAppStore.getState().setPermissionPreset(outcome.preset);
+        }
+        if (outcome.runId) {
+          await attachToRun(outcome.runId);
+          return;
+        }
+        const text = outcome.message ?? outcome.error ?? "The command did nothing.";
+        chat.setMessages((messages) => [
+          ...messages,
+          {
+            id: `cmd-${Date.now().toString(36)}`,
+            role: "assistant",
+            parts: [{ type: "text", text }],
+          } as UIMessage,
+        ]);
+      } catch (e) {
+        chat.setMessages((messages) => [
+          ...messages,
+          {
+            id: `cmd-${Date.now().toString(36)}`,
+            role: "assistant",
+            parts: [{ type: "text", text: `The command failed: ${(e as Error).message}` }],
+          } as UIMessage,
+        ]);
+      }
+    },
+    [attachToRun, chat],
+  );
+
   const send = useCallback(
     (text: string, files?: FileUIPart[]) => {
       const cid = ensureConversationId();
       const live = activeRunFor(useAppStore.getState().runs, cid);
       if (live) {
-        void attachToRun(live.id);
+        void stopRun(live.id);
+      }
+      // A slash command is answered by the app itself, never by the model.
+      const firstLine = text.split("\n")[0]?.trim() ?? "";
+      if (firstLine.startsWith("/") && !files?.length) {
+        void runCommand(firstLine, cid);
         return;
       }
       const payload: { text: string; files?: FileUIPart[] } = { text };
@@ -364,25 +439,26 @@ export function useChatController() {
       void chat.sendMessage(payload, {
         body: {
           settings: settingsRef.current,
+          permissions: useAppStore.getState().permissions,
           conversationId: cid,
           ...(attached ? { workspaceId: attached.id } : {}),
         },
       });
     },
-    [attachToRun, chat, ensureConversationId],
+    [attachToRun, chat, ensureConversationId, runCommand],
   );
 
   const regenerate = useCallback(() => {
     const cid = ensureConversationId();
     const live = activeRunFor(useAppStore.getState().runs, cid);
     if (live) {
-      void attachToRun(live.id);
-      return;
+      void stopRun(live.id);
     }
     const attached = useAppStore.getState().conversationWorkspaces[cid];
     void chat.regenerate({
       body: {
         settings: settingsRef.current,
+        permissions: useAppStore.getState().permissions,
         conversationId: cid,
         ...(attached ? { workspaceId: attached.id } : {}),
       },

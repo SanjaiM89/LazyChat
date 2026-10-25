@@ -18,7 +18,9 @@ export const viewport: Viewport = {
 };
 
 // Apply the persisted theme before first paint so the page never flashes the wrong palette.
-const themeBoot = `try{var s=JSON.parse(localStorage.getItem("omnia-store")||"{}");var t=s&&s.state&&s.state.theme;if(t)document.documentElement.dataset.theme=t;}catch(e){}`;
+// Dark is the default; a v3 store sitting on "system" is migrated to dark by the store, and
+// this mirrors that so the first paint is already dark.
+const themeBoot = `try{var s=JSON.parse(localStorage.getItem("omnia-store")||"{}");var st=(s&&s.state)||{};var t=st.theme;if(t==="system"&&(s.version||0)<4)t="dark";document.documentElement.dataset.theme=t||"dark";}catch(e){document.documentElement.dataset.theme="dark";}`;
 
 export default function RootLayout({
   children,

@@ -121,6 +121,10 @@ export function DisplaySettingsDialog() {
             className="w-full accent-[var(--brand)]"
             aria-label="Text width"
           />
+          <p className="mt-1.5 text-[11px] leading-relaxed text-fg-muted">
+            The narrowest the column ever gets. On a wide screen it grows to fill the
+            space, up to {MAX_WIDTH}px.
+          </p>
           <div className="mt-2 flex justify-center">
             <div
               className="rounded-md border border-dashed border-brand/40 bg-accent-soft py-2 text-center font-mono text-[11px] text-accent transition-all duration-300"

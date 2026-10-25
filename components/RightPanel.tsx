@@ -6,6 +6,8 @@ import { ArtifactPanel } from "@/components/panels/ArtifactPanel";
 import { SandboxPanel } from "@/components/panels/SandboxPanel";
 import { AgentsPanel } from "@/components/panels/AgentsPanel";
 import { FileExplorer } from "@/components/workspace/FileExplorer";
+import { PluginPanel } from "@/components/agent/PluginPanel";
+import { SessionBrowser } from "@/components/agent/SessionBrowser";
 import { cn } from "@/components/ui";
 
 
@@ -30,6 +32,8 @@ export function RightPanel() {
         {panel === "sandbox" && <SandboxPanel />}
         {panel === "agents" && <AgentsPanel />}
         {panel === "files" && <FileExplorer />}
+        {panel === "plugins" && <PluginPanel />}
+        {panel === "sessions" && <SessionBrowser />}
       </aside>
     </>
   );

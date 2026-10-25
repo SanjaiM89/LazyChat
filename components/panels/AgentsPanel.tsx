@@ -312,7 +312,7 @@ function AgentCard({ agent }: { agent: AgentMeta }) {
         <div className="px-3 pb-1">
           <div className="h-1 overflow-hidden rounded-full bg-bg-surface-300">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-brand-600 via-brand to-[#8fe5bc] bg-[length:200%_100%] transition-all duration-700 [animation:border-flow_2s_linear_infinite]"
+              className="h-full rounded-full bg-gradient-to-r from-brand-600 via-brand to-brand-sweep bg-[length:200%_100%] transition-all duration-700 [animation:border-flow_2s_linear_infinite]"
               style={{ width: `${Math.max(3, agent.progress)}%` }}
             />
           </div>
@@ -341,9 +341,9 @@ function AgentCard({ agent }: { agent: AgentMeta }) {
                     : l.level === "tool"
                       ? "text-[#52a9ff]"
                       : l.level === "thinking"
-                        ? "text-[#8fe5bc]"
+                        ? "text-brand-600"
                         : l.level === "file"
-                          ? "text-[#3ecf8e]"
+                          ? "text-brand"
                           : "text-white/80",
                 )}
               >

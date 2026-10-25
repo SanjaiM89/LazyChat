@@ -4,14 +4,14 @@
  * Rename a workspace.
  *
  * A workspace is named after its folder by default, but the folder path and the
- * label are different things: `/home/sanjai/Projects/chess` reads better as
+ * title are different things: `/home/sanjai/Projects/chess` reads better as
  * "Chess Backend" in a list. The folder is what the tools operate on and never
- * changes here — only the display name.
+ * changes here — only the display title.
  */
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { dshApi } from "@/lib/dsh/client";
-import type { Workspace } from "@/lib/dsh/types";
+import { workspaceApi } from "@/lib/workspace/client";
+import type { Workspace } from "@/lib/workspace/types";
 
 export function RenameWorkspaceDialog({
   workspace,
@@ -22,20 +22,20 @@ export function RenameWorkspaceDialog({
   onClose: () => void;
   onRenamed: () => void | Promise<void>;
 }) {
-  const [name, setName] = React.useState(workspace.name);
+  const [name, setName] = React.useState(workspace.title);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   async function save() {
     const next = name.trim();
-    if (!next || next === workspace.name) {
+    if (!next || next === workspace.title) {
       onClose();
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      await dshApi.updateWorkspace(workspace.id, { name: next });
+      await workspaceApi.updateWorkspace(workspace.id, { title: next });
       // Any chat bound to this workspace carries a cached copy of the label, so
       // the rename has to reach those rows too.
       const store = await import("@/lib/app-store");

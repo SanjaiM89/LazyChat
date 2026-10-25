@@ -21,8 +21,6 @@ import {
 } from "@/lib/types";
 import { buildLanguageModel, thinkingProviderOptions } from "@/lib/providers";
 import { getOpencodeTransport } from "@/lib/models";
-import { getCustomProvider, isDeepSeekProvider } from "@/lib/custom-providers";
-import { DEEPSEEK_DEFAULT_MAX_TOKENS } from "@/lib/deepseek";
 import { isGoalRoundPrompt } from "@/lib/goal-model";
 import { enabledTools } from "@/lib/tools";
 import { cancelRunQuestions, forgetRun } from "@/lib/ask-user";
@@ -41,7 +39,7 @@ void startScheduler();
  */
 async function budgetedBriefing(run: ChatRunRecord) {
   if (!run.workspaceId) return null;
-  const { workspaceBriefing } = await import("@/lib/dsh/workspace-tools");
+  const { workspaceBriefing } = await import("@/lib/workspace/tools");
   return withBudget(
     workspaceBriefing(run.workspaceId),
     msFromEnv("BRAIN_PREP_BUDGET_MS", 6_000),
@@ -54,40 +52,72 @@ async function budgetedBriefing(run: ChatRunRecord) {
  * No-ops (empty tools, unchanged prompt) when nothing is attached or the
  * workspace is gone — a detached folder must never break a chat.
  */
-async function buildRunWorkspaceTools(run: ChatRunRecord): Promise<Record<string, unknown>> {
-  if (!run.workspaceId) return {};
+async function buildRunWorkspaceTools(
+  run: ChatRunRecord,
+  brief: { root: string; name?: string } | null,
+  sessionDir?: SessionDirectory,
+  recorder?: WorkspaceChangeRecorder | null,
+): Promise<Record<string, unknown>> {
+  if (!run.workspaceId || !brief) return {};
   try {
-    const { buildWorkspaceTools } = await import("@/lib/dsh/workspace-tools");
-    const brief = await budgetedBriefing(run);
-    if (!brief) return {};
-    return buildWorkspaceTools({ workspaceId: run.workspaceId, root: brief.root }) as Record<string, unknown>;
+    const { buildWorkspaceTools } = await import("@/lib/workspace/tools");
+    // The root follows the session, so a `working_directory` move relocates
+    // the file tools with the shells.
+    return buildWorkspaceTools({
+      workspaceId: run.workspaceId,
+      root: sessionDir ? () => sessionDir.cwd : brief.root,
+      // The session owns the file observations: the read-before-write policy
+      // is per session, and it is never persisted.
+      sessionId: run.id,
+      onBeforeWrite: recorder ? (target: string) => recorder?.captureBefore(target) : undefined,
+    }) as Record<string, unknown>;
   } catch {
     return {};
   }
 }
 
-async function withWorkspaceBriefing(run: ChatRunRecord, system: string): Promise<string> {
-  if (!run.workspaceId) return system;
-  try {
-    const brief = await budgetedBriefing(run);
-    if (!brief) return system;
-    return (
-      system +
-      "\n\n## Attached workspace\n" +
-      brief.briefing +
-      "\nPrefer the ws_* tools for anything involving the project files or commands." +
-      "\nAs you work, keep the workspace memory current without being asked: " +
-      "record key decisions and error fixes with ws_remember, and track multi-step " +
-      "work with ws_todo (add/list/done). Shell runs and file writes are recorded automatically."
-    );
-  } catch {
-    return system;
-  }
+async function withWorkspaceBriefing(
+  run: ChatRunRecord,
+  system: string,
+  brief: { briefing: string; root: string } | null,
+): Promise<string> {
+  if (!run.workspaceId || !brief) return system;
+  return (
+    system +
+    "\n\n## Attached workspace\n" +
+    brief.briefing +
+    "\nPrefer the ws_* tools for anything involving the project files or commands." +
+    "\nThe working directory above is the session's own: `working_directory` moves it, and every file and " +
+    "shell tool follows. " +
+    "\nAs you work, keep the workspace memory current without being asked: " +
+    "record key decisions and error fixes with ws_remember, and track multi-step " +
+    "work with ws_todo (add/list/done). Shell runs and file writes are recorded automatically."
+  );
 }
 import { getArtifact, readArtifactBuffer } from "@/lib/artifacts";
-import { getConversationMeta, saveConversation } from "@/lib/store";
+import { getConversation, getConversationMeta, saveConversation } from "@/lib/store";
 import { currentUser } from "@/lib/auth/context";
 import { HEARTBEAT_CHUNK, coalesceChunks, formatFrame } from "@/lib/sse";
+import { guardTools } from "@/lib/agent/guard";
+import { guardResults } from "@/lib/agent/result-guard";
+import { createSessionDirectory, type SessionDirectory } from "@/lib/agent/session-dir";
+import type { WorkspaceChangeRecorder } from "@/lib/agent/workspace-changes";
+import { contextPressure, measureMessages } from "@/lib/agent/token-meter";
+import { appendEvent, listEvents } from "@/lib/agent/session";
+import { buildAgentTools } from "@/lib/agent/tools";
+import { disabledToolNames, readPluginState } from "@/lib/agent/plugins";
+import {
+  COMPACT_THRESHOLD_RATIO,
+  compactConversation,
+  isContextOverflow,
+  isImageBudgetError,
+  MAX_OVERFLOW_RETRIES,
+  offloadImages,
+} from "@/lib/agent/compaction";
+import {
+  DEFAULT_PERMISSIONS,
+  type PermissionSettings,
+} from "@/lib/agent/permissions";
 
 
 export interface ChatRunRecord {
@@ -98,6 +128,8 @@ export interface ChatRunRecord {
   conversationId?: string;
   /** Attached workspace (folder-bound execution + memory scope), if any. */
   workspaceId?: string;
+  /** The session's working directory. It survives the turn and the restart. */
+  cwd?: string;
   status: ChatRunStatus;
   activity: string;
   step: number;
@@ -105,8 +137,14 @@ export interface ChatRunRecord {
   requestMessages: UIMessage[];
   history: UIMessage[];
   settings: ChatSettings;
+  /** What this session may do without asking. */
+  permissions: PermissionSettings;
+  /** Tools this run may not use. */
+  excludeTools: string[];
   model?: LanguageModel;
   chunks: UIMessageChunk[];
+  /** The answer text streamed so far, for the session log. */
+  answerText: string;
   toolNames: Map<string, string>;
   listeners: Set<() => void>;
   abort: AbortController;
@@ -117,6 +155,10 @@ export interface ChatRunRecord {
   aborted?: boolean;
   /** First response token arrival (for tokens/sec). */
   firstTokenAt?: number;
+  /** When the step in flight started. */
+  stepStartedAt?: number;
+  /** When the step in flight produced its first token. */
+  stepFirstTokenAt?: number;
   /** Raw char counts as a fallback when the provider reports no usage. */
   inputChars?: number;
   outputChars?: number;
@@ -134,7 +176,7 @@ const KEEP_FINISHED_MS = 10 * 60 * 1000;
 const CHECKPOINT_MS = 4000;
 
 const TOOL_ACTIVITY: Record<string, string> = {
-  webSearch: "Searching the web…",
+  web_search: "Searching the web…",
   createArtifact: "Creating an artifact…",
   runAgentTask: "Running a sandbox agent…",
   computer_navigate: "Using the computer…",
@@ -210,6 +252,11 @@ export function getRunOwner(id: string): string | undefined {
   return runs.get(id)?.ownerId;
 }
 
+/** The promise that settles when a run is finished. */
+export function chatRunDone(id: string): Promise<void> {
+  return runs.get(id)?.done ?? Promise.resolve();
+}
+
 export function listChatRuns(conversationId?: string, ownerId?: string): ChatRunSummary[] {
   return [...runs.values()]
     .filter((r) => !conversationId || r.conversationId === conversationId)
@@ -244,6 +291,10 @@ export function cleanupChatRuns(maxAgeMs = KEEP_FINISHED_MS): number {
 export interface CreateChatRunInput {
   messages: UIMessage[];
   settings?: Partial<ChatSettings>;
+  /** Sandbox mode + approval policy for this run. */
+  permissions?: Partial<PermissionSettings>;
+  /** Tools this run may not use — a subagent may not spawn another one. */
+  excludeTools?: string[];
   model?: LanguageModel;
   conversationId?: string;
   trigger?: "submit-message" | "regenerate-message";
@@ -345,12 +396,17 @@ export async function createChatRun(input: CreateChatRunInput): Promise<ChatRunR
   const isContinuation = last?.role === "assistant";
   const messageId = isContinuation ? last.id : nanoid(12);
 
+  // The session resumes in the directory it was last in, so a conversation
+  // keeps its place in the project across turns and restarts.
+  const stored = conversationId ? await getConversationMeta(conversationId, owner?.uid) : null;
+
   const run: ChatRunRecord = {
     id: nanoid(10),
     ownerId: owner?.uid,
     orgId: owner?.orgId ?? null,
     conversationId,
     workspaceId: input.workspaceId,
+    cwd: stored?.cwd,
     status: "running",
     activity: "Starting…",
     step: 0,
@@ -358,8 +414,11 @@ export async function createChatRun(input: CreateChatRunInput): Promise<ChatRunR
     requestMessages,
     history: isContinuation ? requestMessages.slice(0, -1) : requestMessages,
     settings,
+    permissions: { ...DEFAULT_PERMISSIONS, ...(input.permissions || {}) },
+    excludeTools: input.excludeTools ?? [],
     model: input.model,
     chunks: [],
+    answerText: "",
     toolNames: new Map(),
     listeners: new Set(),
     abort: new AbortController(),
@@ -425,7 +484,62 @@ async function pump(run: ChatRunRecord) {
       return lastUser ? isGoalRoundPrompt(messageText(lastUser)) : false;
     })();
 
-    const tools = {
+    const brief = await budgetedBriefing(run);
+    const pluginState = await readPluginState();
+    const disabled = disabledToolNames(pluginState);
+    // The session's working directory: it starts where the last turn left it,
+    // else in the attached workspace, else wherever the process runs. Every
+    // directory-bound tool follows it, and `working_directory` moves it.
+    const sessionDir = createSessionDirectory(run.cwd ?? brief?.root ?? process.cwd());
+    run.cwd = sessionDir.cwd;
+    // The permission preset belongs to the session's record: a change is
+    // logged, so the history shows what the session was allowed to do.
+    if (run.conversationId) {
+      const last = listEvents(run.conversationId, { types: ["permission/preset"], limit: 1 })[0];
+      const previous = last?.data as { mode?: string; policy?: string } | undefined;
+      if (
+        !previous ||
+        previous.mode !== run.permissions.mode ||
+        previous.policy !== run.permissions.policy
+      ) {
+        appendEvent(
+          "permission/preset",
+          { mode: run.permissions.mode, policy: run.permissions.policy },
+          { conversationId: run.conversationId, runId: run.id },
+        );
+      }
+    }
+    // The program a `code_run` call runs gets the same guarded tools, minus
+    // itself — a program must not be able to run another program.
+    const programTools: { tools: Record<string, unknown> } = { tools: {} };
+    const agentTools = buildAgentTools({
+      conversationId: run.conversationId,
+      cwd: sessionDir.cwd,
+      sessionDir,
+      programTools: () => programTools.tools,
+      settings: run.settings,
+      permissions: run.permissions,
+      parentRunId: run.id,
+      workspaceId: run.workspaceId,
+      onCwdChange: (dir) => {
+        run.cwd = dir;
+        const eventCtx = run.conversationId ? { conversationId: run.conversationId, runId: run.id } : null;
+        if (eventCtx) appendEvent("working-directory/change", { cwd: dir }, eventCtx);
+      },
+    });
+    // The turn's change recorder: the working tree is snapshotted so the
+    // summary names what this turn changed, not what was already there.
+    let recorder: WorkspaceChangeRecorder | null = null;
+    if (run.workspaceId && brief) {
+      try {
+        const { WorkspaceChangeRecorder: Recorder } = await import("@/lib/agent/workspace-changes");
+        recorder = new Recorder(sessionDir ? sessionDir.cwd : brief.root);
+        await recorder.begin(run.step + 1);
+      } catch {
+        recorder = null;
+      }
+    }
+    const allTools = {
       ...enabledTools(settings.tools, {
         provider: settings.provider,
         model: settings.model,
@@ -434,15 +548,37 @@ async function pump(run: ChatRunRecord) {
         goalRound,
       }),
       ...(await buildMCPToolSet()),
-      ...(await buildRunWorkspaceTools(run)),
+      ...(await buildRunWorkspaceTools(run, brief, sessionDir, recorder)),
+      ...agentTools,
     };
+    const tools = guardResults(
+      guardTools(
+        Object.fromEntries(
+          Object.entries(allTools).filter(
+            ([name]) => !disabled.has(name) && !run.excludeTools.includes(name),
+          ),
+        ),
+        {
+          conversationId: run.conversationId ?? run.id,
+          runId: run.id,
+          settings: run.permissions,
+          granted: new Set<string>(),
+        },
+      ),
+      {
+        conversationId: run.conversationId ?? run.id,
+        runId: run.id,
+      },
+    );
+    const { code_run: _codeRun, ...programVisible } = tools as Record<string, unknown>;
+    programTools.tools = programVisible;
 
     let system = await buildSystemPrompt({
       provider: settings.provider,
       model: settings.model,
       conversationId: run.conversationId,
     });
-    system = await withWorkspaceBriefing(run, system);
+    system = await withWorkspaceBriefing(run, system, brief);
 
     // FalkorDB memory: what earlier Omnia conversations established about this
     // question rides in the system prompt. Never throws; empty when unknown.
@@ -451,91 +587,132 @@ async function pump(run: ChatRunRecord) {
     const systemWithMemory = remembered ? system + remembered : system;
 
     const useThinking = settings.thinking;
-    // Custom providers can shadow builtins, so resolve the definition even for
-    // builtin-looking ids. DeepSeek providers speak the harness's Messages API.
-    const customProvider = await getCustomProvider(settings.provider);
-    const deepseek = !!customProvider && isDeepSeekProvider(customProvider);
     const providerOptions = thinkingProviderOptions(
       settings.provider,
       settings.model,
       useThinking,
-      deepseek,
     );
     const anthropicThinking =
       settings.provider === "anthropic" ||
       (settings.provider === "opencode" &&
-        getOpencodeTransport(settings.model) === "anthropic") ||
-      deepseek;
+        getOpencodeTransport(settings.model) === "anthropic");
     const temperature =
       useThinking && anthropicThinking
         ? undefined
         : settings.temperature;
 
-    const modelMessages = await convertToModelMessages(
+    let modelMessages = await convertToModelMessages(
       await inlineLocalAttachments(run.requestMessages),
     );
-    const result = streamText({
-      model,
-      system: systemWithMemory,
-      messages: modelMessages,
-      tools,
-      stopWhen: isStepCount(settings.maxSteps ?? 14),
-      temperature,
-      // dsh's DeepSeek default per-request output cap.
-      ...(deepseek ? { maxOutputTokens: DEEPSEEK_DEFAULT_MAX_TOKENS } : {}),
-      providerOptions: providerOptions as any,
-      abortSignal: run.abort.signal,
-    });
-    // Char counts backstop the provider usage payload (some OpenAI-compatible
-    // endpoints never send it) — ~4 chars/token.
-    run.inputChars = systemWithMemory.length + JSON.stringify(modelMessages).length;
 
-    const stream = toUIMessageStream({
-      stream: result.stream,
-      tools,
-      sendReasoning: true,
-      sendSources: true,
-      sendStart: true,
-      originalMessages: run.requestMessages,
-      generateMessageId: () => run.messageId,
-      onError: describeStreamError,
-    });
-
-    const reader = stream.getReader();
-    const activeTextParts = new Set<string>();
-    const activeReasoningParts = new Set<string>();
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-        const v = value as UIMessageChunk & { id?: string };
-        if (v.type === "text-start" && v.id) activeTextParts.add(v.id);
-        if (v.type === "text-delta" && v.id && !activeTextParts.has(v.id)) {
-          pushChunk(run, { type: "text-start", id: v.id } as UIMessageChunk);
-          activeTextParts.add(v.id);
+    // The turn may not fit in the window. The meter measures the request
+    // before it is sent, so the conversation is compacted up front rather
+    // than after the provider refuses it.
+    const measured = measureMessages(modelMessages as never);
+    const pressure = contextPressure(measured.tokens, settings.provider, settings.model);
+    if (pressure.ratio >= COMPACT_THRESHOLD_RATIO && run.conversationId) {
+      const compacted = await compactConversation(run.conversationId, {
+        force: true,
+        runId: run.id,
+      });
+      if (compacted.compacted) {
+        const refreshed = await getConversation(run.conversationId);
+        if (refreshed?.messages?.length) {
+          const history = await convertToModelMessages(
+            await inlineLocalAttachments(refreshed.messages as UIMessage[]),
+          );
+          // The turn's own message is not in the stored conversation yet.
+          const lastUser = [...run.requestMessages].reverse().find((m) => m.role === "user");
+          const turn = lastUser
+            ? await convertToModelMessages([lastUser] as UIMessage[])
+            : [];
+          modelMessages = turn.length ? [...history, ...turn] : history;
         }
-        if (v.type === "text-end" && v.id && !activeTextParts.has(v.id)) {
-          continue;
-        }
-        if (v.type === "text-end" && v.id) activeTextParts.delete(v.id);
-
-        if (v.type === "reasoning-start" && v.id) activeReasoningParts.add(v.id);
-        if (v.type === "reasoning-delta" && v.id && !activeReasoningParts.has(v.id)) {
-          pushChunk(run, { type: "reasoning-start", id: v.id } as UIMessageChunk);
-          activeReasoningParts.add(v.id);
-        }
-        if (v.type === "reasoning-end" && v.id && !activeReasoningParts.has(v.id)) {
-          continue;
-        }
-        if (v.type === "reasoning-end" && v.id) activeReasoningParts.delete(v.id);
-
-        pushChunk(run, value);
       }
-    } finally {
+    }
+
+    const eventCtx = run.conversationId
+      ? { conversationId: run.conversationId, runId: run.id }
+      : null;
+    if (eventCtx) {
+      appendEvent("turn/start", { step: run.step, provider: settings.provider, model: settings.model }, eventCtx);
+      const lastUser = [...run.requestMessages].reverse().find((m) => m.role === "user");
+      if (lastUser) {
+        appendEvent("user/message", { text: messageText(lastUser).slice(0, 4000) }, eventCtx);
+      }
+    }
+
+    // A turn that does not fit is compacted and tried again; a request that
+    // is refused over its image budget loses the oldest images and is tried
+    // again. Two attempts is enough: a third would be a loop, not a recovery.
+    let attempt = 0;
+    let messages = modelMessages;
+    for (;;) {
       try {
-        reader.releaseLock();
+        const result = streamText({
+          model,
+          system: systemWithMemory,
+          messages,
+          tools,
+          stopWhen: isStepCount(settings.maxSteps ?? 14),
+          temperature,
+          providerOptions: providerOptions as any,
+          abortSignal: run.abort.signal,
+        });
+        // Char counts backstop the provider usage payload (some OpenAI-compatible
+        // endpoints never send it) — ~4 chars/token.
+        run.inputChars = systemWithMemory.length + JSON.stringify(messages).length;
+
+        const stream = toUIMessageStream({
+          stream: result.stream,
+          tools,
+          sendReasoning: true,
+          sendSources: true,
+          sendStart: true,
+          originalMessages: run.requestMessages,
+          generateMessageId: () => run.messageId,
+          onError: describeStreamError,
+        });
+
+        await consumeStream(run, stream);
+        await captureUsage(run, result);
+        break;
+      } catch (e: any) {
+        const overflow = isContextOverflow(e);
+        const imageBudget = isImageBudgetError(e);
+        if (!(overflow || imageBudget) || attempt >= MAX_OVERFLOW_RETRIES || !run.conversationId) {
+          throw e;
+        }
+        attempt += 1;
+        if (overflow) {
+          // Compact the conversation, then rebuild the request from it.
+          await compactConversation(run.conversationId, { force: true, runId: run.id });
+          const refreshed = await getConversation(run.conversationId);
+          messages = refreshed?.messages
+            ? await convertToModelMessages(
+                await inlineLocalAttachments(refreshed.messages as UIMessage[]),
+              )
+            : messages;
+        } else {
+          const offloaded = offloadImages(messages, 0);
+          messages = offloaded.messages;
+          if (eventCtx) {
+            appendEvent("image/offload", { offloaded: offloaded.offloaded }, eventCtx);
+          }
+        }
+      }
+    }
+
+    if (recorder) {
+      try {
+        const summary = await recorder.end(run.step + 1);
+        if (summary && eventCtx && (summary.files.length > 0 || summary.degraded)) {
+          appendEvent("workspace/changes", summary as unknown as Record<string, unknown>, eventCtx);
+        }
       } catch {
+        // A summary that cannot be produced never fails the turn.
+      } finally {
+        recorder.dispose();
       }
     }
 
@@ -544,11 +721,13 @@ async function pump(run: ChatRunRecord) {
       : run.error
         ? "failed"
         : "done";
-    await captureUsage(run, result);
+    if (eventCtx) {
+      if (run.answerText) {
+        appendEvent("assistant/message", { text: run.answerText.slice(0, 20000) }, eventCtx);
+      }
+      appendEvent("turn/end", { status }, eventCtx);
+    }
     await finishRun(run, status, run.error);
-    // Same-session continuation (dsh-goal-round-driver): only a clean finish
-    // earns another round, and the goal itself decides whether one is due.
-    if (status === "done" && !run.aborted) void driveGoalRound(run);
   } catch (e: any) {
     const aborted = run.aborted || e?.name === "AbortError";
     console.error("[chat-run] failed:", {
@@ -567,6 +746,55 @@ async function pump(run: ChatRunRecord) {
   }
 }
 
+/**
+ * Read the model's stream and push it to the client.
+ *
+ * The text and reasoning parts are opened here when the provider skipped the
+ * start, so a part never appears without its beginning.
+ */
+async function consumeStream(
+  run: ChatRunRecord,
+  stream: ReadableStream<UIMessageChunk>,
+): Promise<void> {
+  const reader = stream.getReader();
+  const activeTextParts = new Set<string>();
+  const activeReasoningParts = new Set<string>();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      const v = value as UIMessageChunk & { id?: string };
+      if (v.type === "text-start" && v.id) activeTextParts.add(v.id);
+      if (v.type === "text-delta" && v.id && !activeTextParts.has(v.id)) {
+        pushChunk(run, { type: "text-start", id: v.id } as UIMessageChunk);
+        activeTextParts.add(v.id);
+      }
+      if (v.type === "text-end" && v.id && !activeTextParts.has(v.id)) {
+        continue;
+      }
+      if (v.type === "text-end" && v.id) activeTextParts.delete(v.id);
+
+      if (v.type === "reasoning-start" && v.id) activeReasoningParts.add(v.id);
+      if (v.type === "reasoning-delta" && v.id && !activeReasoningParts.has(v.id)) {
+        pushChunk(run, { type: "reasoning-start", id: v.id } as UIMessageChunk);
+        activeReasoningParts.add(v.id);
+      }
+      if (v.type === "reasoning-end" && v.id && !activeReasoningParts.has(v.id)) {
+        continue;
+      }
+      if (v.type === "reasoning-end" && v.id) activeReasoningParts.delete(v.id);
+
+      pushChunk(run, value);
+    }
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+    }
+  }
+}
+
 function pushChunk(run: ChatRunRecord, chunk: UIMessageChunk) {
   if (chunk.type === "abort") run.aborted = true;
   if (chunk.type === "start-step") run.step += 1;
@@ -574,8 +802,67 @@ function pushChunk(run: ChatRunRecord, chunk: UIMessageChunk) {
   if (!run.firstTokenAt && (chunk.type === "text-delta" || chunk.type === "reasoning-delta")) {
     run.firstTokenAt = Date.now();
   }
+  if (
+    run.stepFirstTokenAt === undefined &&
+    (chunk.type === "text-delta" || chunk.type === "reasoning-delta")
+  ) {
+    run.stepFirstTokenAt = Date.now();
+  }
   if (chunk.type === "text-delta" && typeof (chunk as { delta?: unknown }).delta === "string") {
     run.outputChars = (run.outputChars ?? 0) + (chunk as { delta: string }).delta.length;
+    run.answerText += (chunk as { delta: string }).delta;
+  }
+
+  // The session log records the shape of the turn, not every token: the
+  // boundaries, the tool calls and their outcomes.
+  if (run.conversationId) {
+    const ctx = { conversationId: run.conversationId, runId: run.id };
+    if (chunk.type === "start-step") {
+      run.stepStartedAt = Date.now();
+      run.stepFirstTokenAt = undefined;
+      appendEvent("step/start", { step: run.step }, ctx);
+    } else if (chunk.type === "finish-step") {
+      // The step closed: its model time and its first-token latency.
+      const started = run.stepStartedAt;
+      const first = run.stepFirstTokenAt;
+      appendEvent(
+        "step/end",
+        {
+          step: run.step,
+          llm_ms: started ? Date.now() - started : undefined,
+          ttft_ms: started && first !== undefined ? first - started : undefined,
+        },
+        ctx,
+      );
+      run.stepStartedAt = undefined;
+      run.stepFirstTokenAt = undefined;
+    } else if (chunk.type === "tool-input-available") {
+      appendEvent(
+        "tool/call",
+        { tool: chunk.toolName, toolCallId: chunk.toolCallId, input: chunk.input },
+        ctx,
+      );
+    } else if (chunk.type === "tool-output-available") {
+      appendEvent(
+        "tool/result",
+        {
+          tool: run.toolNames.get(chunk.toolCallId),
+          toolCallId: chunk.toolCallId,
+          status: "completed",
+        },
+        ctx,
+      );
+    } else if (chunk.type === "tool-output-error") {
+      appendEvent(
+        "tool/result",
+        {
+          tool: run.toolNames.get(chunk.toolCallId),
+          toolCallId: chunk.toolCallId,
+          status: "error",
+        },
+        ctx,
+      );
+    }
   }
 
   run.chunks.push(chunk);
@@ -692,6 +979,64 @@ async function finishRun(
   forgetRun(run.id);
   await checkpoint(run, true);
   emit(run);
+  // An open goal keeps the session working: another round may follow.
+  if (status === "done" && !run.aborted) {
+    void driveGoalRound(run);
+  }
+}
+
+/**
+ * Start the next automatic goal round in the same conversation (dsh's
+ * goal-round-driver). The new run is an ordinary chat run, so the client's
+ * run poll attaches to it, the transcript persists it, and Stop still works.
+ *
+ * Fire-and-forget: a conflict (the human sent their own message first) or a
+ * transient storage error must never fail the turn that just completed.
+ */
+async function driveGoalRound(run: ChatRunRecord): Promise<void> {
+  if (!run.conversationId) return;
+  try {
+    const { startGoalRound } = await import("@/lib/goals");
+    const next = await startGoalRound(run.conversationId);
+    if (!next) return;
+    const assistant = await materialize(run);
+    const messages: UIMessage[] = [
+      ...run.history,
+      ...(assistant ? [assistant] : []),
+      {
+        id: `goal-round-${nanoid(10)}`,
+        role: "user",
+        parts: [{ type: "text", text: next.prompt }],
+      },
+    ];
+    await createChatRun({
+      messages,
+      settings: run.settings,
+      model: run.model,
+      permissions: run.permissions,
+      excludeTools: run.excludeTools,
+      conversationId: run.conversationId,
+      workspaceId: run.workspaceId,
+      owner: run.ownerId
+        ? { uid: run.ownerId, orgId: run.orgId ?? null }
+        : undefined,
+    });
+    appendEvent(
+      "goal/round",
+      {
+        goal_id: next.goal.id,
+        round: next.round,
+        cap: next.goal.maxGoalRounds,
+      },
+      { conversationId: run.conversationId, runId: run.id },
+    );
+  } catch (e: any) {
+    console.warn(
+      "[goal-round] could not start:",
+      run.conversationId,
+      e?.message || e,
+    );
+  }
 }
 
 function checkpoint(run: ChatRunRecord, track: boolean): Promise<void> {
@@ -716,6 +1061,7 @@ async function persistRun(run: ChatRunRecord) {
     updatedAt: Date.now(),
     provider: run.settings.provider,
     model: run.settings.model,
+    cwd: run.cwd ?? existing?.cwd,
     messages,
     usage: {
       inputTokens: (existing?.usage?.inputTokens ?? 0) + (run.usage?.inputTokens ?? 0),
@@ -773,7 +1119,7 @@ async function recordWorkspaceSession(run: ChatRunRecord): Promise<void> {
     .filter((text) => !isGoalRoundPrompt(text));
   const lastUser = userTexts[userTexts.length - 1] ?? "";
   if (lastUser) {
-    const { captureWorkspaceFacts } = await import("@/lib/dsh/memory");
+    const { captureWorkspaceFacts } = await import("@/lib/workspace/memory");
     await captureWorkspaceFacts(client, run.workspaceId, lastUser, sid);
   }
 }
@@ -825,49 +1171,6 @@ async function materializeAt(run: ChatRunRecord): Promise<{ message: UIMessage |
 
 async function materialize(run: ChatRunRecord): Promise<UIMessage | null> {
   return (await materializeAt(run)).message;
-}
-
-/**
- * Start the next automatic goal round in the same conversation (dsh's
- * goal-round-driver). The new run is an ordinary chat run, so the client's
- * run poll attaches to it, the transcript persists it, and Stop still works.
- *
- * Fire-and-forget: a conflict (the human sent their own message first) or a
- * transient storage error must never fail the turn that just completed.
- */
-async function driveGoalRound(run: ChatRunRecord): Promise<void> {
-  if (!run.conversationId) return;
-  try {
-    const { startGoalRound } = await import("@/lib/goals");
-    const next = await startGoalRound(run.conversationId);
-    if (!next) return;
-    const assistant = await materialize(run);
-    const messages: UIMessage[] = [
-      ...run.history,
-      ...(assistant ? [assistant] : []),
-      {
-        id: `goal-round-${nanoid(10)}`,
-        role: "user",
-        parts: [{ type: "text", text: next.prompt }],
-      },
-    ];
-    await createChatRun({
-      messages,
-      settings: run.settings,
-      model: run.model,
-      conversationId: run.conversationId,
-      workspaceId: run.workspaceId,
-      owner: run.ownerId
-        ? { uid: run.ownerId, orgId: run.orgId ?? null }
-        : undefined,
-    });
-  } catch (e: any) {
-    console.warn(
-      "[goal-round] could not start:",
-      run.conversationId,
-      e?.message || e,
-    );
-  }
 }
 
 async function materializeChunks(recorded: UIMessageChunk[]): Promise<UIMessage | null> {
@@ -940,6 +1243,7 @@ export function chatRunStream(
       return true;
     } catch {
       cleanup();
+      void stopChatRun(id);
       return false;
     }
   };
@@ -1007,6 +1311,7 @@ export function chatRunStream(
       },
       cancel() {
         cleanup();
+        void stopChatRun(id);
       },
     },
     { highWaterMark: 256 },

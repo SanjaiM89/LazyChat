@@ -267,14 +267,14 @@ export function AskUserCard({
                           className={cn(
                             "mt-0.5 flex shrink-0 items-center justify-center border",
                             q.multiSelect ? "h-3.5 w-3.5 rounded" : "h-4 w-4 rounded-full",
-                            on ? "border-brand bg-brand text-[#0b2e1e] animate-scale-in" : "border-border-stronger",
+                            on ? "border-brand bg-brand text-brand-button-text animate-scale-in" : "border-border-stronger",
                           )}
                         >
                           {on &&
                             (q.multiSelect ? (
                               <Check size={10} strokeWidth={3} />
                             ) : (
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#0b2e1e]" />
+                              <span className="h-1.5 w-1.5 rounded-full bg-brand-button-text" />
                             ))}
                         </span>
                         <span className="min-w-0 flex-1">
@@ -309,7 +309,7 @@ export function AskUserCard({
                       )}
                     >
                       {d.customOpen && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#0b2e1e]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-button-text" />
                       )}
                     </span>
                     Something else

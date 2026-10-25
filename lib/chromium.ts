@@ -286,6 +286,65 @@ export async function chromiumShot(): Promise<ChromiumResult> {
   return { url: data.url || "", title: data.title || "", image: data.image };
 }
 
+/** What the page offers to interact with: role, label and a selector for each. */
+export async function chromiumObserve(): Promise<{
+  url: string;
+  title: string;
+  elements: Array<{ role: string; label: string; selector: string; type?: string; value?: string }>;
+}> {
+  const data = await daemon("/observe");
+  return {
+    url: data.url || "",
+    title: data.title || "",
+    elements: Array.isArray(data.elements) ? data.elements : [],
+  };
+}
+
+/** Pull named values out of the page. */
+export async function chromiumExtract(
+  fields: Record<string, string>,
+): Promise<{ url: string; title: string; values: Record<string, string | null> }> {
+  const data = await daemon("/extract", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ fields }),
+  });
+  return {
+    url: data.url || "",
+    title: data.title || "",
+    values: data.values && typeof data.values === "object" ? data.values : {},
+  };
+}
+
+/** The open tabs, or a change to them. */
+export async function chromiumTabs(
+  action?: "list" | "open" | "close",
+  options: { url?: string; index?: number } = {},
+): Promise<{
+  url: string;
+  title: string;
+  tabs?: Array<{ index: number; url: string; title: string; active: boolean }>;
+}> {
+  if (!action || action === "list") {
+    const data = await daemon("/tabs");
+    return {
+      url: data.url || "",
+      title: data.title || "",
+      tabs: Array.isArray(data.tabs) ? data.tabs : [],
+    };
+  }
+  const data = await daemon("/tabs", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action, ...options }),
+  });
+  return {
+    url: data.url || "",
+    title: data.title || "",
+    tabs: Array.isArray(data.tabs) ? data.tabs : [],
+  };
+}
+
 export async function chromiumState(): Promise<{ url: string; title: string; control: ChromiumControl; steps: number }> {
   const [state, doc] = await Promise.all([
     daemon("/state", undefined, 8000).catch(() => ({ url: "", title: "" })),

@@ -17,7 +17,7 @@ import {
 import type { FileUIPart } from "ai";
 import { cn, IconButton, Spinner, Tooltip } from "@/components/ui";
 import { useAppStore } from "@/lib/app-store";
-import { DEFAULT_DISPLAY } from "@/lib/display";
+import { DEFAULT_DISPLAY, contentColumnStyle } from "@/lib/display";
 import { modelSupportsThinking } from "@/lib/models";
 import type { ChatController } from "@/lib/use-chat";
 import { activeRunFor } from "@/lib/app-store";
@@ -38,7 +38,7 @@ const TOOL_BUTTONS: {
   tooltip: string;
 }[] = [
   {
-    id: "webSearch",
+    id: "web_search",
     label: "Search",
     icon: <BrandIcon name="duckduckgo" size={14} fallback={<Globe size={14} />} />,
     tooltip: "Search the web (add Tavily/Brave/Serper keys via Search providers in the sidebar)",
@@ -181,7 +181,9 @@ export function Composer({
     const value = text.trim();
     if (!value && !pending.length) return;
     if (isBusy) return;
-    if (backgroundRun) return;
+    if (backgroundRun) {
+      void chat.stopRun(backgroundRun.id);
+    }
     chat.send(value, pending.length ? pending : undefined);
     setText("");
     setPending([]);
@@ -200,10 +202,8 @@ export function Composer({
 
   return (
     <div className="sticky bottom-0 z-20 bg-gradient-to-t from-bg via-bg/95 to-transparent px-3 pb-3 pt-3 sm:px-6">
-      <div className="mx-auto w-full" style={{ maxWidth: contentWidth }}>
+      <div className="chat-column mx-auto w-full" style={contentColumnStyle(contentWidth)}>
         <SandboxMini />
-
-        {backgroundRun && <BackgroundRunBar run={backgroundRun} chat={chat} />}
 
         <TodoPanel todos={latestTodos(chat.messages)} />
 
@@ -295,7 +295,7 @@ export function Composer({
           />
 
           <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1">
-            <div className="flex items-center gap-0.5">
+            <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <Tooltip text="Attach a file">
                 <IconButton
                   onClick={() => fileInputRef.current?.click()}
@@ -357,7 +357,7 @@ export function Composer({
               )}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <ModelPicker />
               {isBusy ? (
                 <button
@@ -370,16 +370,12 @@ export function Composer({
               ) : (
                 <button
                   onClick={handleSend}
-                  disabled={!mounted || ((!text.trim() && !pending.length) || disabled || !!backgroundRun)}
+                  disabled={!mounted || ((!text.trim() && !pending.length) || disabled)}
                   className={cn(
                     "btn-sheen group flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--brand-button-border)] bg-[color:var(--brand-button)] text-[color:var(--brand-button-text)]",
                     "transition-all hover:brightness-110 hover:shadow-[0_0_0_3px_var(--accent-soft)] active:scale-95 disabled:opacity-35 disabled:grayscale disabled:pointer-events-none",
                   )}
-                  title={
-                    backgroundRun
-                      ? "A reply is generating in the background — stop it to send"
-                      : "Send message"
-                  }
+                  title="Send message"
                 >
                   <ArrowUp size={15} strokeWidth={2.5} className="transition-transform duration-300 group-hover:-translate-y-0.5" />
                 </button>

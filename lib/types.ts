@@ -43,7 +43,7 @@ export interface CustomModelDef {
   supportsThinking?: boolean;
 }
 
-export type ProviderProtocol = "openai" | "anthropic" | "gemini" | "deepseek";
+export type ProviderProtocol = "openai" | "anthropic" | "gemini";
 
 export interface CustomProviderDef {
   id: string;
@@ -79,7 +79,7 @@ export const DEFAULT_SETTINGS: ChatSettings = {
   thinking: true,
   temperature: 0.7,
   maxSteps: 14,
-  tools: ["webSearch", "createArtifact", "runAgentTask", "computerUse", "companyBrain"],
+  tools: ["web_search", "createArtifact", "runAgentTask", "computerUse", "companyBrain"],
   autoCompact: true,
 };
 

@@ -123,6 +123,9 @@ export function resilientSse(first: Response, opts: ResilientOptions): Response 
     cancel() {
       cancelled = true;
       void activeReader?.cancel().catch(() => {});
+      if (opts.runId) {
+        void fetchFn(`/api/chat/runs/${opts.runId}`, { method: "DELETE" }).catch(() => {});
+      }
     },
   });
 

@@ -16,6 +16,7 @@ import type {
   SkillDef,
 } from "@/lib/types";
 import { DEFAULT_SETTINGS } from "@/lib/types";
+import { DEFAULT_PERMISSIONS, DEFAULT_PRESET, type PermissionSettings } from "@/lib/agent/permissions";
 import { getDefaultModel, PROVIDERS } from "@/lib/models";
 import {
   DEFAULT_DISPLAY,
@@ -26,7 +27,7 @@ import {
 } from "@/lib/display";
 
 
-export type PanelTab = "artifacts" | "sandbox" | "agents" | "files" | null;
+export type PanelTab = "artifacts" | "sandbox" | "agents" | "files" | "plugins" | "sessions" | null;
 
 export interface UsageSnapshot {
   inputTokens: number;
@@ -55,9 +56,25 @@ interface AppStore {
   setSettings: (p: Partial<ChatSettings>) => void;
   toggleTool: (name: string) => void;
 
+  /** What a session may do without asking: sandbox mode + approval policy. */
+  permissions: PermissionSettings;
+  setPermissions: (p: Partial<PermissionSettings>) => void;
+  /** The permission preset the user picked, when it still matches. */
+  permissionPreset: string;
+  setPermissionPreset: (name: string | null) => void;
+
   conversations: ConversationMeta[];
+  /** The pinned conversations, most recently pinned first. */
+  pinnedConversations: string[];
+  /** The archived conversations, kept out of the list but reachable. */
+  archivedConversations: string[];
   activeConversationId: string | null;
   loadConversations: () => Promise<void>;
+  setSessionState: (state: { pinned: string[]; archived: string[] }) => void;
+  pinConversation: (id: string) => Promise<void>;
+  unpinConversation: (id: string) => Promise<void>;
+  archiveConversation: (id: string) => Promise<void>;
+  unarchiveConversation: (id: string) => Promise<void>;
   newConversation: () => void;
   setActiveConversation: (id: string | null) => void;
   deleteConversation: (id: string) => Promise<void>;
@@ -109,7 +126,7 @@ interface AppStore {
       baseUrl: string;
       apiKey?: string;
       apiKeyEnv?: string;
-      protocol?: "openai" | "anthropic" | "gemini" | "deepseek";
+      protocol?: "openai" | "anthropic" | "gemini";
       models: { id: string; name?: string; supportsThinking?: boolean }[];
     },
   ) => Promise<PublicCustomProvider>;
@@ -136,10 +153,34 @@ interface AppStore {
   resetSubchatWidth: () => void;
 }
 
+/**
+ * Apply a pin or archive change and mirror the server's answer into the store.
+ *
+ * The server owns the rule that pinning and archiving are mutually
+ * exclusive, so the client takes the sets it is given rather than guessing.
+ */
+async function sessionAction(
+  action: "pin" | "unpin" | "archive" | "unarchive",
+  id: string,
+  apply: (state: { pinned: string[]; archived: string[] }) => void,
+): Promise<void> {
+  try {
+    const res = await fetch("/api/agent/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, conversationId: id }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (Array.isArray(data?.pinned) && Array.isArray(data?.archived)) apply(data);
+  } catch {
+  }
+}
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      theme: "system",
+      theme: "dark",
       setTheme: (theme) => set({ theme }),
       panel: null,
       setPanel: (panel) => set({ panel }),
@@ -150,6 +191,10 @@ export const useAppStore = create<AppStore>()(
 
       settings: DEFAULT_SETTINGS,
       setSettings: (p) => set({ settings: { ...get().settings, ...p } }),
+      permissions: DEFAULT_PERMISSIONS,
+      setPermissions: (p) => set({ permissions: { ...get().permissions, ...p } }),
+      permissionPreset: DEFAULT_PRESET,
+      setPermissionPreset: (name) => set({ permissionPreset: name ?? DEFAULT_PRESET }),
       toggleTool: (name) => {
         const s = get().settings;
         const tools = s.tools.includes(name)
@@ -159,14 +204,41 @@ export const useAppStore = create<AppStore>()(
       },
 
       conversations: [],
+      pinnedConversations: [],
+      archivedConversations: [],
       activeConversationId: null,
       loadConversations: async () => {
         try {
           const res = await fetch("/api/conversations", { cache: "no-store" });
+          if (!res.ok) return;
           const data = await res.json();
-          set({ conversations: data });
+          if (Array.isArray(data)) set({ conversations: data });
         } catch {
         }
+      },
+      setSessionState: (state) =>
+        set({ pinnedConversations: state.pinned, archivedConversations: state.archived }),
+      // Pinning and archiving are mutually exclusive: the server owns the
+      // rule, the client mirrors the answer it gets back.
+      pinConversation: async (id) => {
+        await sessionAction("pin", id, (state) =>
+          set({ pinnedConversations: state.pinned, archivedConversations: state.archived }),
+        );
+      },
+      unpinConversation: async (id) => {
+        await sessionAction("unpin", id, (state) =>
+          set({ pinnedConversations: state.pinned, archivedConversations: state.archived }),
+        );
+      },
+      archiveConversation: async (id) => {
+        await sessionAction("archive", id, (state) =>
+          set({ pinnedConversations: state.pinned, archivedConversations: state.archived }),
+        );
+      },
+      unarchiveConversation: async (id) => {
+        await sessionAction("unarchive", id, (state) =>
+          set({ pinnedConversations: state.pinned, archivedConversations: state.archived }),
+        );
       },
       newConversation: () => set({ activeConversationId: null, openArtifactId: null }),
       setActiveConversation: (id) => set({ activeConversationId: id }),
@@ -196,7 +268,9 @@ export const useAppStore = create<AppStore>()(
         try {
           const q = conversationId ? `?conversationId=${conversationId}` : "";
           const res = await fetch(`/api/artifacts${q}`, { cache: "no-store" });
-          set({ artifacts: await res.json() });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (Array.isArray(data)) set({ artifacts: data });
         } catch {
         }
       },
@@ -329,7 +403,7 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: "omnia-store",
-      version: 3,
+      version: 4,
       migrate: (persisted: unknown) => {
         const state = (persisted ?? {}) as Record<string, unknown>;
         // v1 → v2: the default provider changed from Claude to Sarvam. Only
@@ -349,12 +423,20 @@ export const useAppStore = create<AppStore>()(
         if (s2?.provider && s2.provider in PROVIDERS && s2.provider !== "sarvam") {
           state.settings = { ...s2, provider: "sarvam", model: "sarvam-105b" };
         }
+        // v3 -> v4: dark is the default palette now. Stores still on "system"
+        // were never a deliberate pick, so they follow the new default; an
+        // explicit light or dark choice is left alone.
+        if (state.theme === "system") {
+          state.theme = "dark";
+        }
         return state;
       },
       partialize: (s) => ({
         theme: s.theme,
         mainView: s.mainView,
         settings: s.settings,
+        permissions: s.permissions,
+        permissionPreset: s.permissionPreset,
         activeConversationId: s.activeConversationId,
         conversationWorkspaces: s.conversationWorkspaces,
         display: s.display,

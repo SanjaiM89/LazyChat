@@ -1,13 +1,2 @@
-services:
-  falkordb:
-    image: falkordb/falkordb:latest
-    container_name: lcb-falkordb
-    ports:
-      - "6379:6379"
-      - "3001:3000" # Browser UI — mapped to 3001 to avoid clashing with the Next.js frontend on 3000
-    volumes:
-      - falkordb-data:/data
-    restart: unless-stopped
-
-volumes:
-  falkordb-data:
+# FalkorDB is now embedded via FalkorDBLite; no external service required.
+services: {}
