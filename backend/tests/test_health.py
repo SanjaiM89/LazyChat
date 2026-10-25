@@ -87,7 +87,6 @@ async def test_goals_rest_create_and_get():
         data = r.json()
         assert data["goal"] is not None
         gid = data["goal"]["id"]
-        rev = data["goal"]["revision"]
         r2 = await client.get("/api/v1/goals/c2")
         assert r2.status_code == 200
         assert r2.json()["goal"]["id"] == gid
