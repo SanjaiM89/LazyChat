@@ -7,6 +7,7 @@ from typing import Any
 
 from core.logging import get_logger
 from models.workspace import Workspace, WorkspaceStatus
+
 from .graph import FalkorClient
 from .workspace_paths import (
     default_workspace_title,

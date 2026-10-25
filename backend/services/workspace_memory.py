@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from core.logging import get_logger
+
 from .graph import FalkorClient
 
 logger = get_logger("workspace_memory")
