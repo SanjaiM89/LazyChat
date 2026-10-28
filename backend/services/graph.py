@@ -47,3 +47,80 @@ class FalkorClient:
     async def close(self) -> None:
         with contextlib.suppress(Exception):
             self.db.connection.close()
+
+
+def coerce_node(value) -> dict | None:
+    if not isinstance(value, dict):
+        return None
+    if not (isinstance(value.get("id"), int) and isinstance(value.get("labels"), list) and isinstance(value.get("properties"), dict)):
+        return None
+    return node_to_dict(value)
+
+
+def node_to_dict(node: dict) -> dict:
+    props = dict(node.get("properties") or {})
+    labels = list(node.get("labels") or [])
+    label = labels[0] if labels else "Node"
+    nid = props.get("id")
+    if nid is None:
+        nid = node.get("id")
+    nid = str(nid)
+    name = props.get("name") or props.get("key") or props.get("title") or nid
+    return {"id": nid, "labels": labels, "label": label, "name": name, "properties": props, "element_id": node.get("id")}
+
+
+def coerce_edge(value) -> dict | None:
+    if not isinstance(value, dict):
+        return None
+    if not (isinstance(value.get("sourceId"), int) and isinstance(value.get("destinationId"), int) and isinstance(value.get("relationshipType"), str)):
+        return None
+    return edge_to_dict(value)
+
+
+def edge_to_dict(edge: dict, element_to_business=None) -> dict:
+    emap = element_to_business or {}
+    src = emap.get(edge.get("sourceId"), str(edge.get("sourceId")))
+    dst = emap.get(edge.get("destinationId"), str(edge.get("destinationId")))
+    return {"id": edge.get("id"), "source": src, "target": dst, "type": edge.get("relationshipType") or "", "properties": dict(edge.get("properties") or {})}
+
+
+def collect_subgraph(rows: list) -> dict:
+    nodes: dict[str, dict] = {}
+    element_to_business: dict = {}
+    raw_edges: list = []
+
+    def walk(value):
+        if isinstance(value, list):
+            for item in value:
+                walk(item)
+            return
+        if isinstance(value, dict) and isinstance(value.get("id"), int) and isinstance(value.get("labels"), list) and isinstance(value.get("properties"), dict):
+            d = node_to_dict(value)
+            nodes[d["id"]] = d
+            element_to_business[value.get("id")] = d["id"]
+            return
+        if isinstance(value, dict) and isinstance(value.get("sourceId"), int) and isinstance(value.get("destinationId"), int) and isinstance(value.get("relationshipType"), str):
+            raw_edges.append(value)
+            return
+        if isinstance(value, dict) and isinstance(value.get("nodes"), list) and isinstance(value.get("edges"), list):
+            for n in value["nodes"]:
+                walk(n)
+            for e in value["edges"]:
+                walk(e)
+            return
+
+    for row in rows:
+        if isinstance(row, dict):
+            for v in row.values():
+                walk(v)
+
+    edges = []
+    seen = set()
+    for raw in raw_edges:
+        d = edge_to_dict(raw, element_to_business)
+        key = f"{d['source']}|{d['target']}|{d['type']}"
+        if key in seen:
+            continue
+        seen.add(key)
+        edges.append(d)
+    return {"nodes": list(nodes.values()), "edges": edges}
