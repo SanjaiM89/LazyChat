@@ -101,7 +101,7 @@ def test_token_meter():
 
 
 def test_session_title():
-    from services.session_title import fold_session_title, fallback_title
+    from services.session_title import fold_session_title
     events = [{"type": "user/message", "data": {"text": "hello world this is a test"}}]
     title = fold_session_title(events)
     assert title is not None
@@ -109,10 +109,12 @@ def test_session_title():
 
 
 def test_observation_policy():
-    import os, tempfile
+    import os
+    import tempfile
     d = tempfile.mkdtemp()
     p = os.path.join(d, "f.txt")
-    open(p, "w").write("x")
+    with open(p, "w") as f:
+        f.write("x")
     from services import observation_policy as op
     op.clear_observations("s1")
     # read first

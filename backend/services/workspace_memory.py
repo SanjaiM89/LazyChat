@@ -135,3 +135,74 @@ async def update_shared(client: FalkorClient, mem_id: str, patch: dict[str, Any]
 async def delete_shared(client: FalkorClient, mem_id: str) -> bool:
     rows = await client.query("MATCH (m:SharedMemory {id: $id}) DETACH DELETE m RETURN 1 AS n", {"id": mem_id})
     return len(rows) > 0
+
+async def build_memory_context(client, workspace_id: str, max_chars: int = 6000) -> str:
+    parts = []
+    shared = await recall_shared(client, workspace_id, "", 12)
+    if shared:
+        parts.append("## Shared memory (applies across workspaces)\n" + "\n".join(f"- [{m.get('kind')}] {(m.get('text') or '')[:300]}" for m in shared))
+    for kind in ["summary", "decision", "plan", "error", "preference"]:
+        # read workspace records - best effort
+        try:
+            rows = await client.query("MATCH (n) WHERE n.workspace_id = $wid AND labels(n)[0] CONTAINS $kind RETURN properties(n) AS n ORDER BY n.updated_at DESC LIMIT 6", {"wid": workspace_id, "kind": kind})
+        except Exception:  # noqa: BLE001
+            rows = []
+        recs = [r.get("n") for r in rows if isinstance(r.get("n"), dict)]
+        if not recs:
+            continue
+        lines = []
+        for s in recs:
+            text = s.get("summary") or s.get("body") or s.get("text") or s.get("title") or ""
+            title = f"{s.get('title')}: " if isinstance(s.get("title"), str) and text != s.get("title") else ""
+            extra = f" Fix: {str(s.get('fix'))[:200]}" if kind == "error" and s.get("fix") else ""
+            pref = f"{s.get('key')}: " if kind == "preference" and s.get("key") else ""
+            lines.append(f"- {pref}{title}{str(text)[:300]}{extra}")
+        parts.append(f"## Workspace {kind}s\n" + "\n".join(lines))
+    joined = "\n\n".join(parts)[:max_chars]
+    return ("## Relevant memory (loaded automatically: shared global + this workspace)\n" + joined) if joined else ""
+
+
+async def add_todo(client, workspace_id: str, text: str) -> dict[str, Any]:
+    existing = await client.query("MATCH (t:Todo) WHERE t.workspace_id = $wid RETURN count(t) AS n", {"wid": workspace_id})
+    n = int((existing[0].get("n") if existing else 0) or 0)
+    tid = uid("todo") if False else __import__("uuid").uuid4().hex[:8]
+    ts = now_iso()
+    await client.write(
+        "CREATE (t:Todo {id: $id, workspace_id: $wid, text: $text, status: 'open', sort: $sort, created_at: $ts, updated_at: $ts}) WITH t MATCH (w:Workspace {id: $wid}) MERGE (t)-[:IN_WORKSPACE]->(w)",
+        {"id": tid, "wid": workspace_id, "text": redact_secrets(text)[:2000], "sort": n, "ts": ts},
+    )
+    return {"id": tid, "workspace_id": workspace_id, "text": text, "status": "open", "sort": 0, "created_at": ts, "updated_at": ts}
+
+
+async def set_todo_status(client, todo_id: str, status: str) -> None:
+    await client.write("MATCH (t:Todo {id: $id}) SET t.status = $status, t.updated_at = $ts", {"id": todo_id, "status": status, "ts": now_iso()})
+
+
+async def list_todos(client, workspace_id: str) -> list[dict[str, Any]]:
+    rows = await client.query("MATCH (t:Todo) WHERE t.workspace_id = $wid RETURN t.id AS id, t.text AS text, t.status AS status, t.sort AS sort, t.created_at AS created_at, t.updated_at AS updated_at ORDER BY t.sort ASC", {"wid": workspace_id})
+    out = []
+    for r in rows:
+        st = r.get("status")
+        out.append({"id": r.get("id"), "workspace_id": workspace_id, "text": r.get("text") or "", "status": "doing" if st == "doing" else ("done" if st == "done" else "open"), "sort": int(r.get("sort") or 0), "created_at": r.get("created_at") or "", "updated_at": r.get("updated_at") or ""})
+    return out
+
+
+async def record_command_run(client, workspace_id: str, command: str, output: str, exit_code: int, duration_ms: int, session_id: str | None = None, run_id: str | None = None) -> str:
+    import uuid as _u
+    MAX = 8000
+    kept = output or ""
+    if len(kept) > MAX:
+        kept = kept[:4000] + f"\n... [{len(kept)-8000} chars cut] ...\n" + kept[-4000:]
+    rid = _u.uuid4().hex[:8]
+    ts = now_iso()
+    await client.write("CREATE (n:CommandRun {id: $id}) SET n.workspace_id = $wid, n.command = $cmd, n.output = $out, n.exit_code = $ec, n.duration_ms = $dm, n.run_id = $runid, n.created_at = $ts, n.updated_at = $ts", {"id": rid, "wid": workspace_id, "cmd": redact_secrets(command)[:2000], "out": redact_secrets(kept), "ec": exit_code, "dm": duration_ms, "runid": run_id or "", "ts": ts})
+    return rid
+
+
+async def recent_commands(client, workspace_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    rows = await client.query("MATCH (n:CommandRun) WHERE n.workspace_id = $wid RETURN n ORDER BY n.created_at DESC LIMIT $limit", {"wid": workspace_id, "limit": limit})
+    out = []
+    for r in rows:
+        n = r.get("n") if isinstance(r.get("n"), dict) else r
+        out.append({"id": n.get("id"), "workspace_id": workspace_id, "command": n.get("command") or "", "exit_code": n.get("exit_code"), "output": n.get("output") or "", "started_at": n.get("created_at") or "", "duration_ms": n.get("duration_ms")})
+    return out
