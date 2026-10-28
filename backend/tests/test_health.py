@@ -161,3 +161,24 @@ def test_workspace_tools_resolve_and_glob():
     assert match_glob("*.ts", "a.ts") is True
     assert match_glob("*.ts", "a.js") is False
     assert match_glob("**/*.ts", "src/a.ts") is True
+
+
+def test_permissions_decide():
+    from services.permissions import decide_permission, PermissionSettings
+    s = PermissionSettings(mode="read-only", policy="ask")
+    d = decide_permission("shell_bash", s)
+    assert d["outcome"] == "deny"
+    s2 = PermissionSettings(mode="danger-full-access", policy="never")
+    d2 = decide_permission("shell_bash", s2)
+    assert d2["outcome"] == "allow"
+    s3 = PermissionSettings(mode="workspace-write", policy="ask")
+    d3 = decide_permission("web_fetch", s3)
+    assert d3["outcome"] == "allow"
+
+
+def test_catalog_effect():
+    from services.catalog import tool_effect, tool_meta
+    assert tool_effect("ws_read") == "read"
+    assert tool_effect("ws_write") == "write"
+    assert tool_meta("ws_read") is not None
+    assert tool_meta("nonexistent") is None
