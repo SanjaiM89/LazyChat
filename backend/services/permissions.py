@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .catalog import tool_effect as _catalog_effect
+
 SandboxMode = str
 ApprovalPolicy = str
 
@@ -87,8 +89,7 @@ def apply_preset(name: str, has_workspace: bool = False) -> PermissionSettings |
 
 
 def tool_effect(tool_name: str) -> str:
-    # Simplified: default to read; catalog would provide real effect
-    return "read"
+    return _catalog_effect(tool_name)
 
 
 def decide_permission(tool_name: str, settings: PermissionSettings) -> dict:
