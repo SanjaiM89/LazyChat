@@ -22,7 +22,7 @@ class MCPManager:
             return
         try:
             cfg = json.loads(path.read_text())
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("failed to parse mcp config", error=str(e))
             return
         for name, spec in (cfg.get("mcpServers") or {}).items():

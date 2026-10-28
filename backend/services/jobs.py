@@ -27,7 +27,8 @@ def start_job(conversation_id: str, title: str, command: str, cwd: str | None = 
         record["exitCode"] = proc.returncode
         record["endedAt"] = int(time.time()*1000)
 
-    asyncio.ensure_future(_run())
+    _task = asyncio.ensure_future(_run())
+    _ = _task
     return record
 
 

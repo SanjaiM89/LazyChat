@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class MessageRole(str, Enum):
+class MessageRole(StrEnum):
     system = "system"
     user = "user"
     assistant = "assistant"
@@ -23,7 +23,7 @@ class ChatMessage(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     pending = "pending"
     running = "running"
     completed = "completed"

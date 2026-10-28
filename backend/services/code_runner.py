@@ -9,10 +9,10 @@ async def run_code(code: str, tools: dict[str, Any] | None = None, timeout: int 
     # Provide tools as globals in the executed code via a restricted namespace
     ns: dict[str, Any] = {"tools": tools}
     try:
-        exec(compile(code, "<code>", "exec"), {"__builtins__": __builtins__}, ns)  # noqa: S102
-        result = ns.get("result", None)
+        exec(compile(code, "<code>", "exec"), {"__builtins__": __builtins__}, ns)
+        result = ns.get("result")
         if asyncio.iscoroutine(result):
             result = await asyncio.wait_for(result, timeout=timeout)
         return {"ok": True, "result": result}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"ok": False, "error": str(e)}

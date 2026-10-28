@@ -99,7 +99,7 @@ async def extract_facts_llm(text: str, llm) -> list[str]:
             seen.add(key)
             deduped.append(f)
         return deduped
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 
@@ -138,7 +138,7 @@ async def mentioned_node_ids(client: FalkorClient, text: str) -> list[str]:
     try:
         rows = await client.query("MATCH (n) WHERE any(w IN $words WHERE toLower(n.name) CONTAINS toLower(w) OR toLower(coalesce(n.title,'')) CONTAINS toLower(w) OR toLower(coalesce(n.key,'')) = toLower(w)) RETURN DISTINCT n.id AS id LIMIT 12", {"words": words})
         return [r.get("id") for r in rows if r.get("id")]
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 

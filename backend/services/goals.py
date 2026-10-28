@@ -34,7 +34,7 @@ def _load_goals() -> list[GoalRecord]:
     try:
         with open(path) as f:
             raw = json.load(f)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
     goals = []
     for row in raw or []:

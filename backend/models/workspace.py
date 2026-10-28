@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class WorkspaceStatus(str, Enum):
+class WorkspaceStatus(StrEnum):
     active = "active"
     archived = "archived"
 
 
-class WorkspaceDirStatus(str, Enum):
+class WorkspaceDirStatus(StrEnum):
     ok = "ok"
     missing_dir = "missing-dir"
 
@@ -41,7 +41,7 @@ class MemoryRecord(BaseModel):
     updated_at: str = ""
 
 
-class TodoStatus(str, Enum):
+class TodoStatus(StrEnum):
     open = "open"
     doing = "doing"
     done = "done"
@@ -69,7 +69,7 @@ class CommandRun(BaseModel):
     duration_ms: int | None = None
 
 
-class AgentSessionStatus(str, Enum):
+class AgentSessionStatus(StrEnum):
     running = "running"
     ended = "ended"
     failed = "failed"
@@ -85,7 +85,7 @@ class AgentSession(BaseModel):
     ended_at: str | None = None
 
 
-class AgentRunStatus(str, Enum):
+class AgentRunStatus(StrEnum):
     queued = "queued"
     running = "running"
     done = "done"

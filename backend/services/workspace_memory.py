@@ -145,7 +145,7 @@ async def build_memory_context(client, workspace_id: str, max_chars: int = 6000)
         # read workspace records - best effort
         try:
             rows = await client.query("MATCH (n) WHERE n.workspace_id = $wid AND labels(n)[0] CONTAINS $kind RETURN properties(n) AS n ORDER BY n.updated_at DESC LIMIT 6", {"wid": workspace_id, "kind": kind})
-        except Exception:  # noqa: BLE001
+        except Exception:
             rows = []
         recs = [r.get("n") for r in rows if isinstance(r.get("n"), dict)]
         if not recs:

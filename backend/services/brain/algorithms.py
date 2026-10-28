@@ -83,7 +83,7 @@ async def betweenness_centrality(client, limit: int = 8, services_only: bool = T
             if node:
                 out.append({"node": node, "score": float(row.get("score") or 0), "approx": False})
         return out
-    except Exception:  # noqa: BLE001
+    except Exception:
         return await bridge_services(client, limit)
 
 
@@ -96,14 +96,14 @@ async def harmonic_centrality(client, limit: int = 8):
             if node:
                 out.append({"node": node, "score": float(row.get("score") or 0)})
         return out
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 
 async def communities(client):
     try:
         rows = await client.query(COMMUNITIES)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
     home = await home_teams(client)
     groups: dict[str, list] = {}
@@ -142,7 +142,7 @@ async def home_teams(client) -> dict[str, str]:
                 team = row.get("team")
                 if team and tid and tid not in home:
                     home[str(tid)] = team
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
     return home
 
@@ -175,7 +175,7 @@ async def pagerank(client, limit: int = 10):
             if node:
                 out.append({"node": node, "score": float(row.get("score") or 0)})
         return out
-    except Exception:  # noqa: BLE001
+    except Exception:
         rows = await client.query(DEGREE_CENTRALITY, {"limit": limit})
         out = []
         for row in rows:

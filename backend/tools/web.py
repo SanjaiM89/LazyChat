@@ -25,5 +25,5 @@ class WebFetchTool(Tool):
                 resp.raise_for_status()
                 text = resp.text[:max_chars]
                 return ToolResult(ok=True, data={"status": resp.status_code, "text": text})
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return ToolResult(ok=False, error=str(e))

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 NODE_LABELS = [
     "Person", "Team", "Service", "Repo", "Document", "Ticket", "Decision", "Message",
     "Session", "Turn", "EpisodicMemory", "SemanticMemory", "ProceduralMemory",
@@ -23,10 +25,8 @@ NODE_COLORS = {
 
 async def init_schema(client) -> None:
     for label in NODE_LABELS:
-        try:
+        with contextlib.suppress(Exception):
             await client.write(f"CREATE INDEX FOR (n:{label}) ON (n.id)")
-        except Exception:  # noqa: BLE001, S110
-            pass
     secondary = [
         "CREATE INDEX FOR (p:Person) ON (p.name)",
         "CREATE INDEX FOR (s:Service) ON (s.name)",
@@ -36,12 +36,8 @@ async def init_schema(client) -> None:
         "CREATE INDEX FOR (m:SemanticMemory) ON (m.user_id)",
     ]
     for cypher in secondary:
-        try:
+        with contextlib.suppress(Exception):
             await client.write(cypher)
-        except Exception:  # noqa: BLE001, S110
-            pass
     for label in NODE_LABELS:
-        try:
+        with contextlib.suppress(Exception):
             await client.write(f"CREATE UNIQUE INDEX FOR (n:{label}) ON (n.id)")
-        except Exception:  # noqa: BLE001, S110
-            pass

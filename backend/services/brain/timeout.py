@@ -24,7 +24,7 @@ async def with_timeout(work: Awaitable[Any], ms: int, label: str):
         return await asyncio.wait_for(task, timeout=ms / 1000.0)
     except TimeoutError:
         task.cancel()
-        raise TimeoutError(f"{label} timed out after {ms}ms")
+        raise TimeoutError(f"{label} timed out after {ms}ms") from None
     finally:
         if not task.done():
             task.cancel()
@@ -33,5 +33,5 @@ async def with_timeout(work: Awaitable[Any], ms: int, label: str):
 async def with_budget(work: Awaitable[Any], ms: int, fallback: Any):
     try:
         return await with_timeout(work, ms, "operation")
-    except Exception:  # noqa: BLE001
+    except Exception:
         return fallback

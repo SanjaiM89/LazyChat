@@ -37,7 +37,7 @@ def session_for(conversation_id: str) -> str:
 async def brain_client() -> FalkorClient | None:
     try:
         return FalkorClient.get()
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("graph unavailable", error=str(e))
         return None
 
@@ -152,7 +152,7 @@ async def record_omnia_turn(conversation_id: str, role: str, content: str) -> No
             return
         sid = await ensure_session(client, omnia_user(), session_for(conversation_id))
         await record_turn(client, sid, role, text[:4000])
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("record failed", error=str(e))
 
 
@@ -168,5 +168,5 @@ async def capture_omnia_memory(conversation_id: str, user_text: str, user_id: st
         for pf in extract_personal_facts(text):
             await write_semantic_fact(client, user_id, pf.fact, sid, pf.slot)
         await consolidate_session(client, sid, user_id, {})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("capture failed", error=str(e))

@@ -108,7 +108,7 @@ async def run_researcher(client, question, session_id, opts=None):
             fn = tc["function"]["name"]
             try:
                 args = _json.loads(tc["function"].get("arguments") or "{}")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 args = {}
             result = await execute(fn, client, args)
             step = {

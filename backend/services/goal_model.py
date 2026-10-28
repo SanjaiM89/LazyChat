@@ -84,10 +84,7 @@ def normalize_goal(raw: Any) -> GoalRecord | None:
     rounds = raw.get("roundsStarted")
     if not (isinstance(rounds, int) and not isinstance(rounds, bool) and rounds >= 0):
         r2 = raw.get("round")
-        if isinstance(r2, int) and not isinstance(r2, bool) and r2 >= 0:
-            rounds = r2
-        else:
-            rounds = 0
+        rounds = r2 if isinstance(r2, int) and not isinstance(r2, bool) and r2 >= 0 else 0
     max_rounds = raw.get("maxGoalRounds")
     if not (isinstance(max_rounds, int) and not isinstance(max_rounds, bool) and max_rounds > 0):
         max_rounds = DEFAULT_MAX_GOAL_ROUNDS

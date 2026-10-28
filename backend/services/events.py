@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
@@ -28,8 +29,6 @@ def list_events(conv_id: str, limit: int = 2000) -> list[dict[str, Any]]:
         for line in f:
             line = line.strip()
             if line:
-                try:
+                with contextlib.suppress(json.JSONDecodeError):
                     out.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
     return out[-limit:]

@@ -18,7 +18,7 @@ def _load() -> dict[str, Any]:
     try:
         with open(p) as f:
             raw = json.load(f)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {"pinned": [], "archived": []}
     if not isinstance(raw, dict):
         return {"pinned": [], "archived": []}

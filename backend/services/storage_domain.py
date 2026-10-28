@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from collections.abc import Callable
@@ -51,10 +52,8 @@ class StorageDomain:
         store[key] = value
         self._persist(store)
         for listener in list(_listeners):
-            try:
+            with contextlib.suppress(Exception):
                 listener({"domain": self.name, "key": key, "value": value})
-            except Exception:  # noqa: BLE001, S110
-                pass
 
     def delete(self, key: str) -> bool:
         store = self._load()
@@ -63,10 +62,8 @@ class StorageDomain:
         del store[key]
         self._persist(store)
         for listener in list(_listeners):
-            try:
+            with contextlib.suppress(Exception):
                 listener({"domain": self.name, "key": key, "deleted": True})
-            except Exception:  # noqa: BLE001, S110
-                pass
         return True
 
     def list(self) -> list[Any]:

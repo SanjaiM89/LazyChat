@@ -15,7 +15,7 @@ def worktree_root() -> str:
 
 
 def _git(args: list[str], cwd: str) -> str:
-    res = subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True, check=False)
+    res = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=False)
     if res.returncode != 0:
         raise RuntimeError((res.stderr or res.stdout or "git failed").strip())
     return (res.stdout or "").strip()

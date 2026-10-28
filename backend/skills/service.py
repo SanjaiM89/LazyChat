@@ -34,7 +34,7 @@ class SkillService:
             return []
         try:
             raw = json.loads(self.path.read_text())
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("failed to read skills", error=str(e))
             return []
         out = []

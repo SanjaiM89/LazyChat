@@ -26,7 +26,7 @@ async def stream_chat(payload: dict[str, Any]):
         try:
             result = await ask_agent(question, {"sessionId": payload.get("session_id"), "userId": payload.get("user_id", "demo"), "llm": None})
             yield f"event: result\ndata: {json.dumps(result, default=str)}\n\n"
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
         yield "event: done\ndata: {}\n\n"
 

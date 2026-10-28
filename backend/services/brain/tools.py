@@ -55,7 +55,7 @@ async def execute(name: str, client: FalkorClient, args: dict[str, Any]) -> dict
         result = await spec["executor"](client, args or {})
         result.setdefault("duration_ms", int((time.time() - start) * 1000))
         return result
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return empty(name, {"ok": False, "summary": str(e), "error": str(e), "duration_ms": int((time.time() - start) * 1000)})
 
 

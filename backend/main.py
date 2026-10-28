@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     logger.info("starting backend", env=get_settings().app_env)
     try:
         await init_db()
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("db init failed", error=str(e))
     yield    logger.info("shutting down backend")
 

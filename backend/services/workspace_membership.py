@@ -6,7 +6,7 @@ from .workspaces import realpath_normalize
 def canonical_path(p: str) -> str:
     try:
         return realpath_normalize(p)
-    except Exception:  # noqa: BLE001
+    except Exception:
         import os
         return os.path.abspath(p)
 
@@ -21,6 +21,6 @@ def members_of(sessions: list[dict], workspace_path: str) -> list[dict]:
         try:
             if canonical_path(cwd) == target:
                 out.append(s)
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
     return out

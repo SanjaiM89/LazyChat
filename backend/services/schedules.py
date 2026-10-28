@@ -24,7 +24,7 @@ def _load(name: str) -> list[Any]:
         return []
     try:
         return json.load(open(p))
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
 

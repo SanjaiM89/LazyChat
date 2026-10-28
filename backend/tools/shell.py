@@ -39,5 +39,5 @@ class ShellTool(Tool):
         except TimeoutError:
             proc.kill()
             return ToolResult(ok=False, error=f"command timed out after {timeout}s")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return ToolResult(ok=False, error=str(e))

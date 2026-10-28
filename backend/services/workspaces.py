@@ -71,7 +71,7 @@ async def get_workspace(client: FalkorClient, ws_id: str) -> Workspace | None:
 async def get_workspace_by_path(client: FalkorClient, dir_path: str) -> Workspace | None:
     try:
         canon = realpath_normalize(dir_path)
-    except Exception:  # noqa: BLE001
+    except Exception:
         canon = os.path.abspath(dir_path)
     rows = await client.query("MATCH (w:Workspace {path: $path}) RETURN w.id AS id LIMIT 1", {"path": canon})
     if not rows:
@@ -187,7 +187,7 @@ async def move_workspace_before(client: FalkorClient, ws_id: str, before_id: str
         if at < 0:
             raise ValueError(f"cannot reorder unknown workspace '{before_id}'")
     moved = all_ws[idx]
-    ordered = without[:at] + [moved] + without[at:]
+    ordered = [*without[:at], moved, *without[at:]]
     ts = now_iso()
     for i, w in enumerate(ordered):
         await client.write("MATCH (w:Workspace {id: $id}) SET w.position = $position, w.updated_at = $ts", {"id": w.id, "position": i, "ts": ts})

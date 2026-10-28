@@ -165,7 +165,7 @@ async def reflect(llm, question: str, tools: list[str], steps: list[str]) -> dic
         parsed = parse_reflection(text)
         if parsed:
             return parsed
-    except Exception:  # noqa: BLE001, S110
+    except Exception:
         pass
     return fallback
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 from typing import Any
 
@@ -44,7 +45,5 @@ class FalkorClient:
         await self.query(cypher, params)
 
     async def close(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.db.connection.close()
-        except Exception:  # noqa: BLE001, S110
-            pass

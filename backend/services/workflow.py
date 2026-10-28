@@ -25,7 +25,7 @@ async def run_workflow_script(script: str, args: Any, agent_hook: Callable, note
                     raise TypeError("pipeline() stages must be functions.")
                 try:
                     prev = await stage(prev, item, index) if asyncio.iscoroutinefunction(stage) else stage(prev, item, index)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     return None
             return prev
         return await asyncio.gather(*[run_item(it, i) for i, it in enumerate(items)])
@@ -41,7 +41,7 @@ async def run_workflow_script(script: str, args: Any, agent_hook: Callable, note
                 if asyncio.iscoroutine(r):
                     r = await r
                 return r
-            except Exception:  # noqa: BLE001
+            except Exception:
                 return None
         return await asyncio.gather(*[run_one(t) for t in thunks])
 
@@ -64,11 +64,11 @@ async def run_workflow_script(script: str, args: Any, agent_hook: Callable, note
 
     try:
         code = compile(script, "workflow.py", "exec")
-        exec(code, {"__builtins__": {}}, namespace)  # noqa: S102
+        exec(code, {"__builtins__": {}}, namespace)
         # If script defines a coroutine result, await it
-        result = namespace.get("result", None)
+        result = namespace.get("result")
         if asyncio.iscoroutine(result):
             result = await asyncio.wait_for(result, timeout=timeout_ms / 1000.0)
         return {"ok": True, "value": result, "phases": phases, "logs": logs, "calls": calls}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"ok": False, "error": str(e), "phases": phases, "logs": logs, "calls": calls}

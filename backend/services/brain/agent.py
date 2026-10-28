@@ -36,7 +36,7 @@ async def edges_between(client: FalkorClient, node_ids: list[str]) -> list[dict[
         return []
     try:
         rows = await client.query("MATCH (a)-[r]->(b) WHERE a.id IN $ids AND b.id IN $ids RETURN a.id AS src, type(r) AS rel, b.id AS dst", {"ids": node_ids[:200]})
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
     seen = set()
     edges = []
@@ -82,7 +82,7 @@ async def ask_agent(question: str, opts: dict[str, Any] | None = None) -> dict[s
     if opts.get("useMemory", True):
         try:
             memories = await recall_memories(client, user_id, question)
-        except Exception:  # noqa: BLE001
+        except Exception:
             memories = []
     await record_turn(client, session_id, "user", question)
     multi_agent = opts.get("multiAgent", True)
