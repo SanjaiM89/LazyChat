@@ -8,6 +8,7 @@ from services.graph import FalkorClient
 
 from .algorithms import (
     bridge_services,
+    communities,
     dependency_impact,
     expert_finder,
     find_tickets_for_service,
@@ -204,6 +205,13 @@ async def _find_people(client, args):
     return empty("find_people", {"summary": f"{len(rows)} people matching '{name}'.", "nodes": nodes, "row_count": len(rows), "data": rows})
 
 tool("find_people", "Find a person by name.", {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}, _find_people)
+
+
+async def _team_clusters(client, args):
+    res = await communities(client)
+    return empty("team_clusters", {"summary": f"{len(res)} team clusters.", "row_count": len(res), "data": res})
+
+tool("team_clusters", "Community detection: how the org clusters by team.", {"type": "object", "properties": {"limit": {"type": "integer"}}, "required": []}, _team_clusters)
 
 # --- Graph context / cypher ---
 
