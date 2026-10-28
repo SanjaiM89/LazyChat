@@ -122,3 +122,21 @@ def test_observation_policy():
     assert op.guard_edit("s1", p)["ok"] is True
     # write guard allows observed file
     assert op.guard_write("s1", p)["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_sse_endpoint():
+    app = create_app()
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        r = await client.post("/api/v1/chat/stream", json={"question": "hi"})
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+
+
+def test_tools_registry_count():
+    from tools import registry
+    schemas = registry.schemas()
+    assert len(schemas) >= 3
+    names = [s["function"]["name"] for s in schemas]
+    assert "shell" in names
