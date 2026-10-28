@@ -140,3 +140,24 @@ def test_tools_registry_count():
     assert len(schemas) >= 3
     names = [s["function"]["name"] for s in schemas]
     assert "shell" in names
+
+
+def test_workspace_tools_resolve_and_glob():
+    import os
+    import tempfile
+
+    from services.workspace_tools import match_glob, resolve_in
+    d = tempfile.mkdtemp()
+    # resolve_in allows inside
+    assert resolve_in(d, "foo.txt") == os.path.realpath(os.path.join(d, "foo.txt"))
+    # escape rejected
+    try:
+        resolve_in(d, "../etc/passwd")
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
+    # match_glob
+    assert match_glob("*.ts", "a.ts") is True
+    assert match_glob("*.ts", "a.js") is False
+    assert match_glob("**/*.ts", "src/a.ts") is True

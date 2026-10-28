@@ -206,3 +206,33 @@ async def recent_commands(client, workspace_id: str, limit: int = 20) -> list[di
         n = r.get("n") if isinstance(r.get("n"), dict) else r
         out.append({"id": n.get("id"), "workspace_id": workspace_id, "command": n.get("command") or "", "exit_code": n.get("exit_code"), "output": n.get("output") or "", "started_at": n.get("created_at") or "", "duration_ms": n.get("duration_ms")})
     return out
+
+
+RECORD_LABELS = {
+    "plan": "WorkspacePlan", "decision": "WorkspaceDecision", "change": "CodeChange",
+    "command": "CommandRun", "error": "ErrorFix", "dependency": "Dependency",
+    "todo": "Todo", "preference": "WsPreference", "link": "WsLink", "summary": "SessionSummary",
+}
+
+
+async def write_workspace_record(client, workspace_id: str, kind: str, data: dict, session_id: str | None = None) -> str:
+    import uuid as _u
+    label = RECORD_LABELS.get(kind, "WorkspaceRecord")
+    rid = f"wr:{_u.uuid4().hex[:8]}"
+    ts = now_iso()
+    clean = {}
+    for k, v in (data or {}).items():
+        clean[k] = redact_secrets(v)[:20000] if isinstance(v, str) else v
+    await client.write(
+        f"CREATE (n:{label} {{id: $id}}) SET n += $props, n.workspace_id = $wid, n.created_at = $ts, n.updated_at = $ts WITH n MATCH (w:Workspace {{id: $wid}}) MERGE (n)-[:IN_WORKSPACE]->(w)",
+        {"id": rid, "props": clean, "wid": workspace_id, "ts": ts},
+    )
+    if session_id:
+        await client.write("MATCH (n {id: $id}), (s:AgentSession {id: $sid}) MERGE (n)-[:RECORDED_IN]->(s)", {"id": rid, "sid": session_id})
+    return rid
+
+
+async def read_workspace_records(client, workspace_id: str, kind: str, limit: int = 50) -> list[dict]:
+    label = RECORD_LABELS.get(kind, "WorkspaceRecord")
+    rows = await client.query(f"MATCH (n:{label}) WHERE n.workspace_id = $wid RETURN properties(n) AS n ORDER BY n.updated_at DESC, n.created_at DESC LIMIT $limit", {"wid": workspace_id, "limit": limit})
+    return [r.get("n") for r in rows if isinstance(r.get("n"), dict)]
